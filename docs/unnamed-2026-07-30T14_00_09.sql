@@ -1,4 +1,3 @@
-
 CREATE TABLE category
 (
   id      INT         NOT NULL COMMENT 'ID',
@@ -7,9 +6,9 @@ CREATE TABLE category
   PRIMARY KEY (id)
 ) COMMENT '카테고리';
 
-CREATE TABLE comment
+CREATE TABLE `comment`
 (
-  id         BIGINT   NULL     AUTO_INCREMENT COMMENT 'ID',
+  id         BIGINT   NOT NULL AUTO_INCREMENT COMMENT 'ID',
   content    TEXT     NOT NULL COMMENT '댓글 내용',
   post_id    BIGINT   NOT NULL COMMENT '글 번호',
   user_id    BIGINT   NOT NULL COMMENT '댓글 작성자',
@@ -20,11 +19,11 @@ CREATE TABLE comment
 
 CREATE TABLE expert_profile
 (
-  id            BIGINT       NULL     AUTO_INCREMENT COMMENT 'ID',
+  id            BIGINT       NOT NULL     AUTO_INCREMENT COMMENT 'ID',
   user_id       BIGINT       NOT NULL COMMENT '유저 ID',
   career        TEXT         NULL     COMMENT '경력',
   certification TEXT         NULL     COMMENT '자격증',
-  status        VARCHAR(20)  NOT NULL DEFAULT PENDING COMMENT '심사 상태',
+  status        VARCHAR(20)  NOT NULL COMMENT '심사 상태',
   reject_reason VARCHAR(255) NULL     COMMENT '거절 이유',
   PRIMARY KEY (id)
 ) COMMENT '전문가';
@@ -34,7 +33,7 @@ ALTER TABLE expert_profile
 
 CREATE TABLE post
 (
-  id         BIGINT       NULL     AUTO_INCREMENT COMMENT 'ID',
+  id         BIGINT       NOT NULL     AUTO_INCREMENT COMMENT 'ID',
   title      VARCHAR(200) NOT NULL COMMENT '제목',
   content    TEXT         NOT NULL COMMENT '내용',
   category   VARCHAR(20)  NOT NULL COMMENT '카테고리',
@@ -46,7 +45,7 @@ CREATE TABLE post
 
 CREATE TABLE study
 (
-  id            BIGINT       NULL     AUTO_INCREMENT COMMENT 'ID',
+  id            BIGINT       NOT NULL     AUTO_INCREMENT COMMENT 'ID',
   title         VARCHAR(200) NOT NULL COMMENT '제목',
   description   TEXT         NULL     COMMENT '소개',
   capacity      INT          NOT NULL COMMENT '모집 인원',
@@ -59,7 +58,7 @@ CREATE TABLE study
 
 CREATE TABLE study_chat
 (
-  id         BIGINT   NULL     AUTO_INCREMENT COMMENT 'ID',
+  id         BIGINT   NOT NULL     AUTO_INCREMENT COMMENT 'ID',
   study_id   BIGINT   NOT NULL COMMENT '스터디 ID',
   user_id    BIGINT   NOT NULL COMMENT '작성자',
   content    TEXT     NOT NULL COMMENT '내용',
@@ -69,7 +68,7 @@ CREATE TABLE study_chat
 
 CREATE TABLE study_member
 (
-  id        BIGINT   NULL     AUTO_INCREMENT COMMENT 'ID',
+  id        BIGINT   NOT NULL     AUTO_INCREMENT COMMENT 'ID',
   study_id  BIGINT   NOT NULL COMMENT '스터디 ID',
   user_id   BIGINT   NOT NULL COMMENT '멤버 ID',
   joined_at DATETIME NOT NULL COMMENT '가입 시간',
@@ -84,7 +83,7 @@ ALTER TABLE study_member
 
 CREATE TABLE subscription
 (
-  id         BIGINT      NULL     AUTO_INCREMENT COMMENT 'ID',
+  id         BIGINT      NOT NULL     AUTO_INCREMENT COMMENT 'ID',
   user_id    BIGINT      NOT NULL COMMENT '유저 ID',
   status     VARCHAR(20) NOT NULL COMMENT '구독 상태',
   started_at DATETIME    NOT NULL COMMENT '시작일',
@@ -94,12 +93,12 @@ CREATE TABLE subscription
 
 CREATE TABLE users
 (
-  id         BIGINT       NULL     AUTO_INCREMENT COMMENT '유저 ID',
+  id         BIGINT       NOT NULL     AUTO_INCREMENT COMMENT '유저 ID',
   username   VARCHAR(50)  NOT NULL COMMENT 'email',
   password   VARCHAR(255) NOT NULL COMMENT 'pw',
   nickname   VARCHAR(50)  NOT NULL COMMENT '닉네임',
-  role       VARCHAR(20)  NOT NULL DEFAULT USER COMMENT '권한',
-  status     VARCHAR(20)  NOT NULL DEFAULT ACTIVE COMMENT '탈퇴 여부',
+  role       VARCHAR(20)  NOT NULL COMMENT '권한',
+  status     VARCHAR(20)  NOT NULL COMMENT '탈퇴 여부',
   created_at DATETIME     NOT NULL COMMENT '생성 시간',
   PRIMARY KEY (id)
 ) COMMENT '회원';
