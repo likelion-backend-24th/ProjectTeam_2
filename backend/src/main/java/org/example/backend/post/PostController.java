@@ -43,7 +43,7 @@ public class PostController {
             @PathVariable Long postId
     ){
         PostDetailResponse detail = postService.getPostDetail(postId);
-        return ResponseEntity.ok(ApiResponse.success("게시글 상세 조회를 성공했습니다", detail));
+        return ResponseEntity.ok(ApiResponse.success("게시글 상세 조회에 성공했습니다", detail));
     }
 
     @PutMapping("/{postId}")
