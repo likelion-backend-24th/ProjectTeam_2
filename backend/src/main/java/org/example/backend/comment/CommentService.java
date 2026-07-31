@@ -18,6 +18,8 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
+    // TODO: UserRepository 추가 필요 - User - UserRepository 생성 후 아래 필드 추가
+    // private final UserRepository userRepository;
 
     @Transactional
     public Long createComment(Long postId, CommentCreateRequest request, Long userId) {
@@ -29,6 +31,10 @@ public class CommentService {
         comment.setContent(request.getContent());
         comment.setPost(post);
 
+        // TODO: UserRepository 완성되면 아래 로직 추가
+        // User user = userRepository.findById(userId)
+        //         .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
+        // comment.setUser(user);
 
         Comment savedComment = commentRepository.save(comment);
         return savedComment.getId();

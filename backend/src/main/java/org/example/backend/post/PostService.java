@@ -11,7 +11,6 @@ import org.example.backend.post.dto.PostResponse;
 import org.example.backend.post.dto.PostUpdateRequest;
 import org.example.backend.post.exception.PostAccessDeniedException;
 import org.example.backend.post.exception.PostNotFoundException;
-import org.example.backend.user.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,6 +24,8 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    // TODO: UserRepository 추가 필요 - User - UserRepository 생성 후 아래 필드 추가
+    // private final UserRepository userRepository;
 
     public Long createPost(PostCreateRequest request, Long userId) {
 
@@ -32,6 +33,11 @@ public class PostService {
         post.setTitle(request.getTitle());
         post.setContent(request.getContent());
         post.setCategory(request.getCategory());
+
+        // TODO: UserRepository 완성되면 아래 로직 추가
+        // User user = userRepository.findById(userId)
+        //         .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
+        // post.setUser(user);
 
 
         Post savedPost = postRepository.save(post);
