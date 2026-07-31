@@ -2,6 +2,7 @@ package org.example.backend.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.example.backend.user.entity.User;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
