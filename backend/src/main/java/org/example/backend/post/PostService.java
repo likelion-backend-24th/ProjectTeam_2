@@ -98,7 +98,7 @@ public class PostService {
         post.setCategory(request.getCategory());
         // 별도로 저장(save) 안 해도 자동으로 반영돼요 — 이유는 아래 설명
     }
-    
+
     @Transactional
     public void deletePost(Long postId, Long userId) {
         // 1. postId로 게시글 찾기 (없으면 예외)
