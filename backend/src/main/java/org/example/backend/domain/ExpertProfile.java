@@ -42,7 +42,6 @@ public class ExpertProfile {
     @Column(name = "reject_reason", length = 255)
     private String rejectReason;
 
-    // 있어야하는거아닌가? ERD에 없길래 판단좀
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

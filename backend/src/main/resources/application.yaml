@@ -3,7 +3,7 @@ spring:
     name: backend
 
   datasource:
-    url: jdbc:mysql://localhost:3307/prep2getherdb
+    url: jdbc:mysql://localhost:3306/prep2getherdb
     username: p2g
     password: 1234
     driver-class-name: com.mysql.cj.jdbc.Driver
