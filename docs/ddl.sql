@@ -147,6 +147,19 @@ CREATE TABLE oauth_account
   PRIMARY KEY (id)
 ) COMMENT '소셜 로그인 연동';
 
+CREATE TABLE refresh_token
+(
+  id         BIGINT       NOT NULL     AUTO_INCREMENT COMMENT 'ID',
+  user_id    BIGINT       NOT NULL COMMENT '유저 ID',
+  token      VARCHAR(500) NOT NULL COMMENT '리프레시 토큰 값',
+  expires_at DATETIME     NOT NULL COMMENT '만료 시간',
+  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '발급 시간',
+  PRIMARY KEY (id)
+) COMMENT '리프레시 토큰';
+ 
+ALTER TABLE refresh_token
+  ADD CONSTRAINT UQ_refresh_token_user_id UNIQUE (user_id);
+
 ALTER TABLE oauth_account
   ADD CONSTRAINT UQ_oauth_account_provider UNIQUE (provider, provider_id);
 
@@ -246,3 +259,9 @@ ALTER TABLE feedback_message
   ADD CONSTRAINT FK_users_TO_feedback_message
     FOREIGN KEY (sender_id)
     REFERENCES users (id);
+
+ALTER TABLE refresh_token
+  ADD CONSTRAINT FK_users_TO_refresh_token
+    FOREIGN KEY (user_id)
+    REFERENCES users (id)
+    ON DELETE CASCADE;
