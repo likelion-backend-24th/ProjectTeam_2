@@ -1,4 +1,4 @@
-package org.example.backend.domain;
+package org.example.backend.user.entity;
 
 public enum AccountStatus {
     ACTIVE,

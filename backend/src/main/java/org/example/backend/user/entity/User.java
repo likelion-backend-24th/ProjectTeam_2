@@ -1,4 +1,4 @@
-package org.example.backend.domain;
+package org.example.backend.user.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
