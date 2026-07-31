@@ -1,11 +1,3 @@
-CREATE TABLE category
-(
-  id      INT         NOT NULL COMMENT 'ID',
-  name    VARCHAR(30) NOT NULL COMMENT '카테고리 명칭',
-  post_id BIGINT      NOT NULL COMMENT '게시글 ID',
-  PRIMARY KEY (id)
-) COMMENT '카테고리';
-
 CREATE TABLE `comment`
 (
   id         BIGINT   NOT NULL AUTO_INCREMENT COMMENT 'ID',
@@ -19,7 +11,7 @@ CREATE TABLE `comment`
 
 CREATE TABLE expert_profile
 (
-  id            BIGINT       NOT NULL     AUTO_INCREMENT COMMENT 'ID',
+  id            BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
   user_id       BIGINT       NOT NULL COMMENT '유저 ID',
   career        TEXT         NULL     COMMENT '경력',
   certification TEXT         NULL     COMMENT '자격증',
@@ -33,7 +25,7 @@ ALTER TABLE expert_profile
 
 CREATE TABLE post
 (
-  id         BIGINT       NOT NULL     AUTO_INCREMENT COMMENT 'ID',
+  id         BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
   title      VARCHAR(200) NOT NULL COMMENT '제목',
   content    TEXT         NOT NULL COMMENT '내용',
   category   VARCHAR(20)  NOT NULL COMMENT '카테고리',
@@ -45,7 +37,7 @@ CREATE TABLE post
 
 CREATE TABLE study
 (
-  id            BIGINT       NOT NULL     AUTO_INCREMENT COMMENT 'ID',
+  id            BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
   title         VARCHAR(200) NOT NULL COMMENT '제목',
   description   TEXT         NULL     COMMENT '소개',
   capacity      INT          NOT NULL COMMENT '모집 인원',
@@ -58,7 +50,7 @@ CREATE TABLE study
 
 CREATE TABLE study_post
 (
-  id         BIGINT       NOT NULL     AUTO_INCREMENT COMMENT 'ID',
+  id         BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
   study_id   BIGINT       NOT NULL COMMENT '스터디 ID',
   user_id    BIGINT       NOT NULL COMMENT '작성자',
   title      VARCHAR(200) NOT NULL COMMENT '제목',
@@ -70,7 +62,7 @@ CREATE TABLE study_post
 
 CREATE TABLE study_post_comment
 (
-  id            BIGINT   NOT NULL     AUTO_INCREMENT COMMENT 'ID',
+  id            BIGINT   NOT NULL AUTO_INCREMENT COMMENT 'ID',
   content       TEXT     NOT NULL COMMENT '댓글 내용',
   study_post_id BIGINT   NOT NULL COMMENT '스터디 게시글 ID',
   user_id       BIGINT   NOT NULL COMMENT '댓글 작성자',
@@ -81,7 +73,7 @@ CREATE TABLE study_post_comment
 
 CREATE TABLE study_member
 (
-  id        BIGINT   NOT NULL     AUTO_INCREMENT COMMENT 'ID',
+  id        BIGINT   NOT NULL AUTO_INCREMENT COMMENT 'ID',
   study_id  BIGINT   NOT NULL COMMENT '스터디 ID',
   user_id   BIGINT   NOT NULL COMMENT '멤버 ID',
   joined_at DATETIME NOT NULL COMMENT '가입 시간',
@@ -93,7 +85,7 @@ ALTER TABLE study_member
 
 CREATE TABLE subscription
 (
-  id         BIGINT      NOT NULL     AUTO_INCREMENT COMMENT 'ID',
+  id         BIGINT      NOT NULL AUTO_INCREMENT COMMENT 'ID',
   user_id    BIGINT      NOT NULL COMMENT '유저 ID',
   status     VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT '구독 상태 (ACTIVE, CANCELLED)',
   started_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '시작일',
@@ -103,7 +95,7 @@ CREATE TABLE subscription
 
 CREATE TABLE feedback
 (
-  id                BIGINT      NOT NULL     AUTO_INCREMENT COMMENT 'ID',
+  id                BIGINT      NOT NULL AUTO_INCREMENT COMMENT 'ID',
   requester_id      BIGINT      NOT NULL COMMENT '질문자(구독자) ID',
   expert_profile_id BIGINT      NOT NULL COMMENT '담당 전문가 ID',
   status            VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '스레드 상태 (PENDING: 답변 대기, ANSWERED: 답변 완료)',
@@ -114,7 +106,7 @@ CREATE TABLE feedback
 
 CREATE TABLE feedback_message
 (
-  id          BIGINT   NOT NULL     AUTO_INCREMENT COMMENT 'ID',
+  id          BIGINT   NOT NULL AUTO_INCREMENT COMMENT 'ID',
   feedback_id BIGINT   NOT NULL COMMENT '문의 스레드 ID',
   sender_id   BIGINT   NOT NULL COMMENT '작성자 (질문자 또는 전문가)',
   content     TEXT     NOT NULL COMMENT '메시지 내용',
@@ -124,7 +116,7 @@ CREATE TABLE feedback_message
 
 CREATE TABLE users
 (
-  id         BIGINT       NOT NULL     AUTO_INCREMENT COMMENT '유저 ID',
+  id         BIGINT       NOT NULL AUTO_INCREMENT COMMENT '유저 ID',
   username   VARCHAR(50)  NOT NULL COMMENT 'email',
   password   VARCHAR(255) NULL     COMMENT 'pw (소셜 전용 가입자는 NULL)',
   nickname   VARCHAR(50)  NOT NULL COMMENT '닉네임',
@@ -139,24 +131,24 @@ ALTER TABLE users
 
 CREATE TABLE oauth_account
 (
-  id          BIGINT      NOT NULL     AUTO_INCREMENT COMMENT 'ID',
-  user_id     BIGINT      NOT NULL COMMENT '유저 ID',
-  provider    VARCHAR(20) NOT NULL COMMENT '제공자 (KAKAO, GOOGLE)',
+  id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  user_id     BIGINT       NOT NULL COMMENT '유저 ID',
+  provider    VARCHAR(20)  NOT NULL COMMENT '제공자 (KAKAO, GOOGLE)',
   provider_id VARCHAR(100) NOT NULL COMMENT '제공자 측 고유 회원 ID',
-  linked_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '연동 시각',
+  linked_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '연동 시각',
   PRIMARY KEY (id)
 ) COMMENT '소셜 로그인 연동';
 
 CREATE TABLE refresh_token
 (
-  id         BIGINT       NOT NULL     AUTO_INCREMENT COMMENT 'ID',
+  id         BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
   user_id    BIGINT       NOT NULL COMMENT '유저 ID',
   token      VARCHAR(500) NOT NULL COMMENT '리프레시 토큰 값',
   expires_at DATETIME     NOT NULL COMMENT '만료 시간',
   created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '발급 시간',
   PRIMARY KEY (id)
 ) COMMENT '리프레시 토큰';
- 
+
 ALTER TABLE refresh_token
   ADD CONSTRAINT UQ_refresh_token_user_id UNIQUE (user_id);
 
@@ -226,12 +218,6 @@ ALTER TABLE subscription
   ADD CONSTRAINT FK_users_TO_subscription
     FOREIGN KEY (user_id)
     REFERENCES users (id);
-
-ALTER TABLE category
-  ADD CONSTRAINT FK_post_TO_category
-    FOREIGN KEY (post_id)
-    REFERENCES post (id)
-    ON DELETE CASCADE;
 
 ALTER TABLE oauth_account
   ADD CONSTRAINT FK_users_TO_oauth_account

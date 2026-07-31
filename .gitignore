@@ -1,0 +1,10 @@
+# IDE 설정
+.vscode/
+.idea/
+
+# 빌드 결과물
+backend/build/
+backend/.gradle/
+
+# 로그
+*.log
