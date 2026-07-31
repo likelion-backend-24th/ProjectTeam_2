@@ -101,6 +101,27 @@ CREATE TABLE subscription
   PRIMARY KEY (id)
 ) COMMENT '구독';
 
+CREATE TABLE feedback
+(
+  id                BIGINT      NOT NULL     AUTO_INCREMENT COMMENT 'ID',
+  requester_id      BIGINT      NOT NULL COMMENT '질문자(구독자) ID',
+  expert_profile_id BIGINT      NOT NULL COMMENT '담당 전문가 ID',
+  status            VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '스레드 상태 (PENDING: 답변 대기, ANSWERED: 답변 완료)',
+  created_at        DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시간',
+  answered_at       DATETIME    NULL     COMMENT '전문가 최초 답변 시간',
+  PRIMARY KEY (id)
+) COMMENT '전문가 문의 스레드';
+
+CREATE TABLE feedback_message
+(
+  id          BIGINT   NOT NULL     AUTO_INCREMENT COMMENT 'ID',
+  feedback_id BIGINT   NOT NULL COMMENT '문의 스레드 ID',
+  sender_id   BIGINT   NOT NULL COMMENT '작성자 (질문자 또는 전문가)',
+  content     TEXT     NOT NULL COMMENT '메시지 내용',
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시간',
+  PRIMARY KEY (id)
+) COMMENT '전문가 문의 메시지';
+
 CREATE TABLE users
 (
   id         BIGINT       NOT NULL     AUTO_INCREMENT COMMENT '유저 ID',
@@ -204,3 +225,24 @@ ALTER TABLE oauth_account
     FOREIGN KEY (user_id)
     REFERENCES users (id)
     ON DELETE CASCADE;
+
+ALTER TABLE feedback
+  ADD CONSTRAINT FK_users_TO_feedback
+    FOREIGN KEY (requester_id)
+    REFERENCES users (id);
+
+ALTER TABLE feedback
+  ADD CONSTRAINT FK_expert_profile_TO_feedback
+    FOREIGN KEY (expert_profile_id)
+    REFERENCES expert_profile (id);
+
+ALTER TABLE feedback_message
+  ADD CONSTRAINT FK_feedback_TO_feedback_message
+    FOREIGN KEY (feedback_id)
+    REFERENCES feedback (id)
+    ON DELETE CASCADE;
+
+ALTER TABLE feedback_message
+  ADD CONSTRAINT FK_users_TO_feedback_message
+    FOREIGN KEY (sender_id)
+    REFERENCES users (id);
