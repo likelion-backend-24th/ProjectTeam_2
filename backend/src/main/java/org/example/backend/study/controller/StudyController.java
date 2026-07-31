@@ -67,7 +67,7 @@ public class StudyController {
         return ResponseEntity.ok(ApiResponse.success("스터디 삭제", null));
     }
 
-    @Operation(summary = "스터디 가입 신청") // F-12
+    @Operation(summary = "스터디 가입 신청")
     @PostMapping("/{id}/join")
     public ResponseEntity<ApiResponse<StudyMemberResponse>> joinStudy(@PathVariable Long id) {
         StudyMemberResponse response = studyService.joinStudy(USER_ID, id);
