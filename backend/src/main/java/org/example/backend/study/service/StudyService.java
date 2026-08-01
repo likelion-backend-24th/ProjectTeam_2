@@ -8,6 +8,7 @@ import org.example.backend.study.entity.StudyMember;
 import org.example.backend.study.repository.StudyMemberRepository;
 import org.example.backend.study.repository.StudyRepository;
 import org.example.backend.user.entity.User;
+import org.example.backend.user.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -20,14 +21,18 @@ import java.util.Optional;
 public class StudyService {
     private final StudyRepository studyRepository;
     private final StudyMemberRepository studyMemberRepository;
+    private final UserRepository userRepository;
 
     public StudyResponse createStudy(Long userId, StudyRequest request){
-        // 임시방편 - 실제 유저 조회로 교체 (UserRespository findById 필요)
-        // User user = userRepository.findById(userId).orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        User user = new User();
+         User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
 
         Study study = new Study(request.getTitle(), request.getDescription(), request.getCapacity(), request.getRecruitStart(), request.getRecruitEnd(), user);
         Study saved = studyRepository.save(study);
+
+        // 방장을 멤버로도 등록 (그룹 개설 -> 방장이 첫 멤버로 자동 가입되는 구조)
+        StudyMember leaderAsMember = new StudyMember(saved, user);
+        studyMemberRepository.save(leaderAsMember);
+
         return StudyResponse.builder()
                 .id(saved.getId())
                 .title(saved.getTitle())
@@ -111,8 +116,8 @@ public class StudyService {
     }
 
     public StudyMemberResponse joinStudy(Long userId, Long id) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
         Study study = studyRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 스터디입니다."));
-        User user = new User();
 
         // 가입 신청인이 방장이면 예외
         if (study.getLeader().getId().equals(userId)) {
