@@ -12,4 +12,7 @@ public interface UserRepository extends JpaRepository<User,Long> {
     Optional<User> findByUsername(String username);
     //회원가입 시 중복체크때 사용
     boolean existsByUsername(String username);
+    //회원가입 시 닉네임 중복체크때 사용
+    boolean existsByNickname(String nickname);
 }
+
