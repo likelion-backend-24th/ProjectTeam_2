@@ -106,7 +106,7 @@ public class UserService {
     public void logout(String username){
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
-        // DB에서 refresh토큰 삭제해야함 아직 안한거임
+        refreshTokenRepository.deleteByUser(user);
     }
 
 }

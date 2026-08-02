@@ -46,7 +46,18 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<String> logout(@AuthenticationPrincipal CustomUserDetails customUserDetails){
         userService.logout(customUserDetails.getUsername());
-        return ResponseEntity.ok("로그아웃되었습니다.");
+
+        ResponseCookie deleteCookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(0)
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                .body("로그아웃되었습니다.");
     }
 
 
@@ -54,7 +65,7 @@ public class AuthController {
     private ResponseEntity<TokenResponse> buildResponseWithCookie(TokenResponse response){
         ResponseCookie cookie = ResponseCookie.from("refreshToken", response.getRefreshToken())
                 .httpOnly(true)
-                .secure(true)  //로컬에선 false 배포때는 true
+                .secure(true)
                 .sameSite("Strict")
                 .path("/")
                 .maxAge(60 * 60 * 24 * 14) // 14일 (초 단위)
