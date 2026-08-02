@@ -22,7 +22,14 @@ public class StudyService {
     private final UserRepository userRepository;
 
     public StudyResponse createStudy(Long userId, StudyRequest request){
-         User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
+        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
+
+        if (!user.isSubscribed()) {
+            int joinedStudyCount = studyMemberRepository.countByUserId(userId);
+            if (joinedStudyCount >= 2) {
+                throw new StudyJoinLimitExceededException();
+            }
+        }
 
         Study study = new Study(request.getTitle(), request.getDescription(), request.getCapacity(), request.getRecruitStart(), request.getRecruitEnd(), user);
         Study saved = studyRepository.save(study);
