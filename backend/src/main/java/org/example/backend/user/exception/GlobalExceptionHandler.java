@@ -17,6 +17,11 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.CONFLICT, e.getMessage());
     }
 
+    @ExceptionHandler(DuplicateNicknameException.class)
+    public ResponseEntity<Map<String, String>> handleDuplicateNickname(DuplicateNicknameException e){
+        return buildResponse(HttpStatus.CONFLICT, e.getMessage());
+    }
+
     private ResponseEntity<Map<String, String>> buildResponse(HttpStatus status, String message){
         Map<String, String> body = new HashMap<>();
         body.put("message", message);

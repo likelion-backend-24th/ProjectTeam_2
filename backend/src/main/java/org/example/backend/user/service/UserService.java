@@ -8,6 +8,7 @@ import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.RefreshToken;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
+import org.example.backend.user.exception.DuplicateNicknameException;
 import org.example.backend.user.exception.DuplicateUsernameException;
 import org.example.backend.user.exception.ResourceNotFoundException;
 import org.example.backend.user.repository.RefreshTokenRepository;
@@ -35,7 +36,7 @@ public class UserService {
             throw new DuplicateUsernameException("이미 가입된 이메일입니다.");
         }
         if(userRepository.existsByNickname(signupRequest.getNickname())){
-            throw new IllegalArgumentException(("이미 사용 중인 닉네임입니다."));
+            throw new DuplicateNicknameException(("이미 사용 중인 닉네임입니다."));
         }
         User user = new User();
         user.setName(signupRequest.getName());
