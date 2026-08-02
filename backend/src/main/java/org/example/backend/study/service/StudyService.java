@@ -14,9 +14,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
-
 @Service
 @RequiredArgsConstructor
 public class StudyService {
@@ -136,6 +133,14 @@ public class StudyService {
         int currentCount = studyMemberRepository.countByStudyId(id);
         if (currentCount >= study.getCapacity()) {
             throw new StudyCapacityExceededException();
+        }
+
+        // 비구독자 2개 제한 검증
+        if (!user.isSubscribed()) {
+            int joinedStudyCount = studyMemberRepository.countByUserId(userId);
+            if (joinedStudyCount >= 2) {
+                throw new StudyJoinLimitExceededException();
+            }
         }
 
         // 모든 조건 통과 후 가입
