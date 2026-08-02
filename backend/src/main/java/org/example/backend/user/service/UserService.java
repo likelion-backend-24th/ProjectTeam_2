@@ -28,6 +28,9 @@ public class UserService {
         if(userRepository.existsByUsername(signupRequest.getUsername())){
             throw new IllegalArgumentException("이미 가입된 이메일입니다.");
         }
+        if(userRepository.existsByNickname(signupRequest.getNickname())){
+            throw new IllegalArgumentException(("이미 사용 중인 닉네임입니다."));
+        }
         User user = new User();
         user.setName(signupRequest.getName());
         user.setUsername(signupRequest.getUsername());
