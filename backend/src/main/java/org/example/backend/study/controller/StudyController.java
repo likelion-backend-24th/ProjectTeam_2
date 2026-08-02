@@ -8,11 +8,13 @@ import org.example.backend.common.dto.Meta;
 import org.example.backend.common.dto.PageMeta;
 import org.example.backend.study.dto.*;
 import org.example.backend.study.service.StudyService;
+import org.example.backend.user.security.CustomUserDetails;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,13 +26,11 @@ public class StudyController {
 
     private final StudyService studyService;
 
-    // 현재 AuthenticationPrincipal 사용이 불가하므로 하드코딩
-    private static final Long USER_ID = 1L;
-
     @Operation(summary = "스터디 개설")
     @PostMapping
-    public ResponseEntity<ApiResponse<StudyResponse>> createStudy(@Valid @RequestBody StudyRequest request){
-        StudyResponse response = studyService.createStudy(USER_ID, request);
+    public ResponseEntity<ApiResponse<StudyResponse>> createStudy(@AuthenticationPrincipal CustomUserDetails user, @Valid @RequestBody StudyRequest request){
+        Long userId = user.getUser().getId();
+        StudyResponse response = studyService.createStudy(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("스터디 생성", response));
     }
 
@@ -54,23 +54,27 @@ public class StudyController {
     @Operation(summary = "스터디 수정")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<StudyResponse>> updateStudy(
+            @AuthenticationPrincipal CustomUserDetails user,
             @PathVariable Long id,
             @Valid @RequestBody StudyUpdateRequest request) {
-        StudyResponse response = studyService.updateStudy(USER_ID, id, request);
+        Long userId = user.getUser().getId();
+        StudyResponse response = studyService.updateStudy(userId, id, request);
         return ResponseEntity.ok(ApiResponse.success("스터디 수정", response));
     }
 
     @Operation(summary = "스터디 삭제")
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteStudy(@PathVariable Long id) {
-        studyService.deleteStudy(USER_ID, id);
+    public ResponseEntity<ApiResponse<Void>> deleteStudy(@AuthenticationPrincipal CustomUserDetails user, @PathVariable Long id) {
+        Long userId = user.getUser().getId();
+        studyService.deleteStudy(userId, id);
         return ResponseEntity.ok(ApiResponse.success("스터디 삭제", null));
     }
 
     @Operation(summary = "스터디 가입 신청")
     @PostMapping("/{id}/join")
-    public ResponseEntity<ApiResponse<StudyMemberResponse>> joinStudy(@PathVariable Long id) {
-        StudyMemberResponse response = studyService.joinStudy(USER_ID, id);
+    public ResponseEntity<ApiResponse<StudyMemberResponse>> joinStudy(@AuthenticationPrincipal CustomUserDetails user, @PathVariable Long id) {
+        Long userId = user.getUser().getId();
+        StudyMemberResponse response = studyService.joinStudy(userId, id);
         return ResponseEntity.ok(ApiResponse.success("스터디 가입", response));
     }
 }

@@ -4,9 +4,9 @@
   "settings": {
     "width": 2000,
     "height": 2000,
-    "scrollTop": -223.8861,
-    "scrollLeft": 0,
-    "zoomLevel": 0.76,
+    "scrollTop": -576.2732,
+    "scrollLeft": -516.4247,
+    "zoomLevel": 1,
     "show": 431,
     "database": 4,
     "databaseName": "",
@@ -432,20 +432,25 @@
         "columnIds": [
           "Fgld598zAvYPwxY9BbBJz",
           "HWa6ASG2PTLCniIblEutB",
+          "tWwrDEpdR2nVAreSzVzGh",
           "fkUSI0bRq3JIgy4YEIXbc",
           "xDVa2GrPlIaoV2qf90riI",
           "OHTAbaRI7WxMIljDVlICS",
           "ow56L3S4BeVRc1kF6xXRo",
-          "20279HLr4MhP-K3kSIyMU"
+          "20279HLr4MhP-K3kSIyMU",
+          "JxrRJoK2_P42ePSJXszPu"
         ],
         "seqColumnIds": [
           "Fgld598zAvYPwxY9BbBJz",
           "HWa6ASG2PTLCniIblEutB",
+          "tWwrDEpdR2nVAreSzVzGh",
           "fkUSI0bRq3JIgy4YEIXbc",
           "xDVa2GrPlIaoV2qf90riI",
           "OHTAbaRI7WxMIljDVlICS",
           "ow56L3S4BeVRc1kF6xXRo",
-          "20279HLr4MhP-K3kSIyMU"
+          "20279HLr4MhP-K3kSIyMU",
+          "JxrRJoK2_P42ePSJXszPu",
+          "36TjVDC4mS9eZRmcM7Ij5"
         ],
         "ui": {
           "x": 696.5919,
@@ -456,7 +461,7 @@
           "color": ""
         },
         "meta": {
-          "updateAt": 1785486670830,
+          "updateAt": 1785667978369,
           "createAt": 1785486503977
         }
       },
@@ -2103,6 +2108,66 @@
           "updateAt": 1785486503979,
           "createAt": 1785486503979
         }
+      },
+      "JxrRJoK2_P42ePSJXszPu": {
+        "id": "JxrRJoK2_P42ePSJXszPu",
+        "tableId": "AklBdELYEvd57L8K_56Xf",
+        "name": "is_subscribed",
+        "comment": "구독 여부",
+        "dataType": "BOOLEAN",
+        "default": "FALSE",
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 72,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1785568715146,
+          "createAt": 1785568496366
+        }
+      },
+      "36TjVDC4mS9eZRmcM7Ij5": {
+        "id": "36TjVDC4mS9eZRmcM7Ij5",
+        "tableId": "AklBdELYEvd57L8K_56Xf",
+        "name": "",
+        "comment": "",
+        "dataType": "",
+        "default": "",
+        "options": 0,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1785568533411,
+          "createAt": 1785568533411
+        }
+      },
+      "tWwrDEpdR2nVAreSzVzGh": {
+        "id": "tWwrDEpdR2nVAreSzVzGh",
+        "tableId": "AklBdELYEvd57L8K_56Xf",
+        "name": "name",
+        "comment": "이름",
+        "dataType": "VARCHAR(100)",
+        "default": "",
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 81,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1785668068116,
+          "createAt": 1785667973370
+        }
       }
     },
     "relationshipEntities": {
@@ -2145,7 +2210,7 @@
             "Fgld598zAvYPwxY9BbBJz"
           ],
           "x": 696.5919,
-          "y": 886.0760666666665,
+          "y": 903.4094,
           "direction": 1
         },
         "end": {
@@ -2172,8 +2237,8 @@
           "columnIds": [
             "Fgld598zAvYPwxY9BbBJz"
           ],
-          "x": 1016.0919,
-          "y": 923.4094,
+          "x": 1022.0919,
+          "y": 971.4094,
           "direction": 8
         },
         "end": {
@@ -2201,7 +2266,7 @@
             "Fgld598zAvYPwxY9BbBJz"
           ],
           "x": 696.5919,
-          "y": 811.4093999999999,
+          "y": 767.4094,
           "direction": 1
         },
         "end": {
@@ -2256,8 +2321,8 @@
           "columnIds": [
             "Fgld598zAvYPwxY9BbBJz"
           ],
-          "x": 1335.5919,
-          "y": 783.4094,
+          "x": 1347.5919,
+          "y": 801.4094,
           "direction": 2
         },
         "end": {
@@ -2312,8 +2377,8 @@
           "columnIds": [
             "Fgld598zAvYPwxY9BbBJz"
           ],
-          "x": 1335.5919,
-          "y": 839.4094,
+          "x": 1347.5919,
+          "y": 869.4094,
           "direction": 2
         },
         "end": {
@@ -2368,8 +2433,8 @@
           "columnIds": [
             "Fgld598zAvYPwxY9BbBJz"
           ],
-          "x": 1335.5919,
-          "y": 895.4094,
+          "x": 1347.5919,
+          "y": 937.4094,
           "direction": 2
         },
         "end": {
@@ -2424,8 +2489,8 @@
           "columnIds": [
             "Fgld598zAvYPwxY9BbBJz"
           ],
-          "x": 1335.5919,
-          "y": 727.4094,
+          "x": 1347.5919,
+          "y": 733.4094,
           "direction": 2
         },
         "end": {
@@ -2452,7 +2517,7 @@
           "columnIds": [
             "Fgld598zAvYPwxY9BbBJz"
           ],
-          "x": 1175.8419,
+          "x": 1239.0919,
           "y": 699.4094,
           "direction": 4
         },
@@ -2480,8 +2545,8 @@
           "columnIds": [
             "Fgld598zAvYPwxY9BbBJz"
           ],
-          "x": 803.0919,
-          "y": 923.4094,
+          "x": 805.0919,
+          "y": 971.4094,
           "direction": 8
         },
         "end": {
@@ -2564,8 +2629,8 @@
           "columnIds": [
             "Fgld598zAvYPwxY9BbBJz"
           ],
-          "x": 1229.0919,
-          "y": 923.4094,
+          "x": 1239.0919,
+          "y": 971.4094,
           "direction": 8
         },
         "end": {
@@ -2592,9 +2657,9 @@
           "columnIds": [
             "Fgld598zAvYPwxY9BbBJz"
           ],
-          "x": 696.5919,
-          "y": 736.7427333333333,
-          "direction": 1
+          "x": 805.0919,
+          "y": 699.4094,
+          "direction": 4
         },
         "end": {
           "tableId": "Z8UooJ6ALlsQx1gmrTEfG",
@@ -2620,7 +2685,7 @@
           "columnIds": [
             "Fgld598zAvYPwxY9BbBJz"
           ],
-          "x": 856.3419,
+          "x": 1022.0919,
           "y": 699.4094,
           "direction": 4
         },

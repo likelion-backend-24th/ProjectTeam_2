@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
@@ -22,14 +23,17 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    //이걸 email이라 쓸지 username이라 쓸지 판단좀
+    @Column(nullable = false,length = 100)
+    private String name;
+
+    //email
     @Column(nullable = false,length = 50, unique = true)
     private String username;
 
     @Column(length = 255, nullable = true) //소셜 전용 가입자는 null이라 일단 null 허용
     private String password;
 
-    @Column(nullable = false,length = 50)
+    @Column(nullable = false,length = 50,unique = true)
     private String nickname;
 
     @Enumerated(EnumType.STRING)
@@ -45,4 +49,13 @@ public class User {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "is_subscribed", nullable = false)
+    @ColumnDefault("false")
+    private boolean subscribed;
+
+    // 나중에 필요시 사용할 예정
+//    @LastModifiedDate
+//    @Column(name = "updated_at",nullable = false)
+//    private LocalDateTime updatedAt;
 }
