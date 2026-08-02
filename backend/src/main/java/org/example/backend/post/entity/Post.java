@@ -1,4 +1,4 @@
-package org.example.backend.domain.post;
+package org.example.backend.post.entity;
 
 
 import jakarta.persistence.*;
