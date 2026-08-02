@@ -52,7 +52,7 @@ public class UserService {
     @Transactional
     public TokenResponse login(LoginRequest loginRequest){
         User user = userRepository.findByUsername(loginRequest.getUsername())
-                .orElseThrow(()-> new ResourceNotFoundException("이메일 또는 비밀번호가 일치하지 않아 세수"));
+                .orElseThrow(()-> new ResourceNotFoundException("존재하지 않는 계정입니다."));
 
         if(!passwordEncoder.matches(loginRequest.getPassword(),user.getPassword())){
             throw new InvalidPasswordException("비밀번호가 일치하지 않습니다.");
