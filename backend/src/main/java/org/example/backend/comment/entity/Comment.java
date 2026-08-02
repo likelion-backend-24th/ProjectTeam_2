@@ -1,4 +1,4 @@
-package org.example.backend.domain;
+package org.example.backend.comment.entity;
 
 
 import jakarta.persistence.*;
@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.example.backend.post.entity.Post;
 import org.example.backend.user.entity.User;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;

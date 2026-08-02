@@ -1,7 +1,10 @@
 package org.example.backend.comment;
 
 import org.example.backend.comment.exception.CommentAccessDeniedException;
-import org.example.backend.domain.Comment;
+import org.example.backend.comment.repository.CommentRepository;
+import org.example.backend.comment.service.CommentService;
+import org.example.backend.comment.entity.Comment;
+import org.example.backend.post.repository.PostRepository;
 import org.example.backend.user.entity.User;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,7 +24,7 @@ class CommentServiceTest {
     private CommentRepository commentRepository;
 
     @Mock
-    private org.example.backend.post.PostRepository postRepository;
+    private PostRepository postRepository;
 
     @InjectMocks
     private CommentService commentService;

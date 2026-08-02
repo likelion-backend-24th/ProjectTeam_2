@@ -1,7 +1,8 @@
-package org.example.backend.comment;
+package org.example.backend.comment.controller;
 
 
 import lombok.RequiredArgsConstructor;
+import org.example.backend.comment.service.CommentService;
 import org.example.backend.comment.dto.CommentCreateRequest;
 import org.example.backend.comment.dto.CommentUpdateRequest;
 import org.example.backend.common.dto.ApiResponse;

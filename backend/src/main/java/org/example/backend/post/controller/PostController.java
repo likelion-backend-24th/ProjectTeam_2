@@ -1,8 +1,9 @@
-package org.example.backend.post;
+package org.example.backend.post.controller;
 
 
 import lombok.RequiredArgsConstructor;
 import org.example.backend.common.dto.ApiResponse;
+import org.example.backend.post.service.PostService;
 import org.example.backend.post.dto.PostResponse;
 import org.example.backend.post.dto.PostUpdateRequest;
 import org.springframework.data.domain.Page;

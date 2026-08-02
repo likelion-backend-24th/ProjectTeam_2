@@ -1,16 +1,17 @@
-package org.example.backend.post;
+package org.example.backend.post.service;
 
 import lombok.RequiredArgsConstructor;
-import org.example.backend.comment.CommentRepository;
+import org.example.backend.comment.repository.CommentRepository;
 import org.example.backend.comment.dto.CommentResponse;
-import org.example.backend.domain.Comment;
-import org.example.backend.domain.Post;
+import org.example.backend.comment.entity.Comment;
+import org.example.backend.post.entity.Post;
 import org.example.backend.post.dto.PostCreateRequest;
 import org.example.backend.post.dto.PostDetailResponse;
 import org.example.backend.post.dto.PostResponse;
 import org.example.backend.post.dto.PostUpdateRequest;
 import org.example.backend.post.exception.PostAccessDeniedException;
 import org.example.backend.post.exception.PostNotFoundException;
+import org.example.backend.post.repository.PostRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;

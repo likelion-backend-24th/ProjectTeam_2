@@ -1,8 +1,10 @@
 package org.example.backend.post;
 
-import org.example.backend.comment.CommentRepository;
-import org.example.backend.domain.Post;
+import org.example.backend.comment.repository.CommentRepository;
+import org.example.backend.post.entity.Post;
 import org.example.backend.post.exception.PostAccessDeniedException;
+import org.example.backend.post.repository.PostRepository;
+import org.example.backend.post.service.PostService;
 import org.example.backend.user.entity.User;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

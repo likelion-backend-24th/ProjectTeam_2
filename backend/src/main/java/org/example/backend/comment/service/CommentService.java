@@ -1,13 +1,14 @@
-package org.example.backend.comment;
+package org.example.backend.comment.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.backend.comment.dto.CommentCreateRequest;
 import org.example.backend.comment.dto.CommentUpdateRequest;
 import org.example.backend.comment.exception.CommentAccessDeniedException;
 import org.example.backend.comment.exception.CommentNotFoundException;
-import org.example.backend.domain.Comment;
-import org.example.backend.domain.Post;
-import org.example.backend.post.PostRepository;
+import org.example.backend.comment.repository.CommentRepository;
+import org.example.backend.comment.entity.Comment;
+import org.example.backend.post.entity.Post;
+import org.example.backend.post.repository.PostRepository;
 import org.example.backend.post.exception.PostNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
