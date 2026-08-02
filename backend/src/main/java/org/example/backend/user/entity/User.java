@@ -50,6 +50,10 @@ public class User {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "is_subscribed", nullable = false)
+    @ColumnDefault("false")
+    private boolean subscribed;
+
     // 나중에 필요시 사용할 예정
 //    @LastModifiedDate
 //    @Column(name = "updated_at",nullable = false)

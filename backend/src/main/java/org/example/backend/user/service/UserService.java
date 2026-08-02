@@ -43,6 +43,7 @@ public class UserService {
         user.setNickname(signupRequest.getNickname());
         user.setRole(Role.USER);
         user.setStatus(AccountStatus.ACTIVE);
+        user.setSubscribed(false);
 
         userRepository.save(user);
     }
