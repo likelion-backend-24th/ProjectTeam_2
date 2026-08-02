@@ -8,9 +8,7 @@ import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.RefreshToken;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
-import org.example.backend.user.exception.DuplicateNicknameException;
-import org.example.backend.user.exception.DuplicateUsernameException;
-import org.example.backend.user.exception.ResourceNotFoundException;
+import org.example.backend.user.exception.*;
 import org.example.backend.user.repository.RefreshTokenRepository;
 import org.example.backend.user.repository.UserRepository;
 import org.example.backend.user.security.JwtTokenProvider;
@@ -57,10 +55,10 @@ public class UserService {
                 .orElseThrow(()-> new ResourceNotFoundException("이메일 또는 비밀번호가 일치하지 않아 세수"));
 
         if(!passwordEncoder.matches(loginRequest.getPassword(),user.getPassword())){
-            throw new ResourceNotFoundException("이메일 또는 비밀번호가 일치하지 않습니다.");
+            throw new InvalidPasswordException("비밀번호가 일치하지 않습니다.");
         }
         if(user.getStatus() != AccountStatus.ACTIVE){
-            throw new IllegalArgumentException("정지되었거나 탈퇴한 계정입니다.");
+            throw new InactiveAccountException("정지되었거나 탈퇴한 계정입니다.");
         }
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String refreshTokenValue = jwtTokenProvider.generateRefreshToken(user.getUsername());

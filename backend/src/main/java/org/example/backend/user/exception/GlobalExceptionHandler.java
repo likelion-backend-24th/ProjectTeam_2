@@ -22,6 +22,16 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.CONFLICT, e.getMessage());
     }
 
+    @ExceptionHandler(InvalidPasswordException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidPassword(InvalidPasswordException e){
+        return buildResponse(HttpStatus.UNAUTHORIZED, e.getMessage());
+    }
+
+    @ExceptionHandler(InactiveAccountException.class)
+    public ResponseEntity<Map<String, String>> handleInactiveAccount(InactiveAccountException e){
+        return buildResponse(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
     private ResponseEntity<Map<String, String>> buildResponse(HttpStatus status, String message){
         Map<String, String> body = new HashMap<>();
         body.put("message", message);
