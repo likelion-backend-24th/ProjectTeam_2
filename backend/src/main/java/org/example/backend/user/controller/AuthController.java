@@ -7,12 +7,11 @@ import org.example.backend.user.dto.SignupRequest;
 import org.example.backend.user.dto.TokenResponse;
 import org.example.backend.user.security.CustomUserDetails;
 import org.example.backend.user.service.UserService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -32,7 +31,15 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest loginRequest){
         TokenResponse response = userService.login(loginRequest);
-        return ResponseEntity.ok(response);
+        return buildResponseWithCookie(response);
+    }
+
+    //재발급 Post
+    @PostMapping("/reissue")
+    public ResponseEntity<TokenResponse> reissue(
+            @CookieValue(name = "refreshToken") String refreshToken){
+        TokenResponse response = userService.reissue(refreshToken);
+        return buildResponseWithCookie(response);
     }
 
     //로그아웃 Post
@@ -41,4 +48,22 @@ public class AuthController {
         userService.logout(customUserDetails.getUsername());
         return ResponseEntity.ok("로그아웃되었습니다.");
     }
+
+
+    // refreshtoken은 쿠키로 내려주기
+    private ResponseEntity<TokenResponse> buildResponseWithCookie(TokenResponse response){
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", response.getRefreshToken())
+                .httpOnly(true)
+                .secure(true)  //로컬에선 false 배포때는 true
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(60 * 60 * 24 * 14) // 14일 (초 단위)
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
+    }
+
+
 }

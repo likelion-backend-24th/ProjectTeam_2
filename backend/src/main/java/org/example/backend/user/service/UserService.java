@@ -49,6 +49,7 @@ public class UserService {
     }
 
     //로그인
+    @Transactional
     public TokenResponse login(LoginRequest loginRequest){
         User user = userRepository.findByUsername(loginRequest.getUsername())
                 .orElseThrow(()-> new ResourceNotFoundException("이메일 또는 비밀번호가 일치하지 않아 세수"));
@@ -76,9 +77,32 @@ public class UserService {
     }
 
     //재발급
+    @Transactional
+    public TokenResponse reissue(String refreshTokenValue){
+        if(!jwtTokenProvider.validateToken(refreshTokenValue)){
+            throw new IllegalArgumentException("유효하지 않은 refresh token입니다.");
+        }
+
+        RefreshToken savedRefreshToken = refreshTokenRepository.findByToken(refreshTokenValue)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 refresh token입니다."));
+
+        User user = savedRefreshToken.getUser();
+
+        String newAccessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getUsername());
+
+        savedRefreshToken.setToken(newRefreshToken);
+        savedRefreshToken.setExpiresAt(LocalDateTime.now().plusDays(14));
+        refreshTokenRepository.save(savedRefreshToken);
+
+        return new TokenResponse(newAccessToken, newRefreshToken);
+    }
+
+
 
 
     //로그아웃
+    @Transactional
     public void logout(String username){
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
