@@ -80,11 +80,11 @@ public class UserService {
     @Transactional
     public TokenResponse reissue(String refreshTokenValue){
         if(!jwtTokenProvider.validateToken(refreshTokenValue)){
-            throw new IllegalArgumentException("유효하지 않은 refresh token입니다.");
+            throw new InvalidRefreshTokenException("유효하지 않은 refresh token입니다.");
         }
 
         RefreshToken savedRefreshToken = refreshTokenRepository.findByToken(refreshTokenValue)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 refresh token입니다."));
+                .orElseThrow(() -> new InvalidRefreshTokenException("존재하지 않는 refresh token입니다."));
 
         User user = savedRefreshToken.getUser();
 

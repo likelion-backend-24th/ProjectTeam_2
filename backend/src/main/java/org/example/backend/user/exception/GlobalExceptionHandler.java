@@ -32,6 +32,11 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.FORBIDDEN, e.getMessage());
     }
 
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidRefreshToken(InvalidRefreshTokenException e){
+        return buildResponse(HttpStatus.UNAUTHORIZED, e.getMessage());
+    }
+
     private ResponseEntity<Map<String, String>> buildResponse(HttpStatus status, String message){
         Map<String, String> body = new HashMap<>();
         body.put("message", message);
