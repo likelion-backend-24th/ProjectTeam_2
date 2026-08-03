@@ -3,8 +3,8 @@ package org.example.backend.expert.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.common.dto.ApiResponse;
-import org.example.backend.expert.controller.support.AuthUtil;
 import org.example.backend.expert.dto.ExpertListResponse;
 import org.example.backend.expert.dto.ExpertProfileResponse;
 import org.example.backend.expert.dto.ExpertRejectRequest;
@@ -32,7 +32,7 @@ public class ExpertProfileController {
             Authentication authentication,
             @RequestBody ExpertSignupRequest request
     ) {
-        Long userId = AuthUtil.resolveUserId(authentication);
+        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getUser().getId();
         ExpertSignupResponse response = expertProfileService.signup(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("전문가 신청이 접수되었습니다.", response));
