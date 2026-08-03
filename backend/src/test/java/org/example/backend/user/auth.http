@@ -14,7 +14,7 @@ POST http://localhost:8080/api/auth/signup
 Content-Type: application/json
 
 {
-  "name": "김민지",
+  "name": "김민자",
   "username": "test1@naver.com",
   "password": "test1234",
   "nickname": "안양개발자"
