@@ -21,10 +21,12 @@ public class Feedback {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // 질문자(구독자)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "requester_id", nullable = false)
     private User requester;
 
+    // 담당 전문가
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "expert_profile_id", nullable = false)
     private ExpertProfile expertProfile;
@@ -47,6 +49,7 @@ public class Feedback {
         this.status = FeedbackStatus.PENDING;
     }
 
+    // F-30: 전문가가 최초 답변을 등록하면 스레드 상태 전환
     public void markAnswered() {
         if (this.status == FeedbackStatus.PENDING) {
             this.status = FeedbackStatus.ANSWERED;
