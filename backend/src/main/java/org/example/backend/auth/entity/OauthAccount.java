@@ -11,7 +11,10 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "oauth_account")
+@Table(
+        name = "oauth_account",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"provider", "provider_id"})
+)
 @Getter
 @Setter
 @AllArgsConstructor
@@ -22,7 +25,6 @@ public class OauthAccount {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 한 유저가 여러 소셜 계정 사용가능해서 N:1인데 카카오만쓸거면 1:1로 해야할까?
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
