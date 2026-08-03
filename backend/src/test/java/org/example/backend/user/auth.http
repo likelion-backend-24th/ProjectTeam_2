@@ -1,4 +1,4 @@
-### 회원가입 -성공
+### 회원가입 - 성공 (201)
 POST http://localhost:8080/api/auth/signup
 Content-Type: application/json
 
@@ -9,18 +9,62 @@ Content-Type: application/json
   "nickname": "안양개발자"
 }
 
-### 회원가입 - 실패
+### 회원가입 - 실패: username 중복 (409)
 POST http://localhost:8080/api/auth/signup
 Content-Type: application/json
 
 {
-  "name": "김민자",
-  "username": "test1@naver.com",
+  "name": "김지선",
+  "username": "test@naver.com",
+  "password": "test1234",
+  "nickname": "전주 족발집 알바생"
+}
+
+### 회원가입 - 실패: nickname 중복 (409)
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "name": "김태영",
+  "username": "test123@naver.com",
   "password": "test1234",
   "nickname": "안양개발자"
 }
 
-### 로그인
+### 회원가입 - 실패: 이메일 형식 오류 (400)
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "name": "정선우",
+  "username": "oh-yeah",
+  "password": "test1234",
+  "nickname": "살려조"
+}
+
+### 회원가입 - 실패: 비밀번호 8자미만 (400)
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "name": "김태영",
+  "username": "test3@naver.com",
+  "password": "1234",
+  "nickname": "광명원펀치"
+}
+
+### 회원가입 - 실패: 필수값 누락 (400)
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "name": "",
+  "username": "test4@naver.com",
+  "password": "test1234",
+  "nickname": "새닉네임3"
+}
+
+### 로그인 - 성공 (200)
 POST http://localhost:8080/api/auth/login
 Content-Type: application/json
 
@@ -34,11 +78,29 @@ Content-Type: application/json
     client.global.set("refreshToken", response.body.refreshToken);
 %}
 
+### 로그인 - 실패: 존재하지 않는 계정 (404)
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "non-exist@naver.com",
+  "password": "test1234"
+}
+
+### 로그인 - 실패: 비밀번호 불일치 (401)
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "test@naver.com",
+  "password": "test5555"
+}
 
 
-### 로그아웃
+
+### 로그아웃 - 성공 (200)
 POST http://localhost:8080/api/auth/logout
 Authorization: Bearer {{accessToken}}
 
-### 재발급
+### 재발급 성공 (200) / 재발급 - 실패: 쿠키 없음 (400)-(로그아웃하고 실행)
 POST http://localhost:8080/api/auth/reissue
