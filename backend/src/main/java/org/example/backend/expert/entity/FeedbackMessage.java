@@ -25,6 +25,7 @@ public class FeedbackMessage {
     @JoinColumn(name = "feedback_id", nullable = false)
     private Feedback feedback;
 
+    // 작성자 (질문자 또는 전문가 둘 다 될 수 있음)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sender_id", nullable = false)
     private User sender;

@@ -12,6 +12,8 @@ import org.example.backend.post.dto.PostUpdateRequest;
 import org.example.backend.post.exception.PostAccessDeniedException;
 import org.example.backend.post.exception.PostNotFoundException;
 import org.example.backend.post.repository.PostRepository;
+import org.example.backend.user.entity.Role;
+import org.example.backend.user.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,38 +27,42 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
-    // TODO: UserRepository 추가 필요 - User - UserRepository 생성 후 아래 필드 추가
-    // private final UserRepository userRepository;
 
-    public Long createPost(PostCreateRequest request, Long userId) {
 
+    public PostDetailResponse createPost(PostCreateRequest request, User user) {
         Post post = new Post();
         post.setTitle(request.getTitle());
         post.setContent(request.getContent());
         post.setCategory(request.getCategory());
-
-        // TODO: UserRepository 완성되면 아래 로직 추가
-        // User user = userRepository.findById(userId)
-        //         .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
-        // post.setUser(user);
-
+        post.setUser(user);
 
         Post savedPost = postRepository.save(post);
-        return savedPost.getId();
+
+        return PostDetailResponse.builder()
+                .id(savedPost.getId())
+                .title(savedPost.getTitle())
+                .content(savedPost.getContent())
+                .category(savedPost.getCategory())
+                .authorNickname(savedPost.getUser().getNickname())
+                .createdAt(savedPost.getCreatedAt())
+                .updatedAt(savedPost.getUpdatedAt())
+                .build();
     }
 
     public Page<PostResponse> getPosts(String category, Pageable pageable) {
-        Page<Post> posts = postRepository.findByCategory(category, pageable);
+        Page<Post> posts = (category == null || category.isBlank())
+                ? postRepository.findAll(pageable)
+                : postRepository.findByCategory(category, pageable);
 
-        return posts.map(post -> new PostResponse(
-                post.getId(),
-                post.getTitle(),
-                post.getContent(),
-                post.getCategory(),
-                post.getUser().getNickname(),
-                post.getCreatedAt(),
-                post.getUpdatedAt()
-        ));
+        return posts.map(post -> PostResponse.builder()
+                .id(post.getId())
+                .title(post.getTitle())
+                .content(post.getContent())
+                .category(post.getCategory())
+                .authorNickname(post.getUser().getNickname())
+                .createdAt(post.getCreatedAt())
+                .updatedAt(post.getUpdatedAt())
+                .build());
     }
 
     public PostDetailResponse getPostDetail(Long postId) {
@@ -69,34 +75,34 @@ public class PostService {
 
         // 3. Comment 목록 → CommentResponse 목록으로 변환
         List<CommentResponse> commentResponses = comments.stream()
-                .map(comment -> new CommentResponse(
-                        comment.getId(),
-                        comment.getContent(),
-                        comment.getUser().getNickname(),
-                        comment.getCreatedAt()
-                ))
+                .map(comment -> CommentResponse.builder()
+                        .id(comment.getId())
+                        .content(comment.getContent())
+                        .authorNickname(comment.getUser().getNickname())
+                        .createdAt(comment.getCreatedAt())
+                        .build())
                 .toList();
 
         //4. 최종 응답 조립
-        return new PostDetailResponse(
-                post.getId(),
-                post.getTitle(),
-                post.getContent(),
-                post.getCategory(),
-                post.getUser().getNickname(),
-                post.getCreatedAt(),
-                post.getUpdatedAt(),
-                commentResponses
-        );
+        return PostDetailResponse.builder()
+                .id(post.getId())
+                .title(post.getTitle())
+                .content(post.getContent())
+                .category(post.getCategory())
+                .authorNickname(post.getUser().getNickname())
+                .createdAt(post.getCreatedAt())
+                .updatedAt(post.getUpdatedAt())
+                .comments(commentResponses)
+                .build();
     }
 
     @Transactional
-    public void updatePost(Long postId, PostUpdateRequest request, Long userId) {
+    public void updatePost(Long postId, PostUpdateRequest request, User requester) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new PostNotFoundException(postId));
 
-        // 권한 체크: 요청자가 작성자 본인인지
-        if (!post.getUser().getId().equals(userId)) {
+        // 권한 체크: 작성자 본인이거나 ADMIN이면 허용 (F-06)
+        if (!isOwnerOrAdmin(post, requester)) {
             throw new PostAccessDeniedException(postId);
         }
 
@@ -107,17 +113,22 @@ public class PostService {
     }
 
     @Transactional
-    public void deletePost(Long postId, Long userId) {
+    public void deletePost(Long postId, User requester) {
         // 1. postId로 게시글 찾기 (없으면 예외)
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new PostNotFoundException(postId));
 
-        // 2. 작성자 본인인지 확인 (아니면 예외)
-        if (!post.getUser().getId().equals(userId)) {
+        // 2. 작성자 본인이거나 ADMIN이면 허용 (F-06)
+        if (!isOwnerOrAdmin(post, requester)) {
             throw new PostAccessDeniedException(postId);
         }
         // 3. postRepository.delete(post) 또는 postRepository.deleteById(postId)
         postRepository.delete(post);
+    }
 
+    private boolean isOwnerOrAdmin(Post post, User requester) {
+        boolean isOwner = post.getUser().getId().equals(requester.getId());
+        boolean isAdmin = requester.getRole() == Role.ADMIN;
+        return isOwner || isAdmin;
     }
 }

@@ -11,7 +11,7 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, Lo
 
     Optional<ExpertProfile> findByUserId(Long userId);
 
-    boolean existsByUserId(Long userId);
+    boolean existsByUserId(Long userId); // 참고: F-25 재신청 로직 이후로 안 씀. 지워도 무방.
 
     List<ExpertProfile> findByStatus(ExpertStatus status);
 }
