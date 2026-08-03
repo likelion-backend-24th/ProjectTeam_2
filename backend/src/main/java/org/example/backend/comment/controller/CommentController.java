@@ -2,6 +2,7 @@ package org.example.backend.comment.controller;
 
 
 import lombok.RequiredArgsConstructor;
+import org.example.backend.comment.dto.CommentResponse;
 import org.example.backend.comment.service.CommentService;
 import org.example.backend.comment.dto.CommentCreateRequest;
 import org.example.backend.comment.dto.CommentUpdateRequest;
@@ -17,13 +18,13 @@ public class CommentController {
     private final CommentService commentService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<Long>> createComment(
+    public ResponseEntity<ApiResponse<CommentResponse>> createComment(
             @PathVariable Long postId,
             @RequestBody CommentCreateRequest request,
             @RequestParam Long userId
     ) {
-        Long commentId = commentService.createComment(postId, request, userId);
-        return ResponseEntity.ok(ApiResponse.success("댓글이 등록되었습니다", commentId));
+        CommentResponse response = commentService.createComment(postId, request, userId);
+        return ResponseEntity.ok(ApiResponse.success("댓글이 등록되었습니다", response));
     }
 
     @PutMapping("/{commentId}")

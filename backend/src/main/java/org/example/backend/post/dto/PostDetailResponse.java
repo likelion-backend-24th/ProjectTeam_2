@@ -1,8 +1,7 @@
 package org.example.backend.post.dto;
 
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import org.example.backend.comment.dto.CommentResponse; // comment 패키지의 dto 폴더에서 가져오기
 
 import java.time.LocalDateTime;
@@ -14,8 +13,7 @@ import java.util.List;
  * - 목록 조회(PostResponse)와 달리 댓글까지 포함하는 것이 차이점
  */
 @Getter
-@NoArgsConstructor
-@AllArgsConstructor
+@Builder
 public class PostDetailResponse {
     private Long id;
     private String title;

@@ -22,12 +22,12 @@ public class PostController {
     private final PostService postService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<Long>> createPost(
+    public ResponseEntity<ApiResponse<PostDetailResponse>> createPost(
             @RequestBody PostCreateRequest request,
             @RequestParam Long userId // TODO: 인증 완성되면 @AuthenticationPrincipal로 교체
     ) {
-        Long postId = postService.createPost(request, userId);
-        return ResponseEntity.ok(ApiResponse.success("게시글이 등록되었습니다", postId));
+        PostDetailResponse response = postService.createPost(request, userId);
+        return ResponseEntity.ok(ApiResponse.success("게시글이 등록되었습니다.", response));
     }
 
     @GetMapping

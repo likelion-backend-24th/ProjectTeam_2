@@ -2,6 +2,7 @@ package org.example.backend.comment.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.backend.comment.dto.CommentCreateRequest;
+import org.example.backend.comment.dto.CommentResponse;
 import org.example.backend.comment.dto.CommentUpdateRequest;
 import org.example.backend.comment.exception.CommentAccessDeniedException;
 import org.example.backend.comment.exception.CommentNotFoundException;
@@ -10,6 +11,8 @@ import org.example.backend.comment.entity.Comment;
 import org.example.backend.post.entity.Post;
 import org.example.backend.post.repository.PostRepository;
 import org.example.backend.post.exception.PostNotFoundException;
+import org.example.backend.user.entity.User;
+import org.example.backend.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,26 +22,30 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
-    // TODO: UserRepository 추가 필요 - User - UserRepository 생성 후 아래 필드 추가
-    // private final UserRepository userRepository;
+    private final UserRepository userRepository;
 
     @Transactional
-    public Long createComment(Long postId, CommentCreateRequest request, Long userId) {
+    public CommentResponse createComment(Long postId, CommentCreateRequest request, Long userId) {
 
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new PostNotFoundException(postId));
 
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
+
         Comment comment = new Comment();
         comment.setContent(request.getContent());
         comment.setPost(post);
-
-        // TODO: UserRepository 완성되면 아래 로직 추가
-        // User user = userRepository.findById(userId)
-        //         .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
-        // comment.setUser(user);
+        comment.setUser(user);
 
         Comment savedComment = commentRepository.save(comment);
-        return savedComment.getId();
+
+        return CommentResponse.builder()
+                .id(savedComment.getId())
+                .content(savedComment.getContent())
+                .authorNickname(savedComment.getUser().getNickname())
+                .createdAt(savedComment.getCreatedAt())
+                .build();
     }
 
     @Transactional
