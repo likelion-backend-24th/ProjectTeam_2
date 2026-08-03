@@ -8,7 +8,7 @@ import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.RefreshToken;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
-import org.example.backend.user.exception.ResourceNotFoundException;
+import org.example.backend.user.exception.*;
 import org.example.backend.user.repository.RefreshTokenRepository;
 import org.example.backend.user.repository.UserRepository;
 import org.example.backend.user.security.JwtTokenProvider;
@@ -31,10 +31,10 @@ public class UserService {
     @Transactional
     public void signup(SignupRequest signupRequest){
         if(userRepository.existsByUsername(signupRequest.getUsername())){
-            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
+            throw new DuplicateUsernameException("이미 가입된 이메일입니다.");
         }
         if(userRepository.existsByNickname(signupRequest.getNickname())){
-            throw new IllegalArgumentException(("이미 사용 중인 닉네임입니다."));
+            throw new DuplicateNicknameException(("이미 사용 중인 닉네임입니다."));
         }
         User user = new User();
         user.setName(signupRequest.getName());
@@ -49,15 +49,16 @@ public class UserService {
     }
 
     //로그인
+    @Transactional
     public TokenResponse login(LoginRequest loginRequest){
         User user = userRepository.findByUsername(loginRequest.getUsername())
-                .orElseThrow(()-> new ResourceNotFoundException("이메일 또는 비밀번호가 일치하지 않아 세수"));
+                .orElseThrow(()-> new ResourceNotFoundException("존재하지 않는 계정입니다."));
 
         if(!passwordEncoder.matches(loginRequest.getPassword(),user.getPassword())){
-            throw new ResourceNotFoundException("이메일 또는 비밀번호가 일치하지 않습니다.");
+            throw new InvalidPasswordException("비밀번호가 일치하지 않습니다.");
         }
         if(user.getStatus() != AccountStatus.ACTIVE){
-            throw new IllegalArgumentException("정지되었거나 탈퇴한 계정입니다.");
+            throw new InactiveAccountException("정지되었거나 탈퇴한 계정입니다.");
         }
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String refreshTokenValue = jwtTokenProvider.generateRefreshToken(user.getUsername());
@@ -76,13 +77,36 @@ public class UserService {
     }
 
     //재발급
+    @Transactional
+    public TokenResponse reissue(String refreshTokenValue){
+        if(!jwtTokenProvider.validateToken(refreshTokenValue)){
+            throw new InvalidRefreshTokenException("유효하지 않은 refresh token입니다.");
+        }
+
+        RefreshToken savedRefreshToken = refreshTokenRepository.findByToken(refreshTokenValue)
+                .orElseThrow(() -> new InvalidRefreshTokenException("존재하지 않는 refresh token입니다."));
+
+        User user = savedRefreshToken.getUser();
+
+        String newAccessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getUsername());
+
+        savedRefreshToken.setToken(newRefreshToken);
+        savedRefreshToken.setExpiresAt(LocalDateTime.now().plusDays(14));
+        refreshTokenRepository.save(savedRefreshToken);
+
+        return new TokenResponse(newAccessToken, newRefreshToken);
+    }
+
+
 
 
     //로그아웃
+    @Transactional
     public void logout(String username){
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
-        // DB에서 refresh토큰 삭제해야함 아직 안한거임
+        refreshTokenRepository.deleteByUser(user);
     }
 
 }
