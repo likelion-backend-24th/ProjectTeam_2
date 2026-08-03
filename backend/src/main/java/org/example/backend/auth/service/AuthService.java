@@ -7,7 +7,7 @@ import org.example.backend.auth.dto.SignupRequest;
 import org.example.backend.auth.dto.TokenResponse;
 import org.example.backend.auth.entity.AccountStatus;
 import org.example.backend.auth.entity.RefreshToken;
-import org.example.backend.auth.entity.Role;
+import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
 import org.example.backend.auth.repository.RefreshTokenRepository;
 import org.example.backend.user.repository.UserRepository;
