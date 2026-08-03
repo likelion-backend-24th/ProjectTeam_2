@@ -40,17 +40,7 @@ public class StudyService {
         StudyMember leaderAsMember = new StudyMember(saved, user);
         studyMemberRepository.save(leaderAsMember);
 
-        return StudyResponse.builder()
-                .id(saved.getId())
-                .title(saved.getTitle())
-                .description(saved.getDescription())
-                .capacity(saved.getCapacity())
-                .recruitStart(saved.getRecruitStart())
-                .recruitEnd(saved.getRecruitEnd())
-                .leaderId(user.getId())
-                .leaderNickname(user.getNickname())
-                .createdAt(saved.getCreatedAt())
-                .build();
+        return StudyResponse.from(saved);
     }
 
     public Page<StudyResponse> getStudies(String keyword, Pageable pageable) {
@@ -58,45 +48,16 @@ public class StudyService {
                 ? studyRepository.findAll(pageable)
                 : studyRepository.findByTitleContaining(keyword, pageable);
 
-        return page.map(study -> StudyResponse.builder()
-                .id(study.getId())
-                .title(study.getTitle())
-                .description(study.getDescription())
-                .capacity(study.getCapacity())
-                .recruitStart(study.getRecruitStart())
-                .recruitEnd(study.getRecruitEnd())
-                .leaderId(study.getLeader().getId())
-                .leaderNickname(study.getLeader().getNickname())
-                .createdAt(study.getCreatedAt())
-                .build());
+        return page.map(StudyResponse::from);
     }
 
     public StudyDetailResponse getStudyById(Long id) {
         Study study = studyRepository.findById(id).orElseThrow(StudyNotFoundException::new);
-        List<StudyMember> members = studyMemberRepository.findByStudyId(id);
-
-        List<StudyMemberResponse> memberResponses = members.stream()
-                .map(member -> StudyMemberResponse.builder()
-                        .memberId(member.getId())
-                        .userId(member.getUser().getId())
-                        .nickname(member.getUser().getNickname())
-                        .joinedAt(member.getJoinedAt())
-                        .build())
+        List<StudyMemberResponse> members = studyMemberRepository.findByStudyId(id).stream()
+                .map(StudyMemberResponse::from)
                 .toList();
 
-        return StudyDetailResponse.builder()
-                .id(study.getId())
-                .title(study.getTitle())
-                .description(study.getDescription())
-                .capacity(study.getCapacity())
-                .currentMemberCount(memberResponses.size())
-                .recruitStart(study.getRecruitStart())
-                .recruitEnd(study.getRecruitEnd())
-                .leaderId(study.getLeader().getId())
-                .leaderNickname(study.getLeader().getNickname())
-                .createdAt(study.getCreatedAt())
-                .members(memberResponses)
-                .build();
+        return StudyDetailResponse.from(study, members);
     }
 
     public StudyResponse updateStudy(Long userId, Long id, @Valid StudyUpdateRequest request) {
@@ -112,17 +73,7 @@ public class StudyService {
         study.setRecruitEnd(request.getRecruitEnd());
 
         Study updated = studyRepository.save(study);
-        return StudyResponse.builder()
-                .id(updated.getId())
-                .title(updated.getTitle())
-                .description(updated.getDescription())
-                .capacity(updated.getCapacity())
-                .recruitStart(updated.getRecruitStart())
-                .recruitEnd(updated.getRecruitEnd())
-                .leaderId(updated.getLeader().getId())
-                .leaderNickname(updated.getLeader().getNickname())
-                .createdAt(updated.getCreatedAt())
-                .build();
+        return StudyResponse.from(updated);
     }
 
 
@@ -171,11 +122,6 @@ public class StudyService {
         StudyMember member = new StudyMember(study, user);
         StudyMember saved = studyMemberRepository.save(member);
 
-        return StudyMemberResponse.builder()
-                .memberId(saved.getId())
-                .userId(userId)
-                .nickname(user.getNickname())
-                .joinedAt(saved.getJoinedAt())
-                .build();
+        return StudyMemberResponse.from(saved);
     }
 }
