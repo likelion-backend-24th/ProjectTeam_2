@@ -14,6 +14,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class StudyService {
@@ -52,8 +54,10 @@ public class StudyService {
     }
 
     public Page<StudyResponse> getStudies(String keyword, Pageable pageable) {
+        Page<Study> page = (keyword == null || keyword.isBlank())
+                ? studyRepository.findAll(pageable)
+                : studyRepository.findByTitleContaining(keyword, pageable);
 
-        Page<Study> page = studyRepository.findByTitleContaining(keyword, pageable);
         return page.map(study -> StudyResponse.builder()
                 .id(study.getId())
                 .title(study.getTitle())
@@ -69,16 +73,29 @@ public class StudyService {
 
     public StudyDetailResponse getStudyById(Long id) {
         Study study = studyRepository.findById(id).orElseThrow(StudyNotFoundException::new);
-        int memberCount = studyMemberRepository.countByStudyId(id);
+        List<StudyMember> members = studyMemberRepository.findByStudyId(id);
+
+        List<StudyMemberResponse> memberResponses = members.stream()
+                .map(member -> StudyMemberResponse.builder()
+                        .memberId(member.getId())
+                        .userId(member.getUser().getId())
+                        .nickname(member.getUser().getNickname())
+                        .joinedAt(member.getJoinedAt())
+                        .build())
+                .toList();
+
         return StudyDetailResponse.builder()
                 .id(study.getId())
                 .title(study.getTitle())
                 .description(study.getDescription())
                 .capacity(study.getCapacity())
-                .currentMemberCount(memberCount)
+                .currentMemberCount(memberResponses.size())
                 .recruitStart(study.getRecruitStart())
                 .recruitEnd(study.getRecruitEnd())
+                .leaderId(study.getLeader().getId())
+                .leaderNickname(study.getLeader().getNickname())
                 .createdAt(study.getCreatedAt())
+                .members(memberResponses)
                 .build();
     }
 
