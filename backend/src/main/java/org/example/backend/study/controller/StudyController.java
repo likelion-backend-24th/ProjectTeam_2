@@ -8,7 +8,7 @@ import org.example.backend.common.dto.Meta;
 import org.example.backend.common.dto.PageMeta;
 import org.example.backend.study.dto.*;
 import org.example.backend.study.service.StudyService;
-import org.example.backend.user.security.CustomUserDetails;
+import org.example.backend.auth.security.CustomUserDetails;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;

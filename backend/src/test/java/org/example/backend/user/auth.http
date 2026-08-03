@@ -3,10 +3,10 @@ POST http://localhost:8080/api/auth/signup
 Content-Type: application/json
 
 {
-  "name": "최승환",
-  "username": "test@naver.com",
+  "name": "",
+  "username": "test4@naver.com",
   "password": "test1234",
-  "nickname": "안양개발자"
+  "nickname": "광주개발자"
 }
 
 ### 회원가입 - 실패
@@ -26,12 +26,19 @@ Content-Type: application/json
 
 {
   "username": "test@naver.com",
-  "password": "test1234"
+  "password": "test12354"
 }
+
+> {%
+    client.global.set("accessToken", response.body.data.accessToken);
+    client.global.set("refreshToken", response.body.data.refreshToken);
+%}
+
+
 
 ### 로그아웃
 POST http://localhost:8080/api/auth/logout
-Authorization: Bearer (access토큰 갖다 붙여넣으면 됨)
+Authorization: Bearer {{accessToken}}
 
 ### 재발급
 POST http://localhost:8080/api/auth/reissue

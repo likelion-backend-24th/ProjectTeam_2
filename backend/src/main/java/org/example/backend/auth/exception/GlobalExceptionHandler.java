@@ -1,4 +1,4 @@
-package org.example.backend.user.exception;
+package org.example.backend.auth.exception;
 
 
 import org.springframework.http.HttpStatus;

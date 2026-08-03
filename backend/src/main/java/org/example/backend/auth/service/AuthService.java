@@ -10,7 +10,7 @@ import org.example.backend.auth.entity.RefreshToken;
 import org.example.backend.auth.entity.Role;
 import org.example.backend.user.entity.User;
 import org.example.backend.auth.repository.RefreshTokenRepository;
-import org.example.backend.auth.repository.UserRepository;
+import org.example.backend.user.repository.UserRepository;
 import org.example.backend.auth.security.JwtTokenProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
-public class UserService {
+public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;

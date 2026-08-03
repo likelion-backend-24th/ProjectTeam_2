@@ -1,4 +1,4 @@
-package org.example.backend.user.security;
+package org.example.backend.auth.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

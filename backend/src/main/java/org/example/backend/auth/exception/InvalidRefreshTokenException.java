@@ -1,4 +1,4 @@
-package org.example.backend.user.exception;
+package org.example.backend.auth.exception;
 
 public class InvalidRefreshTokenException extends RuntimeException {
     public InvalidRefreshTokenException(String message) {

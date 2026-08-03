@@ -1,24 +1,26 @@
-package org.example.backend.auth.entity;
+package org.example.backend.domain;
 
 import jakarta.persistence.*;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.example.backend.user.entity.User;
+import org.hibernate.annotations.ColumnDefault;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
 import java.time.LocalDateTime;
 
+
 @Entity
-@Table(name = "refresh_token")
-@EntityListeners(AuditingEntityListener.class)
+@Table(name = "expert_profile")
 @Getter
 @Setter
-@NoArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
 @AllArgsConstructor
-public class RefreshToken {
+@NoArgsConstructor
+public class ExpertProfile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -27,15 +29,21 @@ public class RefreshToken {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    @Column(nullable = false, unique = true,length = 500)
-    private String token;
+    @Column(columnDefinition = "Text")
+    private String career;
 
-    @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+    @Column(columnDefinition = "Text")
+    private String certification;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @ColumnDefault("'PENDING'")
+    private ExpertStatus status;
+
+    @Column(name = "reject_reason", length = 255)
+    private String rejectReason;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-
 }
