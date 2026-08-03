@@ -12,8 +12,8 @@ import org.example.backend.post.dto.PostUpdateRequest;
 import org.example.backend.post.exception.PostAccessDeniedException;
 import org.example.backend.post.exception.PostNotFoundException;
 import org.example.backend.post.repository.PostRepository;
+import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
-import org.example.backend.user.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,13 +27,9 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
-    private final UserRepository userRepository;
 
 
-    public PostDetailResponse createPost(PostCreateRequest request, Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
-
+    public PostDetailResponse createPost(PostCreateRequest request, User user) {
         Post post = new Post();
         post.setTitle(request.getTitle());
         post.setContent(request.getContent());
@@ -54,7 +50,9 @@ public class PostService {
     }
 
     public Page<PostResponse> getPosts(String category, Pageable pageable) {
-        Page<Post> posts = postRepository.findByCategory(category, pageable);
+        Page<Post> posts = (category == null || category.isBlank())
+                ? postRepository.findAll(pageable)
+                : postRepository.findByCategory(category, pageable);
 
         return posts.map(post -> PostResponse.builder()
                 .id(post.getId())
@@ -99,12 +97,12 @@ public class PostService {
     }
 
     @Transactional
-    public void updatePost(Long postId, PostUpdateRequest request, Long userId) {
+    public void updatePost(Long postId, PostUpdateRequest request, User requester) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new PostNotFoundException(postId));
 
-        // 권한 체크: 요청자가 작성자 본인인지
-        if (!post.getUser().getId().equals(userId)) {
+        // 권한 체크: 작성자 본인이거나 ADMIN이면 허용 (F-06)
+        if (!isOwnerOrAdmin(post, requester)) {
             throw new PostAccessDeniedException(postId);
         }
 
@@ -115,17 +113,22 @@ public class PostService {
     }
 
     @Transactional
-    public void deletePost(Long postId, Long userId) {
+    public void deletePost(Long postId, User requester) {
         // 1. postId로 게시글 찾기 (없으면 예외)
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new PostNotFoundException(postId));
 
-        // 2. 작성자 본인인지 확인 (아니면 예외)
-        if (!post.getUser().getId().equals(userId)) {
+        // 2. 작성자 본인이거나 ADMIN이면 허용 (F-06)
+        if (!isOwnerOrAdmin(post, requester)) {
             throw new PostAccessDeniedException(postId);
         }
         // 3. postRepository.delete(post) 또는 postRepository.deleteById(postId)
         postRepository.delete(post);
+    }
 
+    private boolean isOwnerOrAdmin(Post post, User requester) {
+        boolean isOwner = post.getUser().getId().equals(requester.getId());
+        boolean isAdmin = requester.getRole() == Role.ADMIN;
+        return isOwner || isAdmin;
     }
 }

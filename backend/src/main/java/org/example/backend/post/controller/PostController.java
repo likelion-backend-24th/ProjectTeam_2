@@ -2,6 +2,7 @@ package org.example.backend.post.controller;
 
 
 import lombok.RequiredArgsConstructor;
+import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.common.dto.ApiResponse;
 import org.example.backend.post.service.PostService;
 import org.example.backend.post.dto.PostResponse;
@@ -11,6 +12,7 @@ import org.example.backend.post.dto.PostCreateRequest;
 import org.example.backend.post.dto.PostDetailResponse;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -24,9 +26,9 @@ public class PostController {
     @PostMapping
     public ResponseEntity<ApiResponse<PostDetailResponse>> createPost(
             @RequestBody PostCreateRequest request,
-            @RequestParam Long userId // TODO: 인증 완성되면 @AuthenticationPrincipal로 교체
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        PostDetailResponse response = postService.createPost(request, userId);
+        PostDetailResponse response = postService.createPost(request, userDetails.getUser());
         return ResponseEntity.ok(ApiResponse.success("게시글이 등록되었습니다.", response));
     }
 
@@ -51,18 +53,18 @@ public class PostController {
     public ResponseEntity<ApiResponse<Void>> updatePost(
             @PathVariable Long postId,
             @RequestBody PostUpdateRequest request,
-            @RequestParam Long userId
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        postService.updatePost(postId, request, userId);
+        postService.updatePost(postId, request, userDetails.getUser());
         return ResponseEntity.ok(ApiResponse.success("게시글이 수정되었습니다", null));
     }
 
     @DeleteMapping("/{postId}")
     public ResponseEntity<ApiResponse<Void>> deletePost(
             @PathVariable Long postId,
-            @RequestParam Long userId
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        postService.deletePost(postId, userId);
+        postService.deletePost(postId, userDetails.getUser());
         return ResponseEntity.ok(ApiResponse.success("게시글이 삭제되었습니다", null));
     }
 }

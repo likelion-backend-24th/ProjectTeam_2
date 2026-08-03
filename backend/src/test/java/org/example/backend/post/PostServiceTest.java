@@ -35,6 +35,9 @@ class PostServiceTest {
         User author = new User();
         author.setId(1L);
 
+        User requester = new User();
+        requester.setId(2L);
+
         Post post = new Post();
         post.setId(100L);
         post.setUser(author);
@@ -42,7 +45,7 @@ class PostServiceTest {
         when(postRepository.findById(100L)).thenReturn(Optional.of(post));
 
         // when & then: 2번 유저가 삭제 시도하면 예외가 터져야 한다
-        assertThatThrownBy(() -> postService.deletePost(100L, 2L))
+        assertThatThrownBy(() -> postService.deletePost(100L, requester))
                 .isInstanceOf(PostAccessDeniedException.class);
     }
 }

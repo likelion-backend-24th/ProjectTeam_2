@@ -11,8 +11,8 @@ import org.example.backend.comment.entity.Comment;
 import org.example.backend.post.entity.Post;
 import org.example.backend.post.repository.PostRepository;
 import org.example.backend.post.exception.PostNotFoundException;
+import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
-import org.example.backend.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,16 +22,12 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
-    private final UserRepository userRepository;
 
     @Transactional
-    public CommentResponse createComment(Long postId, CommentCreateRequest request, Long userId) {
+    public CommentResponse createComment(Long postId, CommentCreateRequest request, User user) {
 
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new PostNotFoundException(postId));
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
 
         Comment comment = new Comment();
         comment.setContent(request.getContent());
@@ -49,11 +45,12 @@ public class CommentService {
     }
 
     @Transactional
-    public void updateComment(Long commentId, CommentUpdateRequest request, Long userId) {
+    public void updateComment(Long commentId, CommentUpdateRequest request, User requester) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new CommentNotFoundException(commentId));
 
-        if (!comment.getUser().getId().equals(userId)) {
+        // 권한 체크: 작성자 본인이거나 ADMIN이면 허용 (F-08)
+        if (!isOwnerOrAdmin(comment, requester)) {
             throw new CommentAccessDeniedException(commentId);
         }
 
@@ -61,14 +58,21 @@ public class CommentService {
     }
 
     @Transactional
-    public void deleteComment(Long commentId, Long userId) {
+    public void deleteComment(Long commentId, User requester) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new CommentNotFoundException(commentId));
 
-        if (!comment.getUser().getId().equals(userId)) {
+        // 권한 체크: 작성자 본인이거나 ADMIN이면 허용 (F-08)
+        if (!isOwnerOrAdmin(comment, requester)) {
             throw new CommentAccessDeniedException(commentId);
         }
 
         commentRepository.delete(comment);
+    }
+
+    private boolean isOwnerOrAdmin(Comment comment, User requester) {
+        boolean isOwner = comment.getUser().getId().equals(requester.getId());
+        boolean isAdmin = requester.getRole() == Role.ADMIN;
+        return isOwner || isAdmin;
     }
 }

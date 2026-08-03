@@ -35,6 +35,9 @@ class CommentServiceTest {
         User author = new User();
         author.setId(1L);
 
+        User requester = new User();
+        requester.setId(2L);
+
         Comment comment = new Comment();
         comment.setId(100L);
         comment.setUser(author);
@@ -42,7 +45,7 @@ class CommentServiceTest {
         when(commentRepository.findById(100L)).thenReturn(Optional.of(comment));
 
         // when & then: 2번 유저가 삭제 시도하면 예외가 터져야 한다
-        assertThatThrownBy(() -> commentService.deleteComment(100L, 2L))
+        assertThatThrownBy(() -> commentService.deleteComment(100L, requester))
                 .isInstanceOf(CommentAccessDeniedException.class);
     }
 }
