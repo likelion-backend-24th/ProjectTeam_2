@@ -35,6 +35,7 @@ public class JwtTokenProvider {
         return generateToken(username, refreshTokenExpiration);
     }
 
+    //실제 토큰을 만드는 로직
     private String generateToken(String username, long expiration) {
         Date now = new Date();
         Date expiry = new Date((now.getTime()+expiration));
