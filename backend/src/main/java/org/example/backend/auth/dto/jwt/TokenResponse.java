@@ -1,4 +1,4 @@
-package org.example.backend.auth.dto;
+package org.example.backend.auth.dto.jwt;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
