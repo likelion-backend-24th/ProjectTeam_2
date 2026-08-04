@@ -3,6 +3,7 @@ package org.example.backend.post.dto;
 import lombok.Builder;
 import lombok.Getter;
 import org.example.backend.comment.dto.CommentResponse; // comment 패키지의 dto 폴더에서 가져오기
+import org.example.backend.post.entity.PostCategory;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,7 +19,7 @@ public class PostDetailResponse {
     private Long id;
     private String title;
     private String content;
-    private String category;
+    private PostCategory category;
     private String authorNickname; // User 엔티티 전체 대신 닉네임만 노출 (보안)
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

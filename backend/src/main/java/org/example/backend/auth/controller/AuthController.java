@@ -2,9 +2,9 @@ package org.example.backend.auth.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.example.backend.auth.dto.LoginRequest;
-import org.example.backend.auth.dto.SignupRequest;
-import org.example.backend.auth.dto.TokenResponse;
+import org.example.backend.auth.dto.jwt.LoginRequest;
+import org.example.backend.auth.dto.jwt.SignupRequest;
+import org.example.backend.auth.dto.jwt.TokenResponse;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.auth.service.AuthService;
 import org.springframework.http.HttpHeaders;
