@@ -11,6 +11,7 @@ import org.example.backend.auth.dto.jwt.TokenResponse;
 import org.example.backend.auth.entity.AccountStatus;
 import org.example.backend.auth.entity.RefreshToken;
 import org.example.backend.auth.repository.OauthAccountRepository;
+import org.example.backend.common.exception.BusinessException;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
 import org.example.backend.auth.repository.RefreshTokenRepository;
@@ -19,9 +20,9 @@ import org.example.backend.auth.security.JwtTokenProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -38,10 +39,10 @@ public class AuthService {
     @Transactional
     public void signup(SignupRequest signupRequest) {
         if (userRepository.existsByUsername(signupRequest.getUsername())) {
-            throw new DuplicateUsernameException("이미 가입된 이메일입니다.");
+            throw new BusinessException(AuthErrorCode.DUPLICATE_USERNAME);
         }
         if (userRepository.existsByNickname(signupRequest.getNickname())) {
-            throw new DuplicateNicknameException(("이미 사용 중인 닉네임입니다."));
+            throw new BusinessException(AuthErrorCode.DUPLICATE_NICKNAME);
         }
         User user = new User();
         user.setName(signupRequest.getName());
@@ -59,13 +60,13 @@ public class AuthService {
     @Transactional
     public TokenResponse login(LoginRequest loginRequest) {
         User user = userRepository.findByUsername(loginRequest.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("존재하지 않는 계정입니다."));
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
 
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-            throw new InvalidPasswordException("비밀번호가 일치하지 않습니다.");
+            throw new BusinessException(AuthErrorCode.INVALID_PASSWORD);
         }
         if (user.getStatus() != AccountStatus.ACTIVE) {
-            throw new InactiveAccountException("정지되었거나 탈퇴한 계정입니다.");
+            throw new BusinessException(AuthErrorCode.INACTIVE_ACCOUNT);
         }
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String refreshTokenValue = jwtTokenProvider.generateRefreshToken(user.getUsername());
@@ -87,11 +88,11 @@ public class AuthService {
     @Transactional
     public TokenResponse reissue(String refreshTokenValue) {
         if (!jwtTokenProvider.validateToken(refreshTokenValue)) {
-            throw new InvalidRefreshTokenException("유효하지 않은 refresh token입니다.");
+            throw new BusinessException(AuthErrorCode.INVALID_REFRESH_TOKEN);
         }
 
         RefreshToken savedRefreshToken = refreshTokenRepository.findByToken(refreshTokenValue)
-                .orElseThrow(() -> new InvalidRefreshTokenException("존재하지 않는 refresh token입니다."));
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_REFRESH_TOKEN));
 
         User user = savedRefreshToken.getUser();
 
@@ -110,7 +111,7 @@ public class AuthService {
     @Transactional
     public void logout(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
         refreshTokenRepository.deleteByUser(user);
     }
 
@@ -119,7 +120,7 @@ public class AuthService {
         User user = new User();
         user.setUsername("kakao_" + providerId + "@kakao.local");
         user.setName(kakaoUserInfo.getKakao_account().getProfile().getNickname());
-        user.setNickname(kakaoUserInfo.getKakao_account().getProfile().getNickname());
+        user.setNickname(kakaoUserInfo.getKakao_account().getProfile().getNickname() + "_KAKAO");
         user.setPassword(null);  //카카오에서 실명을 주지 않아서 일단 닉네임으로 채우고
         user.setRole(Role.USER); // 나중에 마이페이지에서 닉네임 수정 유도
         user.setStatus(AccountStatus.ACTIVE);
@@ -141,7 +142,12 @@ public class AuthService {
     // Kakao 로그인
     @Transactional
     public TokenResponse kakaoLogin(String kakaoAccessToken) {
-        KakaoUserInfoResponse kakaoUserInfo = kakaoApiClient.getUserInfo(kakaoAccessToken);
+        KakaoUserInfoResponse kakaoUserInfo;
+        try {
+            kakaoUserInfo = kakaoApiClient.getUserInfo(kakaoAccessToken);
+        } catch (HttpClientErrorException e) {
+            throw new BusinessException(AuthErrorCode.OAUTH_TOKEN_INVALID);
+        }
 
         String providerId = String.valueOf(kakaoUserInfo.getId());
 
@@ -170,7 +176,7 @@ public class AuthService {
         User user = new User();
         user.setUsername(googleUserInfo.getEmail()); //카카오는 이메일권한 막혀있지만 구글은 허용되어서 좋음
         user.setName(googleUserInfo.getName()); // 이름도 권한 있어서 사용가능
-        user.setNickname(googleUserInfo.getName()); //이건 나중에 마이페이지에서 닉네임 변경
+        user.setNickname(googleUserInfo.getName() + "_GOOGLE"); //이건 나중에 마이페이지에서 닉네임 변경
         user.setPassword(null);
         user.setRole(Role.USER);
         user.setStatus(AccountStatus.ACTIVE);
@@ -192,7 +198,12 @@ public class AuthService {
     // Google 로그인
     @Transactional
     public TokenResponse googleLogin(String googleAccessToken){
-        GoogleUserInfoResponse googleUserInfo = googleApiClient.getUserInfo(googleAccessToken);
+        GoogleUserInfoResponse googleUserInfo;
+        try {
+            googleUserInfo = googleApiClient.getUserInfo(googleAccessToken);
+        } catch (HttpClientErrorException e) {
+            throw new BusinessException(AuthErrorCode.OAUTH_TOKEN_INVALID);
+        }
 
         String providerId = googleUserInfo.getId();
 
