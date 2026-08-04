@@ -54,7 +54,7 @@ class FeedbackServiceTest {
         requester = new User();
         requester.setId(1L);
         requester.setRole(Role.USER);
-        requester.setSubscribed(true); // 기본값: 구독 중. 비구독 테스트에서만 false로 덮어씀
+        requester.setSubscribed(true);
 
         expertUser = new User();
         expertUser.setId(2L);
