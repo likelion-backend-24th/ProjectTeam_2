@@ -4,6 +4,7 @@ package org.example.backend.post.controller;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.common.dto.ApiResponse;
+import org.example.backend.post.entity.PostCategory;
 import org.example.backend.post.service.PostService;
 import org.example.backend.post.dto.PostResponse;
 import org.example.backend.post.dto.PostUpdateRequest;
@@ -34,7 +35,7 @@ public class PostController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<PostResponse>>> getPost(
-            @RequestParam(required = false) String category,
+            @RequestParam(required = false) PostCategory category,
             Pageable pageable
     ){
         Page<PostResponse> posts = postService.getPosts(category, pageable);
