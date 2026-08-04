@@ -1,6 +1,7 @@
 package org.example.backend.auth.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.backend.auth.dto.oauth.GoogleUserInfoResponse;
 import org.example.backend.auth.dto.oauth.KakaoUserInfoResponse;
 import org.example.backend.auth.entity.OauthAccount;
 import org.example.backend.auth.exception.*;
@@ -32,7 +33,7 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final KakaoApiClient kakaoApiClient;
     private final OauthAccountRepository oauthAccountRepository;
-
+    private final GoogleApiClient googleApiClient;
     //회원가입
     @Transactional
     public void signup(SignupRequest signupRequest) {
@@ -162,6 +163,55 @@ public class AuthService {
 
         return new TokenResponse(accessToken, refreshTokenValue);
 
+    }
+
+    // Google 최초 로그인 시 회원가입 처리
+    private User registerGoogleUser(GoogleUserInfoResponse googleUserInfo,String providerId){
+        User user = new User();
+        user.setUsername(googleUserInfo.getEmail()); //카카오는 이메일권한 막혀있지만 구글은 허용되어서 좋음
+        user.setName(googleUserInfo.getName()); // 이름도 권한 있어서 사용가능
+        user.setNickname(googleUserInfo.getName()); //이건 나중에 마이페이지에서 닉네임 변경
+        user.setPassword(null);
+        user.setRole(Role.USER);
+        user.setStatus(AccountStatus.ACTIVE);
+        user.setSubscribed(false);
+
+        userRepository.save(user);
+
+        OauthAccount oauthAccount = new OauthAccount();
+        oauthAccount.setUser(user);
+        oauthAccount.setProvider("GOOGLE");
+        oauthAccount.setProviderId(providerId);
+        oauthAccount.setLinkedAt(LocalDateTime.now());
+
+        oauthAccountRepository.save(oauthAccount);
+
+        return user;
+    }
+
+    // Google 로그인
+    @Transactional
+    public TokenResponse googleLogin(String googleAccessToken){
+        GoogleUserInfoResponse googleUserInfo = googleApiClient.getUserInfo(googleAccessToken);
+
+        String providerId = googleUserInfo.getId();
+
+        User user = oauthAccountRepository.findByProviderAndProviderId("GOOGLE", providerId)
+                .map(oauthAccount -> oauthAccount.getUser())
+                .orElseGet(() -> registerGoogleUser(googleUserInfo, providerId));
+
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
+        String refreshTokenValue = jwtTokenProvider.generateRefreshToken(user.getUsername());
+
+        RefreshToken refreshToken = refreshTokenRepository.findByUser(user)
+                .orElse(new RefreshToken());
+        refreshToken.setUser(user);
+        refreshToken.setToken(refreshTokenValue);
+        refreshToken.setExpiresAt(LocalDateTime.now().plusDays(14));
+
+        refreshTokenRepository.save(refreshToken);
+
+        return new TokenResponse(accessToken, refreshTokenValue);
     }
 
 }
