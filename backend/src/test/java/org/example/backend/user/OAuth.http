@@ -1,0 +1,6 @@
+### Kakao access token 받기
+POST https://kauth.kakao.com/oauth/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code&client_id={REST_API_키}&redirect_uri=https://localhost:3000/oauth/callback&code=jMuj_szcyT ....인가받은코드
+#grant_type=authorization_code&client_id=casdafsdgs546f456df65d65f&redirect_uri=https://localhost:3000/oauth/callback&code=fdsfsdfdsfsdfafasff-afdgfgafkgkrjkldfvklnckljjskldjkflsdklsnfklnkl
