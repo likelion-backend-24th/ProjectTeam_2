@@ -2,7 +2,7 @@
 POST https://kauth.kakao.com/oauth/token
 Content-Type: application/x-www-form-urlencoded
 
-grant_type=authorization_code&client_id={REST_API_키}&redirect_uri=https://localhost:3000/oauth/callback&code={인가받은 키}
+grant_type=authorization_code&client_id=c8bebd798e28923f575600e69ec20983&redirect_uri=https://localhost:3000/oauth/callback&code=nkAQm0yBUdwyQ4gTow3_u0jlwWmKBRfVsHF5Trk1DRnv6aezx0MhZwAAAAQKFxBvAAABn8vgvtCBPKUF0hG4dQ
 
 #  1. 웹 브라우저 창에 REST_API_키 넣어서 들어감 https://kauth.kakao.com/oauth/authorize?client_id={REST_API_키}&redirect_uri=https://localhost:3000/oauth/callback&response_type=code
 #  2. 들어가면 카카오 로그인 알아서 하고 필수체크하고 확인
@@ -21,5 +21,5 @@ POST http://localhost:8080/api/auth/kakao
 Content-Type: application/json
 
 {
-  "kakaoAccessToken": ""
+  "kakaoAccessToken": "mjd1LgG4Q-k_V2FiUXFjq5c41eDODIXTAAAAAQoNIpkAAAGfy-EaP1v0-avl6D9k"
 }

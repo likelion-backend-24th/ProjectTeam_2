@@ -2,6 +2,7 @@ package org.example.backend.study.service;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.backend.common.exception.BusinessException;
 import org.example.backend.study.dto.*;
 import org.example.backend.study.entity.Study;
 import org.example.backend.study.entity.StudyMember;
@@ -29,7 +30,7 @@ public class StudyService {
         if (!user.isSubscribed()) {
             int joinedStudyCount = studyMemberRepository.countByUserId(userId);
             if (joinedStudyCount >= 2) {
-                throw new StudyJoinLimitExceededException();
+                throw new BusinessException(StudyErrorCode.STUDY_ALREADY_JOINED);
             }
         }
 
@@ -51,7 +52,7 @@ public class StudyService {
     }
 
     public StudyDetailResponse getStudyById(Long id) {
-        Study study = studyRepository.findById(id).orElseThrow(StudyNotFoundException::new);
+        Study study = studyRepository.findById(id).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
         List<StudyMemberResponse> members = studyMemberRepository.findByStudyId(id).stream()
                 .map(StudyMemberResponse::from)
                 .toList();
@@ -60,9 +61,9 @@ public class StudyService {
     }
 
     public StudyResponse updateStudy(Long userId, Long id, @Valid StudyUpdateRequest request) {
-        Study study = studyRepository.findById(id).orElseThrow(StudyNotFoundException::new);
+        Study study = studyRepository.findById(id).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
         if (!study.getLeader().getId().equals(userId)) {
-            throw new StudyAccessDeniedException();
+            throw new BusinessException(StudyErrorCode.STUDY_ACCESS_DENIED);
         }
 
         study.setTitle(request.getTitle());
@@ -77,10 +78,10 @@ public class StudyService {
 
 
     public void deleteStudy(Long userId, Long id) {
-        Study study = studyRepository.findById(id).orElseThrow(StudyNotFoundException::new);
+        Study study = studyRepository.findById(id).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
 
         if (!study.getLeader().getId().equals(userId)) {
-            throw new StudyAccessDeniedException();
+            throw new BusinessException(StudyErrorCode.STUDY_ACCESS_DENIED);
         }
 
         studyRepository.delete(study);
@@ -88,26 +89,26 @@ public class StudyService {
 
     public StudyMemberResponse joinStudy(Long userId, Long id) {
         User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
-        Study study = studyRepository.findById(id).orElseThrow(StudyNotFoundException::new);
+        Study study = studyRepository.findById(id).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
 
         if (study.getLeader().getId().equals(userId)) {
-            throw new StudyLeaderCannotJoinException();
+            throw new BusinessException(StudyErrorCode.STUDY_LEADER_CANNOT_JOIN);
         }
 
         studyMemberRepository.findByStudyIdAndUserId(id, userId)
                 .ifPresent(member -> {
-                    throw new StudyAlreadyJoinedException();
+                    throw new BusinessException(StudyErrorCode.STUDY_ALREADY_JOINED);
                 });
 
         int currentCount = studyMemberRepository.countByStudyId(id);
         if (currentCount >= study.getCapacity()) {
-            throw new StudyCapacityExceededException();
+            throw new BusinessException(StudyErrorCode.STUDY_CAPACITY_EXCEEDED);
         }
 
         if (!user.isSubscribed()) {
             int joinedStudyCount = studyMemberRepository.countByUserId(userId);
             if (joinedStudyCount >= 2) {
-                throw new StudyJoinLimitExceededException();
+                throw new BusinessException(StudyErrorCode.STUDY_JOIN_LIMIT_EXCEEDED);
             }
         }
 
