@@ -72,7 +72,7 @@ public class PostService {
                 .orElseThrow(() -> new PostNotFoundException(postId));
 
         // 2. 댓글 목록 조회
-        List<Comment> comments = commentRepository.findByPostId(postId);
+        List<Comment> comments = commentRepository.findByPostIdOrderByCreatedAtAsc(postId);
 
         // 3. Comment 목록 → CommentResponse 목록으로 변환
         List<CommentResponse> commentResponses = comments.stream()

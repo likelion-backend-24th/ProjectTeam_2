@@ -13,6 +13,9 @@ import org.springframework.data.domain.Page;
 import org.example.backend.post.dto.PostCreateRequest;
 import org.example.backend.post.dto.PostDetailResponse;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -31,14 +34,15 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         PostDetailResponse response = postService.createPost(request, userDetails.getUser());
-        return ResponseEntity.ok(ApiResponse.success("게시글이 등록되었습니다.", response));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("게시글이 등록되었습니다.", response));
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<PostResponse>>> getPost(
             @RequestParam(required = false) PostCategory category,
-            Pageable pageable
-    ){
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
         Page<PostResponse> posts = postService.getPosts(category, pageable);
         return ResponseEntity.ok(ApiResponse.success("게시글 목록을 조회에 성공했습니다", posts));
     }
@@ -46,7 +50,7 @@ public class PostController {
     @GetMapping("/{postId}")
     public ResponseEntity<ApiResponse<PostDetailResponse>> getPostDetail(
             @PathVariable Long postId
-    ){
+    ) {
         PostDetailResponse detail = postService.getPostDetail(postId);
         return ResponseEntity.ok(ApiResponse.success("게시글 상세 조회에 성공했습니다", detail));
     }
