@@ -1,0 +1,8 @@
+### 댓글 - 없는 댓글 접근 시도 (인증 필요 없는 조회는 없어서, 댓글 수정/삭제로 테스트)
+PUT http://localhost:8080/api/posts/1/comments/99999
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0YWV5b3VuZy10ZXN0LTA4MDRAdGVzdC5jb20iLCJpYXQiOjE3ODU4MDc4MjksImV4cCI6MTc4NTgxMTQyOX0.CrKZWmFlSPSNBmiSJCJnKOiN6CkjnwXoOy_Y_S6mDdg
+
+{
+  "content": "테스트 수정 내용"
+}

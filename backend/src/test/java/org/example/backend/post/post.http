@@ -1,0 +1,23 @@
+### 0. 회원가입
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "username": "taeyoung-test-0804@test.com",
+  "password": "test1234!",
+  "name": "테스트",
+  "nickname": "태영테스트"
+}
+
+### 없는 게시글 조회
+GET http://localhost:8080/api/posts/99999
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0YWV5b3VuZy10ZXN0LTA4MDRAdGVzdC5jb20iLCJpYXQiOjE3ODU4MDc4MjksImV4cCI6MTc4NTgxMTQyOX0.CrKZWmFlSPSNBmiSJCJnKOiN6CkjnwXoOy_Y_S6mDdg
+
+### 로그인
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "taeyoung-test-0804@test.com",
+  "password": "test1234!"
+}
