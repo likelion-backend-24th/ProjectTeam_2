@@ -8,6 +8,8 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 
 @Entity
 @Table(name = "post")
@@ -27,8 +29,9 @@ public class Post {
     @Column(columnDefinition = "Text", nullable = false)
     private String content;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String category;
+    private PostCategory category;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -41,7 +44,4 @@ public class Post {
     @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-
-
-
 }
