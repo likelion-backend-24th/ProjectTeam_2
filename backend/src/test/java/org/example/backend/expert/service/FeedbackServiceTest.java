@@ -1,4 +1,4 @@
-package org.example.backend.expert.service;
+package org.example.backend.expert;
 
 import org.example.backend.expert.dto.FeedbackCreateRequest;
 import org.example.backend.expert.dto.FeedbackMessageRequest;

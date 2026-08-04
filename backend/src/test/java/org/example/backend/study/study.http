@@ -8,7 +8,7 @@ POST {{baseUrl}}/api/auth/login
 Content-Type: {{contentType}}
 
 {
-  "username": "test@naver.com",
+  "username": "test4@naver.com",
   "password": "test1234"
 }
 
@@ -38,7 +38,7 @@ GET {{baseUrl}}/api/studies?keyword=알고리즘&page=0&size=10
 Authorization: Bearer {{accessToken}}
 
 ### 스터디 상세 조회
-GET {{baseUrl}}/api/studies/1
+GET {{baseUrl}}/api/studies/2
 Authorization: Bearer {{accessToken}}
 
 ### 스터디 수정
@@ -55,7 +55,7 @@ Authorization: Bearer {{accessToken}}
 }
 
 ### 스터디 가입 신청
-POST {{baseUrl}}/api/studies/1/join
+POST {{baseUrl}}/api/studies/2/join
 Authorization: Bearer {{accessToken}}
 
 ### 스터디 삭제

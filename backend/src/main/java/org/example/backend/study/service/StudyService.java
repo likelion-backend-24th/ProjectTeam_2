@@ -36,7 +36,6 @@ public class StudyService {
         Study study = new Study(request.getTitle(), request.getDescription(), request.getCapacity(), request.getRecruitStart(), request.getRecruitEnd(), user);
         Study saved = studyRepository.save(study);
 
-        // 방장을 멤버로도 등록 (그룹 개설 -> 방장이 첫 멤버로 자동 가입되는 구조)
         StudyMember leaderAsMember = new StudyMember(saved, user);
         studyMemberRepository.save(leaderAsMember);
 
@@ -80,7 +79,6 @@ public class StudyService {
     public void deleteStudy(Long userId, Long id) {
         Study study = studyRepository.findById(id).orElseThrow(StudyNotFoundException::new);
 
-        // 방장이 아니면 예외
         if (!study.getLeader().getId().equals(userId)) {
             throw new StudyAccessDeniedException();
         }
@@ -92,25 +90,20 @@ public class StudyService {
         User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
         Study study = studyRepository.findById(id).orElseThrow(StudyNotFoundException::new);
 
-        // 가입 신청인이 방장이면 예외
         if (study.getLeader().getId().equals(userId)) {
             throw new StudyLeaderCannotJoinException();
         }
 
-        // 해당 유저가 이미 그 그룹에 속해있는지 확인
-        // ifPresent - Optional 객체에서 null이 발생하면 실행되지 않도록 함 (여기서는 null이면 통과, null이 아니면 예외)
         studyMemberRepository.findByStudyIdAndUserId(id, userId)
                 .ifPresent(member -> {
                     throw new StudyAlreadyJoinedException();
                 });
 
-        // 모집 인원 수 확인
         int currentCount = studyMemberRepository.countByStudyId(id);
         if (currentCount >= study.getCapacity()) {
             throw new StudyCapacityExceededException();
         }
 
-        // 비구독자 2개 제한 검증
         if (!user.isSubscribed()) {
             int joinedStudyCount = studyMemberRepository.countByUserId(userId);
             if (joinedStudyCount >= 2) {
@@ -118,7 +111,6 @@ public class StudyService {
             }
         }
 
-        // 모든 조건 통과 후 가입
         StudyMember member = new StudyMember(study, user);
         StudyMember saved = studyMemberRepository.save(member);
 
