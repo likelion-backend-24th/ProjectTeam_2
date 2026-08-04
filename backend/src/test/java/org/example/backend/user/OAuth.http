@@ -2,5 +2,24 @@
 POST https://kauth.kakao.com/oauth/token
 Content-Type: application/x-www-form-urlencoded
 
-grant_type=authorization_code&client_id={REST_API_키}&redirect_uri=https://localhost:3000/oauth/callback&code=jMuj_szcyT ....인가받은코드
-#grant_type=authorization_code&client_id=casdafsdgs546f456df65d65f&redirect_uri=https://localhost:3000/oauth/callback&code=fdsfsdfdsfsdfafasff-afdgfgafkgkrjkldfvklnckljjskldjkflsdklsnfklnkl
+grant_type=authorization_code&client_id={REST_API_키}&redirect_uri=https://localhost:3000/oauth/callback&code={인가받은 키}
+
+#  1. 웹 브라우저 창에 REST_API_키 넣어서 들어감 https://kauth.kakao.com/oauth/authorize?client_id={REST_API_키}&redirect_uri=https://localhost:3000/oauth/callback&response_type=code
+#  2. 들어가면 카카오 로그인 알아서 하고 필수체크하고 확인
+#  3. 확인하면 에러창이 뜨는데 당황하지말고 주소의 인가받은 코드 복사(code= 뒤에가 인가받을 코드임 그거 복사) ex) https://localhost:3000/oauth/callback?code=tWhJdtgzUYtBKH-rU6M5zR1db1EUnC_uEg5iNx9CF8DUdFvgAAAAQKFxafAAABn8uUC6_kNSpXBP-m7Q
+#  4. 그러고 테스트 하는데 REST_API_키 넣고 인가받은 키도 넣고 post (주의) 괄호빼야됨
+#  5. 그러면 access토큰이 나옴
+#  6. 그 access토큰을 복사해서 밑에 카카오 로그인 회원가입 테스트에 붙여 넣어서 테스트
+
+#     grant_type=authorization_code&client_id={REST_API_키}&redirect_uri=https://localhost:3000/oauth/callback&code=jMuj_szcyT ....인가받은코드
+# ex) grant_type=authorization_code&client_id=casdafsdgs546f456df65d65f&redirect_uri=https://localhost:3000/oauth/callback&code=fdsfsdfdsfsdfafasff-afdgfgafkgkrjkldfvklnckljjskldjkflsdklsnfklnkl
+# 주소
+#https://kauth.kakao.com/oauth/authorize?client_id={REST_API_키}&redirect_uri=https://localhost:3000/oauth/callback&response_type=code
+
+### 카카오 로그인/회원가입 - 성공
+POST http://localhost:8080/api/auth/kakao
+Content-Type: application/json
+
+{
+  "kakaoAccessToken": ""
+}
