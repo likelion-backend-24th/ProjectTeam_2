@@ -2,24 +2,43 @@
 POST https://kauth.kakao.com/oauth/token
 Content-Type: application/x-www-form-urlencoded
 
-grant_type=authorization_code&client_id=c8bebd798e28923f575600e69ec20983&redirect_uri=https://localhost:3000/oauth/callback&code=nkAQm0yBUdwyQ4gTow3_u0jlwWmKBRfVsHF5Trk1DRnv6aezx0MhZwAAAAQKFxBvAAABn8vgvtCBPKUF0hG4dQ
+grant_type=authorization_code&client_id={REST_API_키}&redirect_uri=https://localhost:3000/oauth/callback&code={인가 받은 코드}
 
 #  1. 웹 브라우저 창에 REST_API_키 넣어서 들어감 https://kauth.kakao.com/oauth/authorize?client_id={REST_API_키}&redirect_uri=https://localhost:3000/oauth/callback&response_type=code
 #  2. 들어가면 카카오 로그인 알아서 하고 필수체크하고 확인
 #  3. 확인하면 에러창이 뜨는데 당황하지말고 주소의 인가받은 코드 복사(code= 뒤에가 인가받을 코드임 그거 복사) ex) https://localhost:3000/oauth/callback?code=tWhJdtgzUYtBKH-rU6M5zR1db1EUnC_uEg5iNx9CF8DUdFvgAAAAQKFxafAAABn8uUC6_kNSpXBP-m7Q
-#  4. 그러고 테스트 하는데 REST_API_키 넣고 인가받은 키도 넣고 post (주의) 괄호빼야됨
+#  4. 그러고 테스트 하는데 REST_API_키 넣고 인가받은 키도 넣고 post *(주의) 괄호빼야됨
 #  5. 그러면 access토큰이 나옴
 #  6. 그 access토큰을 복사해서 밑에 카카오 로그인 회원가입 테스트에 붙여 넣어서 테스트
 
+
+# 브라우저에 입력할 주소
+#https://kauth.kakao.com/oauth/authorize?client_id={REST_API_키}&redirect_uri=https://localhost:3000/oauth/callback&response_type=code
+
 #     grant_type=authorization_code&client_id={REST_API_키}&redirect_uri=https://localhost:3000/oauth/callback&code=jMuj_szcyT ....인가받은코드
 # ex) grant_type=authorization_code&client_id=casdafsdgs546f456df65d65f&redirect_uri=https://localhost:3000/oauth/callback&code=fdsfsdfdsfsdfafasff-afdgfgafkgkrjkldfvklnckljjskldjkflsdklsnfklnkl
-# 주소
-#https://kauth.kakao.com/oauth/authorize?client_id={REST_API_키}&redirect_uri=https://localhost:3000/oauth/callback&response_type=code
 
 ### 카카오 로그인/회원가입 - 성공
 POST http://localhost:8080/api/auth/kakao
 Content-Type: application/json
 
 {
-  "kakaoAccessToken": "mjd1LgG4Q-k_V2FiUXFjq5c41eDODIXTAAAAAQoNIpkAAAGfy-EaP1v0-avl6D9k"
+  "kakaoAccessToken": "accesstoken 여기에 복사"
 }
+
+
+
+### Google access token 받기
+POST https://oauth2.googleapis.com/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code&client_id={클라이언트ID}&client_secret={클라이언트시크릿}&redirect_uri=https://localhost:3000/oauth/callback&code={인가 받은 코드}
+
+#브라우저에 입력할 주소
+#https://accounts.google.com/o/oauth2/v2/auth?client_id={클라이언트ID}&redirect_uri=https://localhost:3000/oauth/callback&response_type=code&scope=email%20profile
+
+#로그인하고 필수항목체크하고 다음 눌렀을때 에러나오면서 나오는 창 code= 뒤에가 인가 받을 코드
+# https://localhost:3000/oauth/callback?iss=https%3A%2F%2Faccounts.google.com&code=4%2F0AXEQxIDZBUNuY7DiwcfUgoF4tR-3mhywiiHJOJW_mGXnIj7Fk4Xp-Ko6K3e06AmYIk1xaA&scope=email+profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+openid&authuser=0&prompt=consent
+
+#복사용
+#grant_type=authorization_code&client_id=본인의_클라이언트ID&client_secret=본인의_클라이언트시크릿&redirect_uri=https://localhost:3000/oauth/callback&code=방금_받은_인가코드
