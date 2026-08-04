@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.dto.jwt.LoginRequest;
 import org.example.backend.auth.dto.jwt.SignupRequest;
 import org.example.backend.auth.dto.jwt.TokenResponse;
+import org.example.backend.auth.dto.oauth.GoogleLoginRequest;
 import org.example.backend.auth.dto.oauth.KakaoLoginRequest;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.auth.service.AuthService;
@@ -82,6 +83,13 @@ public class AuthController {
     @PostMapping("/kakao")
     public ResponseEntity<TokenResponse> kakaoLogin(@Valid @RequestBody KakaoLoginRequest kakaoLoginRequest){
         TokenResponse response = authService.kakaoLogin(kakaoLoginRequest.getKakaoAccessToken());
+        return buildResponseWithCookie(response);
+    }
+
+    // Google 로그인 Post
+    @PostMapping("/google")
+    public ResponseEntity<TokenResponse> googleLogin(@Valid @RequestBody GoogleLoginRequest googleLoginRequest){
+        TokenResponse response = authService.googleLogin(googleLoginRequest.getGoogleAccessToken());
         return buildResponseWithCookie(response);
     }
 
