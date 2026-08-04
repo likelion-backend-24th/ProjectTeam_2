@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.dto.jwt.LoginRequest;
 import org.example.backend.auth.dto.jwt.SignupRequest;
 import org.example.backend.auth.dto.jwt.TokenResponse;
+import org.example.backend.auth.dto.oauth.KakaoLoginRequest;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.auth.service.AuthService;
 import org.springframework.http.HttpHeaders;
@@ -75,6 +76,13 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(response);
+    }
+
+    // Kakao 로그인 Post
+    @PostMapping("/kakao")
+    public ResponseEntity<TokenResponse> kakaoLogin(@Valid @RequestBody KakaoLoginRequest kakaoLoginRequest){
+        TokenResponse response = authService.kakaoLogin(kakaoLoginRequest.getKakaoAccessToken());
+        return buildResponseWithCookie(response);
     }
 
 
