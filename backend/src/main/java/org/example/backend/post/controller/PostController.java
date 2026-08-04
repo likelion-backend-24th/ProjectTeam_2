@@ -1,6 +1,7 @@
 package org.example.backend.post.controller;
 
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.common.dto.ApiResponse;
@@ -26,7 +27,7 @@ public class PostController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<PostDetailResponse>> createPost(
-            @RequestBody PostCreateRequest request,
+            @Valid @RequestBody PostCreateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         PostDetailResponse response = postService.createPost(request, userDetails.getUser());
@@ -53,7 +54,7 @@ public class PostController {
     @PutMapping("/{postId}")
     public ResponseEntity<ApiResponse<Void>> updatePost(
             @PathVariable Long postId,
-            @RequestBody PostUpdateRequest request,
+            @Valid @RequestBody PostUpdateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         postService.updatePost(postId, request, userDetails.getUser());

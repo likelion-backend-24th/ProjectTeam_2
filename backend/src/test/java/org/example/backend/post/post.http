@@ -21,3 +21,14 @@ Content-Type: application/json
   "username": "taeyoung-test-0804@test.com",
   "password": "test1234!"
 }
+
+### 빈 제목으로 게시글 등록 시도 (검증 실패 테스트)
+POST http://localhost:8080/api/posts
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0YWV5b3VuZy10ZXN0LTA4MDRAdGVzdC5jb20iLCJpYXQiOjE3ODU4MDk5NTMsImV4cCI6MTc4NTgxMzU1M30.M8ITJpZUiCyv4s2AuGpkD8Ao4YfXONsvtrL7fzj5KLM
+
+{
+  "title": "",
+  "content": "내용입니다",
+  "category": "FREE"
+}

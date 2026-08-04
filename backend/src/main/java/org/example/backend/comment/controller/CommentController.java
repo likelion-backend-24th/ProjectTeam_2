@@ -1,6 +1,7 @@
 package org.example.backend.comment.controller;
 
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.comment.dto.CommentResponse;
@@ -22,7 +23,7 @@ public class CommentController {
     @PostMapping
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(
             @PathVariable Long postId,
-            @RequestBody CommentCreateRequest request,
+            @Valid @RequestBody CommentCreateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         CommentResponse response = commentService.createComment(postId, request, userDetails.getUser());
@@ -33,7 +34,7 @@ public class CommentController {
     public ResponseEntity<ApiResponse<Void>> updateComment(
             @PathVariable Long postId,
             @PathVariable Long commentId,
-            @RequestBody CommentUpdateRequest request,
+            @Valid @RequestBody CommentUpdateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         commentService.updateComment(commentId, request, userDetails.getUser());
