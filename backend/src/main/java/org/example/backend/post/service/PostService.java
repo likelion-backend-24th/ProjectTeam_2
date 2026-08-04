@@ -9,6 +9,7 @@ import org.example.backend.post.dto.PostCreateRequest;
 import org.example.backend.post.dto.PostDetailResponse;
 import org.example.backend.post.dto.PostResponse;
 import org.example.backend.post.dto.PostUpdateRequest;
+import org.example.backend.post.entity.PostCategory;
 import org.example.backend.post.exception.PostAccessDeniedException;
 import org.example.backend.post.exception.PostNotFoundException;
 import org.example.backend.post.repository.PostRepository;
@@ -49,8 +50,8 @@ public class PostService {
                 .build();
     }
 
-    public Page<PostResponse> getPosts(String category, Pageable pageable) {
-        Page<Post> posts = (category == null || category.isBlank())
+    public Page<PostResponse> getPosts(PostCategory category, Pageable pageable) {
+        Page<Post> posts = (category == null)
                 ? postRepository.findAll(pageable)
                 : postRepository.findByCategory(category, pageable);
 
