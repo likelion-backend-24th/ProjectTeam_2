@@ -114,7 +114,7 @@ public class AuthService {
     }
 
     // Kakao 최초 로그인 시 회원가입
-    public User registerKakaoUser(KakaoUserInfoResponse kakaoUserInfo, String providerId){
+    private User registerKakaoUser(KakaoUserInfoResponse kakaoUserInfo, String providerId){
         User user = new User();
         user.setUsername("kakao_" + providerId + "@kakao.local");
         user.setName(kakaoUserInfo.getKakao_account().getProfile().getNickname());
@@ -138,6 +138,7 @@ public class AuthService {
     }
 
     // Kakao 로그인
+    @Transactional
     public TokenResponse kakaoLogin(String kakaoAccessToken) {
         KakaoUserInfoResponse kakaoUserInfo = kakaoApiClient.getUserInfo(kakaoAccessToken);
 
