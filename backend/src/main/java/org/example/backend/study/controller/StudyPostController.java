@@ -1,6 +1,7 @@
 package org.example.backend.study.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.common.dto.ApiResponse;
@@ -24,7 +25,7 @@ public class StudyPostController {
 
     @Operation(summary = "스터디 게시판(게시글 등록)")
     @PostMapping("/posts")
-    public ResponseEntity<ApiResponse<StudyPostResponse>> createStudyPosts(@AuthenticationPrincipal CustomUserDetails user, @PathVariable Long id, @RequestBody StudyPostRequest request){
+    public ResponseEntity<ApiResponse<StudyPostResponse>> createStudyPosts(@AuthenticationPrincipal CustomUserDetails user, @PathVariable Long id, @Valid @RequestBody StudyPostRequest request){
         Long userId = user.getUser().getId();
         StudyPostResponse response = studyPostService.createStudyPost(userId, id, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("스터디 게시글 등록 성공", response));
@@ -48,7 +49,7 @@ public class StudyPostController {
 
     @Operation(summary = "스터디 게시판 수정")
     @PutMapping("/posts/{postId}")
-    public ResponseEntity<ApiResponse<StudyPostResponse>> updateStudyPost(@AuthenticationPrincipal CustomUserDetails user, @PathVariable Long id, @PathVariable Long postId, @RequestBody StudyPostUpdateRequest request){
+    public ResponseEntity<ApiResponse<StudyPostResponse>> updateStudyPost(@AuthenticationPrincipal CustomUserDetails user, @PathVariable Long id, @PathVariable Long postId, @Valid @RequestBody StudyPostUpdateRequest request){
         Long userId = user.getUser().getId();
         StudyPostResponse response = studyPostService.updateStudyPost(userId, id, postId, request);
         return ResponseEntity.ok(ApiResponse.success("스터디 게시글 수정 성공", response));
