@@ -25,20 +25,13 @@ public class StudyService {
     private final UserRepository userRepository;
 
     public StudyResponse createStudy(Long userId, StudyRequest request){
-        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
-
-        if (!user.isSubscribed()) {
-            int joinedStudyCount = studyMemberRepository.countByUserId(userId);
-            if (joinedStudyCount >= 2) {
-                throw new BusinessException(StudyErrorCode.STUDY_ALREADY_JOINED);
-            }
-        }
+        User user = getUserOrThrow(userId);
+        validateFreeTierLimit(user);
 
         Study study = new Study(request.getTitle(), request.getDescription(), request.getCapacity(), request.getRecruitStart(), request.getRecruitEnd(), user);
         Study saved = studyRepository.save(study);
 
-        StudyMember leaderAsMember = new StudyMember(saved, user);
-        studyMemberRepository.save(leaderAsMember);
+        studyMemberRepository.save(new StudyMember(saved, user));
 
         return StudyResponse.from(saved);
     }
@@ -52,7 +45,7 @@ public class StudyService {
     }
 
     public StudyDetailResponse getStudyById(Long id) {
-        Study study = studyRepository.findById(id).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
+        Study study = getStudyOrThrow(id);
         List<StudyMemberResponse> members = studyMemberRepository.findByStudyId(id).stream()
                 .map(StudyMemberResponse::from)
                 .toList();
@@ -61,10 +54,8 @@ public class StudyService {
     }
 
     public StudyResponse updateStudy(Long userId, Long id, @Valid StudyUpdateRequest request) {
-        Study study = studyRepository.findById(id).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
-        if (!study.getLeader().getId().equals(userId)) {
-            throw new BusinessException(StudyErrorCode.STUDY_ACCESS_DENIED);
-        }
+        Study study = getStudyOrThrow(id);
+        validateStudyLeader(study, userId);
 
         study.setTitle(request.getTitle());
         study.setDescription(request.getDescription());
@@ -78,18 +69,15 @@ public class StudyService {
 
 
     public void deleteStudy(Long userId, Long id) {
-        Study study = studyRepository.findById(id).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
-
-        if (!study.getLeader().getId().equals(userId)) {
-            throw new BusinessException(StudyErrorCode.STUDY_ACCESS_DENIED);
-        }
+        Study study = getStudyOrThrow(id);
+        validateStudyLeader(study, userId);
 
         studyRepository.delete(study);
     }
 
     public StudyMemberResponse joinStudy(Long userId, Long id) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
-        Study study = studyRepository.findById(id).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
+        User user = getUserOrThrow(userId);
+        Study study = getStudyOrThrow(id);
 
         if (study.getLeader().getId().equals(userId)) {
             throw new BusinessException(StudyErrorCode.STUDY_LEADER_CANNOT_JOIN);
@@ -105,16 +93,34 @@ public class StudyService {
             throw new BusinessException(StudyErrorCode.STUDY_CAPACITY_EXCEEDED);
         }
 
-        if (!user.isSubscribed()) {
-            int joinedStudyCount = studyMemberRepository.countByUserId(userId);
-            if (joinedStudyCount >= 2) {
-                throw new BusinessException(StudyErrorCode.STUDY_JOIN_LIMIT_EXCEEDED);
-            }
-        }
+        validateFreeTierLimit(user);
 
         StudyMember member = new StudyMember(study, user);
         StudyMember saved = studyMemberRepository.save(member);
 
         return StudyMemberResponse.from(saved);
+    }
+
+    private User getUserOrThrow(Long userId) {
+        return userRepository.findById(userId).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
+    }
+
+    private Study getStudyOrThrow(Long id) {
+        return studyRepository.findById(id).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
+    }
+
+    private void validateStudyLeader(Study study, Long userId) {
+        if (!study.getLeader().getId().equals(userId)) {
+            throw new BusinessException(StudyErrorCode.STUDY_ACCESS_DENIED);
+        }
+    }
+
+    private void validateFreeTierLimit(User user) {
+        if (!user.isSubscribed()) {
+            int joinedStudyCount = studyMemberRepository.countByUserId(user.getId());
+            if (joinedStudyCount >= 2) {
+                throw new BusinessException(StudyErrorCode.STUDY_ALREADY_JOINED);
+            }
+        }
     }
 }
