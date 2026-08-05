@@ -4,13 +4,13 @@ import lombok.RequiredArgsConstructor;
 import org.example.backend.comment.dto.CommentCreateRequest;
 import org.example.backend.comment.dto.CommentResponse;
 import org.example.backend.comment.dto.CommentUpdateRequest;
-import org.example.backend.comment.exception.CommentAccessDeniedException;
-import org.example.backend.comment.exception.CommentNotFoundException;
+import org.example.backend.common.exception.BusinessException;
+import org.example.backend.comment.exception.CommentErrorCode;
 import org.example.backend.comment.repository.CommentRepository;
 import org.example.backend.comment.entity.Comment;
 import org.example.backend.post.entity.Post;
 import org.example.backend.post.repository.PostRepository;
-import org.example.backend.post.exception.PostNotFoundException;
+import org.example.backend.post.exception.PostErrorCode;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
 import org.springframework.stereotype.Service;
@@ -27,7 +27,7 @@ public class CommentService {
     public CommentResponse createComment(Long postId, CommentCreateRequest request, User user) {
 
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new PostNotFoundException(postId));
+                .orElseThrow(() -> new BusinessException(PostErrorCode.POST_NOT_FOUND));
 
         Comment comment = new Comment();
         comment.setContent(request.getContent());
@@ -47,11 +47,11 @@ public class CommentService {
     @Transactional
     public void updateComment(Long commentId, CommentUpdateRequest request, User requester) {
         Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new CommentNotFoundException(commentId));
+                .orElseThrow(() -> new BusinessException(CommentErrorCode.COMMENT_NOT_FOUND));
 
         // 권한 체크: 작성자 본인이거나 ADMIN이면 허용 (F-08)
         if (!isOwnerOrAdmin(comment, requester)) {
-            throw new CommentAccessDeniedException(commentId);
+            throw new BusinessException(CommentErrorCode.COMMENT_ACCESS_DENIED);
         }
 
         comment.setContent(request.getContent());
@@ -60,11 +60,11 @@ public class CommentService {
     @Transactional
     public void deleteComment(Long commentId, User requester) {
         Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new CommentNotFoundException(commentId));
+                .orElseThrow(() -> new BusinessException(CommentErrorCode.COMMENT_NOT_FOUND));
 
         // 권한 체크: 작성자 본인이거나 ADMIN이면 허용 (F-08)
         if (!isOwnerOrAdmin(comment, requester)) {
-            throw new CommentAccessDeniedException(commentId);
+            throw new BusinessException(CommentErrorCode.COMMENT_ACCESS_DENIED);
         }
 
         commentRepository.delete(comment);

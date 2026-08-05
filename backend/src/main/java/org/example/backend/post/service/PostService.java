@@ -10,8 +10,8 @@ import org.example.backend.post.dto.PostDetailResponse;
 import org.example.backend.post.dto.PostResponse;
 import org.example.backend.post.dto.PostUpdateRequest;
 import org.example.backend.post.entity.PostCategory;
-import org.example.backend.post.exception.PostAccessDeniedException;
-import org.example.backend.post.exception.PostNotFoundException;
+import org.example.backend.common.exception.BusinessException;
+import org.example.backend.post.exception.PostErrorCode;
 import org.example.backend.post.repository.PostRepository;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
@@ -69,7 +69,7 @@ public class PostService {
     public PostDetailResponse getPostDetail(Long postId) {
         // 1. 게시글 조회, 없으면 예외
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new PostNotFoundException(postId));
+                .orElseThrow(() -> new BusinessException(PostErrorCode.POST_NOT_FOUND));
 
         // 2. 댓글 목록 조회
         List<Comment> comments = commentRepository.findByPostIdOrderByCreatedAtAsc(postId);
@@ -100,11 +100,11 @@ public class PostService {
     @Transactional
     public void updatePost(Long postId, PostUpdateRequest request, User requester) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new PostNotFoundException(postId));
+                .orElseThrow(() -> new BusinessException(PostErrorCode.POST_NOT_FOUND));
 
         // 권한 체크: 작성자 본인이거나 ADMIN이면 허용 (F-06)
         if (!isOwnerOrAdmin(post, requester)) {
-            throw new PostAccessDeniedException(postId);
+            throw new BusinessException(PostErrorCode.POST_ACCESS_DENIED);
         }
 
         post.setTitle(request.getTitle());
@@ -117,11 +117,11 @@ public class PostService {
     public void deletePost(Long postId, User requester) {
         // 1. postId로 게시글 찾기 (없으면 예외)
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new PostNotFoundException(postId));
+                .orElseThrow(() -> new BusinessException(PostErrorCode.POST_NOT_FOUND));
 
         // 2. 작성자 본인이거나 ADMIN이면 허용 (F-06)
         if (!isOwnerOrAdmin(post, requester)) {
-            throw new PostAccessDeniedException(postId);
+            throw new BusinessException(PostErrorCode.POST_ACCESS_DENIED);
         }
         // 3. postRepository.delete(post) 또는 postRepository.deleteById(postId)
         postRepository.delete(post);
