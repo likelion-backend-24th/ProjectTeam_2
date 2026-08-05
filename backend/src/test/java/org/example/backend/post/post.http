@@ -1,0 +1,192 @@
+### 변수 설정
+@baseUrl = http://localhost:8080
+@contentType = application/json
+
+### 0-1. 회원가입 (최초 1회만 필요, 이미 가입했으면 건너뛰기)
+POST {{baseUrl}}/api/auth/signup
+Content-Type: {{contentType}}
+
+{
+  "username": "posttest@test.com",
+  "password": "test1234!",
+  "name": "포스트테스트",
+  "nickname": "포스트테스터"
+}
+
+###  0-2. 로그인 (accessToken 발급 - 아래 요청들에서 자동으로 사용됨)
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "posttest@test.com",
+  "password": "test1234!"
+}
+
+> {%
+    client.global.set("accessToken", response.body.accessToken);
+%}
+
+### =========================
+### F-04. 게시글 등록
+### =========================
+
+### 1. 게시글 등록 성공 (201 기대)
+POST {{baseUrl}}/api/posts
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "title": "카카오 코딩테스트 후기 공유합니다",
+  "content": "이번에 카카오 코테를 봤는데 생각보다 할만했어요.",
+  "category": "INTERVIEW_REVIEW"
+}
+
+### 2. 게시글 등록 실패 - 제목 빈값 (400 기대)
+POST {{baseUrl}}/api/posts
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "title": "",
+  "content": "내용은 있는데 제목이 없어요",
+  "category": "FREE"
+}
+
+### 3. 게시글 등록 실패 - 제목 100자 초과 (400 기대)
+POST {{baseUrl}}/api/posts
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "title": "가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다라마바사아자차카타파하",
+  "content": "제목이 너무 길어요",
+  "category": "FREE"
+}
+
+### 4. 게시글 등록 실패 - 카테고리 누락 (400 기대)
+POST {{baseUrl}}/api/posts
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "title": "카테고리 없이 등록 시도",
+  "content": "카테고리를 안 보냈어요"
+}
+
+### 5. 게시글 등록 실패 - 존재하지 않는 카테고리 값 (400 기대, enum 매칭 실패)
+POST {{baseUrl}}/api/posts
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "title": "이상한 카테고리로 등록 시도",
+  "content": "카테고리 값이 잘못됐어요",
+  "category": "이상한값"
+}
+
+### 6. 게시글 등록 실패 - 인증 없이 시도 (401/403 기대)
+POST {{baseUrl}}/api/posts
+Content-Type: {{contentType}}
+
+{
+  "title": "비로그인으로 등록 시도",
+  "content": "토큰 없이 보냄",
+  "category": "FREE"
+}
+
+### =========================
+### F-05. 게시글 목록/상세 조회
+### =========================
+
+### 7. 게시글 목록 조회 - 전체 (카테고리 필터 없음, 최신순 정렬 확인)
+GET {{baseUrl}}/api/posts?page=0&size=10
+Authorization: Bearer {{accessToken}}
+
+### 8. 게시글 목록 조회 - 카테고리 필터 (면접후기만)
+GET {{baseUrl}}/api/posts?category=INTERVIEW_REVIEW&page=0&size=10
+Authorization: Bearer {{accessToken}}
+
+### 9. 게시글 상세 조회 (댓글 목록 포함되는지 확인)
+GET {{baseUrl}}/api/posts/2
+Authorization: Bearer {{accessToken}}
+
+### 10. 게시글 상세 조회 실패 - 없는 게시글 (404 + POST_NOT_FOUND 기대)
+GET {{baseUrl}}/api/posts/99999
+Authorization: Bearer {{accessToken}}
+
+### =========================
+### F-06. 게시글 수정/삭제
+### =========================
+
+### 11. 게시글 수정 성공 (본인 글, 200 기대)
+PUT {{baseUrl}}/api/posts/1
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "title": "수정된 제목입니다",
+  "content": "수정된 내용입니다",
+  "category": "FREE"
+}
+
+### 12. 게시글 수정 실패 - 없는 게시글 (404 + POST_NOT_FOUND 기대)
+PUT {{baseUrl}}/api/posts/99999
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "title": "없는 글 수정 시도",
+  "content": "이 글은 없어요",
+  "category": "FREE"
+}
+
+### 13. 게시글 삭제 성공 (본인 글, 200 기대 - 실행하면 1번 글이 삭제되니 맨 마지막에 실행 권장)
+DELETE {{baseUrl}}/api/posts/2
+Authorization: Bearer {{accessToken}}
+
+### 14. 게시글 삭제 실패 - 없는 게시글 (404 + POST_NOT_FOUND 기대)
+DELETE {{baseUrl}}/api/posts/99999
+Authorization: Bearer {{accessToken}}
+
+
+### =========================
+### 타인 글 접근 - 403 (POST_ACCESS_DENIED) 테스트
+### 다른 계정으로 로그인해서, 위에서 만든 남의 글을 수정 시도
+### =========================
+
+### 15-1. 다른 계정 회원가입 (최초 1회만)
+POST {{baseUrl}}/api/auth/signup
+Content-Type: {{contentType}}
+
+{
+  "username": "posttest2@test.com",
+  "password": "test1234!",
+  "name": "다른유저",
+  "nickname": "다른유저테스터"
+}
+
+### 15-2. 다른 계정 로그인
+# @name loginOther
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "posttest2@test.com",
+  "password": "test1234!"
+}
+
+> {%
+    client.global.set("otherAccessToken", response.body.accessToken);
+%}
+
+### 15-3. 남의 글 수정 시도 (403 + POST_ACCESS_DENIED 기대, postId는 실제 존재하는 남의 글 번호로 바꿔서 실행)
+PUT {{baseUrl}}/api/posts/3
+Content-Type: {{contentType}}
+Authorization: Bearer {{otherAccessToken}}
+
+{
+  "title": "남의 글 수정 시도",
+  "content": "이러면 안 되는데",
+  "category": "FREE"
+}

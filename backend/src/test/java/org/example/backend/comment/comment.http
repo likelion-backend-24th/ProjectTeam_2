@@ -1,0 +1,158 @@
+### 변수 설정
+@baseUrl = http://localhost:8080
+@contentType = application/json
+@postId = 1
+
+### 0-1. 회원가입 (최초 1회만 필요, 이미 가입했으면 건너뛰기)
+POST {{baseUrl}}/api/auth/signup
+Content-Type: {{contentType}}
+
+{
+  "username": "commenttest@test.com",
+  "password": "test1234!",
+  "name": "코멘트테스트",
+  "nickname": "코멘트테스터"
+}
+
+### 0-2. 로그인 (accessToken 발급 - 아래 요청들에서 자동으로 사용됨)
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "commenttest@test.com",
+  "password": "test1234!"
+}
+
+> {%
+    client.global.set("accessToken", response.body.accessToken);
+%}
+
+### 0-3. 테스트용 게시글 하나 미리 등록 (postId 필요하니까)
+# @name createPost
+POST {{baseUrl}}/api/posts
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "title": "댓글 테스트용 게시글",
+  "content": "이 글에 댓글을 달아볼 거예요",
+  "category": "FREE"
+}
+
+### =========================
+### F-07. 댓글 등록
+### =========================
+
+### 1. 댓글 등록 성공 (201 기대, postId는 0-3에서 만든 글 번호로 바꿔서 실행)
+POST {{baseUrl}}/api/posts/{{postId}}/comments
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "content": "정보 감사합니다! 많이 도움됐어요."
+}
+
+### 2. 댓글 등록 실패 - 내용 빈값 (400 기대)
+POST {{baseUrl}}/api/posts/{{postId}}/comments
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "content": ""
+}
+
+### 3. 댓글 등록 실패 - 없는 게시글에 댓글 시도 (404 + POST_NOT_FOUND 기대)
+POST {{baseUrl}}/api/posts/99999/comments
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "content": "없는 글에 댓글 달기"
+}
+
+### 4. 댓글 등록 실패 - 인증 없이 시도 (401/403 기대)
+POST {{baseUrl}}/api/posts/{{postId}}/comments
+Content-Type: {{contentType}}
+
+{
+  "content": "토큰 없이 댓글 등록 시도"
+}
+
+### =========================
+### F-08. 댓글 수정/삭제
+### =========================
+
+### 5. 댓글 수정 성공 (본인 댓글, 200 기대 - commentId는 1번에서 등록된 댓글 번호로 바꿔서 실행)
+PUT {{baseUrl}}/api/posts/{{postId}}/comments/1
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "content": "수정된 댓글 내용입니다"
+}
+
+### 6. 댓글 수정 실패 - 내용 빈값 (400 기대)
+PUT {{baseUrl}}/api/posts/{{postId}}/comments/1
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "content": ""
+}
+
+### 7. 댓글 수정 실패 - 없는 댓글 (404 + COMMENT_NOT_FOUND 기대)
+PUT {{baseUrl}}/api/posts/{{postId}}/comments/99999
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "content": "없는 댓글 수정 시도"
+}
+
+### 8. 댓글 삭제 실패 - 없는 댓글 (404 + COMMENT_NOT_FOUND 기대)
+DELETE {{baseUrl}}/api/posts/{{postId}}/comments/99999
+Authorization: Bearer {{accessToken}}
+
+### 9. 댓글 삭제 성공 (본인 댓글, 200 기대 - 맨 마지막에 실행 권장, commentId는 실제 번호로)
+DELETE {{baseUrl}}/api/posts/{{postId}}/comments/1
+Authorization: Bearer {{accessToken}}
+
+
+### =========================
+### 타인 댓글 접근 - 403 (COMMENT_ACCESS_DENIED) 테스트
+### =========================
+
+### 10-1. 다른 계정 회원가입 (최초 1회만)
+POST {{baseUrl}}/api/auth/signup
+Content-Type: {{contentType}}
+
+{
+  "username": "commenttest2@test.com",
+  "password": "test1234!",
+  "name": "다른유저",
+  "nickname": "댓글다른유저"
+}
+
+### 10-2. 다른 계정 로그인
+# @name loginOther
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "commenttest2@test.com",
+  "password": "test1234!"
+}
+
+> {%
+    client.global.set("otherAccessToken", response.body.accessToken);
+%}
+
+### 10-3. 남의 댓글 수정 시도 (403 + COMMENT_ACCESS_DENIED 기대, commentId는 실제 존재하는 남의 댓글 번호로 바꿔서 실행)
+PUT {{baseUrl}}/api/posts/{{postId}}/comments/1
+Content-Type: {{contentType}}
+Authorization: Bearer {{otherAccessToken}}
+
+{
+  "content": "남의 댓글 수정 시도"
+}

@@ -1,6 +1,7 @@
 package org.example.backend.comment.controller;
 
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.comment.dto.CommentResponse;
@@ -8,6 +9,7 @@ import org.example.backend.comment.service.CommentService;
 import org.example.backend.comment.dto.CommentCreateRequest;
 import org.example.backend.comment.dto.CommentUpdateRequest;
 import org.example.backend.common.dto.ApiResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -22,18 +24,19 @@ public class CommentController {
     @PostMapping
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(
             @PathVariable Long postId,
-            @RequestBody CommentCreateRequest request,
+            @Valid @RequestBody CommentCreateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         CommentResponse response = commentService.createComment(postId, request, userDetails.getUser());
-        return ResponseEntity.ok(ApiResponse.success("댓글이 등록되었습니다", response));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("댓글이 등록되었습니다", response));
     }
 
     @PutMapping("/{commentId}")
     public ResponseEntity<ApiResponse<Void>> updateComment(
             @PathVariable Long postId,
             @PathVariable Long commentId,
-            @RequestBody CommentUpdateRequest request,
+            @Valid @RequestBody CommentUpdateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         commentService.updateComment(commentId, request, userDetails.getUser());
