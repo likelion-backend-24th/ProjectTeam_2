@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.user.dto.NicknameUpdateRequest;
+import org.example.backend.user.dto.PasswordUpdateRequest;
 import org.example.backend.user.dto.UserResponse;
 import org.example.backend.user.service.UserService;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
     private final UserService userService;
 
-    // 마이 페이지 조회
+    // 내 정보 조회
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getMyInfo(
             @AuthenticationPrincipal CustomUserDetails customUserDetails){
@@ -34,5 +35,20 @@ public class UserController {
         return ResponseEntity.ok("닉네임이 변경되었습니다.");
 
     }
+
+    // 비밀번호 변경
+    @PatchMapping("/me/password")
+    public ResponseEntity<String> updatePassword(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @Valid @RequestBody PasswordUpdateRequest passwordUpdateRequest){
+        userService.updatePassword(customUserDetails.getUsername(),
+                passwordUpdateRequest.getCurrentPassword(),
+                passwordUpdateRequest.getNewPassword(),
+                passwordUpdateRequest.getNewPasswordConfirm());
+
+        return ResponseEntity.ok("비밀번호가 변경되었습니다.");
+    }
+
+
 
 }

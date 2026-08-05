@@ -40,3 +40,19 @@ Content-Type: application/json
 {
   "nickname": ""
 }
+
+### 비밀번호 변경 - 성공
+PATCH http://localhost:8080/api/users/me/password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "test1234",
+  "newPassword": "새 비밀번호",
+  "newPasswordConfirm": "새 비밀번호 확인"
+}
+
+###실패부분도 테스트
+###현재 비밀번호 불일치(401)
+###새 비밀번호 확인 불일치(400)
+###OAuth로그인은 비밀번호없음으로 변경안됨(403) -> access토큰 소셜로그인꺼로 해야됨
