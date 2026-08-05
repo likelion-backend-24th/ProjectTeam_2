@@ -20,6 +20,30 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * 1. signup(userId, request)
+ * — 전문가 신청 처리. 기존 프로필 있으면 재신청(REJECTED→PENDING), 없으면 신규 생성.
+ *
+ * 2. approve(expertProfileId)
+ * — 관리자가 신청 승인. 상태를 APPROVED로, 유저 role을 EXPERT로 변경.
+ *
+ * 3. reject(expertProfileId, reason)
+ * — 관리자가 신청 거절. 상태를 REJECTED로, 사유 저장.
+ *
+ * 4. getList(status)
+ * — 관리자용 전문가 목록 조회. status 없으면 전체, 있으면 필터링.
+ *
+ * 5. revoke(expertProfileId, reason)
+ * — 이미 승인된 전문가의 자격 박탈. 상태를 REJECTED로, 유저 role을 USER로 되돌림.
+ *
+ * 6. getPublicList()
+ * — 비로그인 사용자도 볼 수 있는 공개 전문가 목록(APPROVED만) 조회.
+ *
+ * 7. getProfileOrThrow(id)
+ * — id로 프로필 조회, 없으면 404 예외 (내부 공용 헬퍼).
+ * → approve, reject, revoke에서 id를 찾고 없으면 404 로직 한 곳에 정리.
+ *
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -37,7 +61,7 @@ public class ExpertProfileService {
                 })
                 .orElseGet(() -> {
                     User user = userRepository.findById(userId)
-                            .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
+                            .orElseThrow(() -> new BusinessException(ExpertErrorCode.USER_NOT_FOUND));
                     ExpertProfile profile = ExpertProfile.builder()
                             .user(user)
                             .career(request.getCareer())

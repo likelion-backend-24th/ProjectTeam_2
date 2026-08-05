@@ -37,7 +37,7 @@ public class FeedbackService {
     @Transactional
     public FeedbackResponse createFeedback(Long requesterId, FeedbackCreateRequest request) {
         User requester = userRepository.findById(requesterId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
+                .orElseThrow(() -> new BusinessException(ExpertErrorCode.USER_NOT_FOUND));
         if (!requester.isSubscribed()) {
             throw new BusinessException(ExpertErrorCode.SUBSCRIPTION_REQUIRED);
         }
@@ -75,7 +75,7 @@ public class FeedbackService {
     public FeedbackMessageResponse addMessage(Long senderId, Long feedbackId, FeedbackMessageRequest request) {
         Feedback feedback = getFeedbackOrThrow(feedbackId);
         User sender = userRepository.findById(senderId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
+                .orElseThrow(() -> new BusinessException(ExpertErrorCode.USER_NOT_FOUND));
 
         boolean isRequester = feedback.getRequester().getId().equals(senderId);
         boolean isExpertAnswering = feedback.getExpertProfile().getUser().getId().equals(senderId);
