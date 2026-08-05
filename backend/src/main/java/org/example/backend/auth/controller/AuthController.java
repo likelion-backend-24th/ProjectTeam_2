@@ -7,6 +7,7 @@ import org.example.backend.auth.dto.jwt.SignupRequest;
 import org.example.backend.auth.dto.jwt.TokenResponse;
 import org.example.backend.auth.dto.oauth.GoogleLoginRequest;
 import org.example.backend.auth.dto.oauth.KakaoLoginRequest;
+import org.example.backend.auth.dto.oauth.NaverLoginRequest;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.auth.service.AuthService;
 import org.springframework.http.HttpHeaders;
@@ -90,6 +91,13 @@ public class AuthController {
     @PostMapping("/google")
     public ResponseEntity<TokenResponse> googleLogin(@Valid @RequestBody GoogleLoginRequest googleLoginRequest){
         TokenResponse response = authService.googleLogin(googleLoginRequest.getGoogleAccessToken());
+        return buildResponseWithCookie(response);
+    }
+
+    // NAVER 로그인 Post
+    @PostMapping("/naver")
+    public ResponseEntity<TokenResponse> naverLogin(@Valid @RequestBody NaverLoginRequest naverLoginRequest){
+        TokenResponse response = authService.naverLogin(naverLoginRequest.getNaverAccessToken());
         return buildResponseWithCookie(response);
     }
 
