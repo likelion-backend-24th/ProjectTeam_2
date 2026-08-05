@@ -7,6 +7,7 @@ import org.example.backend.user.entity.User;
 import org.example.backend.user.exception.UserErrorCode;
 import org.example.backend.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 
 @Service
@@ -27,7 +28,20 @@ public class UserService {
                 .status(user.getStatus())
                 .subscribed(user.isSubscribed())
                 .build();
-
     }
+
+    @Transactional
+    public void updateNickname(String username,String newNickname){
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+        if(userRepository.existsByNickname(newNickname)){
+            throw new BusinessException(UserErrorCode.DUPLICATE_NICKNAME);
+        }
+
+        user.setNickname(newNickname);
+        userRepository.save(user);
+    }
+
 
 }
