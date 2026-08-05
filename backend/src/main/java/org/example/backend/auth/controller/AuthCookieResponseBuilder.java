@@ -21,7 +21,7 @@ public class AuthCookieResponseBuilder {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(ApiResponse.success(message, response));
+                .body(ApiResponse.success(message,response));
     }
 
 }
