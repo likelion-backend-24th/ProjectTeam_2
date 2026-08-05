@@ -18,7 +18,9 @@ public enum StudyErrorCode implements ErrorCode {
     STUDY_LEADER_CANNOT_JOIN(HttpStatus.CONFLICT, "방장은 본인 스터디에 가입할 수 없습니다."),
     STUDY_POST_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 게시글입니다."),
     STUDY_POST_MISMATCH(HttpStatus.NOT_FOUND, "해당 스터디에 속한 게시글이 아닙니다."),
-    STUDY_POST_FORBIDDEN(HttpStatus.FORBIDDEN, "게시글에 대한 권한이 없습니다.");
+    STUDY_POST_FORBIDDEN(HttpStatus.FORBIDDEN, "게시글에 대한 권한이 없습니다."),
+    STUDY_POST_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 댓글입니다."),
+    STUDY_POST_COMMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "댓글에 대한 권한이 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String message;
