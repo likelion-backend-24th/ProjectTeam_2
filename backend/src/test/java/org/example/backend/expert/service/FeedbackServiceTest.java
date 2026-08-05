@@ -1,16 +1,17 @@
-package org.example.backend.expert;
+package org.example.backend.expert.service;
 
+import org.example.backend.common.exception.BusinessException;
 import org.example.backend.expert.dto.FeedbackCreateRequest;
 import org.example.backend.expert.dto.FeedbackMessageRequest;
 import org.example.backend.expert.dto.FeedbackResponse;
 import org.example.backend.expert.entity.ExpertProfile;
 import org.example.backend.expert.entity.Feedback;
 import org.example.backend.expert.entity.FeedbackStatus;
-import org.example.backend.expert.exception.FeedbackAccessDeniedException;
-import org.example.backend.expert.exception.SubscriptionRequiredException;
+import org.example.backend.expert.exception.ExpertErrorCode;
 import org.example.backend.expert.repository.ExpertProfileRepository;
 import org.example.backend.expert.repository.FeedbackMessageRepository;
 import org.example.backend.expert.repository.FeedbackRepository;
+import org.example.backend.expert.service.FeedbackService;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
 import org.example.backend.user.repository.UserRepository;
@@ -75,8 +76,9 @@ class FeedbackServiceTest {
         FeedbackCreateRequest request = new FeedbackCreateRequest();
         request.setExpertProfileId(99L);
 
-        assertThrows(FeedbackAccessDeniedException.class,
+        BusinessException e = assertThrows(BusinessException.class,
                 () -> feedbackService.createFeedback(1L, request));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_EXPERT_NOT_APPROVED);
     }
 
     @Test
@@ -87,8 +89,9 @@ class FeedbackServiceTest {
         FeedbackCreateRequest request = new FeedbackCreateRequest();
         request.setExpertProfileId(99L);
 
-        assertThrows(SubscriptionRequiredException.class,
+        BusinessException e = assertThrows(BusinessException.class,
                 () -> feedbackService.createFeedback(1L, request));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.SUBSCRIPTION_REQUIRED);
 
         verify(expertProfileRepository, never()).findById(any());
     }
@@ -163,8 +166,9 @@ class FeedbackServiceTest {
         when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
         when(userRepository.findById(999L)).thenReturn(Optional.of(stranger));
 
-        assertThrows(FeedbackAccessDeniedException.class,
+        BusinessException e = assertThrows(BusinessException.class,
                 () -> feedbackService.addMessage(999L, 1L, new FeedbackMessageRequest()));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_ACCESS_DENIED);
 
         verify(feedbackMessageRepository, never()).save(any());
     }

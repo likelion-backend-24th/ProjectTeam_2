@@ -28,6 +28,7 @@ public class StudyPostService {
     private final StudyRepository studyRepository;
     private final UserRepository userRepository;
 
+    @Transactional
     public StudyPostResponse createStudyPost(Long userId, Long id, StudyPostRequest request) {
         User user = getUserOrThrow(userId);
         Study study = getStudyOrThrow(id);

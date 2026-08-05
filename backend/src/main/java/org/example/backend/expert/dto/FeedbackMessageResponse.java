@@ -6,6 +6,11 @@ import org.example.backend.expert.entity.FeedbackMessage;
 
 import java.time.LocalDateTime;
 
+/**
+ * 메시지 등록/목록 조회(POST, GET /api/feedbacks/{id}/messages) 응답의 개별 항목.
+ */
+
+
 @Getter
 @Builder
 public class FeedbackMessageResponse {

@@ -63,8 +63,7 @@ public class StudyService {
         study.setRecruitStart(request.getRecruitStart());
         study.setRecruitEnd(request.getRecruitEnd());
 
-        Study updated = studyRepository.save(study);
-        return StudyResponse.from(updated);
+        return StudyResponse.from(study);
     }
 
 

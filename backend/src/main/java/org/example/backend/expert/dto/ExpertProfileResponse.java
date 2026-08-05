@@ -5,6 +5,11 @@ import lombok.Getter;
 import org.example.backend.expert.entity.ExpertProfile;
 import org.example.backend.expert.entity.ExpertStatus;
 
+
+/**
+ * 전문가 프로필의 관리자용(비공개) 표현.
+= */
+
 @Getter
 @Builder
 public class ExpertProfileResponse {
