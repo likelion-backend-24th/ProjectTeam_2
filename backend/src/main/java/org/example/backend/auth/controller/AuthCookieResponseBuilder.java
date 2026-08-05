@@ -24,4 +24,19 @@ public class AuthCookieResponseBuilder {
                 .body(ApiResponse.success(message,response));
     }
 
+    public ResponseEntity<ApiResponse<Void>> buildWithCookieDeleted(String message) {
+        ResponseCookie deleteCookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(0)
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                .body(ApiResponse.success(message, null));
+    }
+
+
 }

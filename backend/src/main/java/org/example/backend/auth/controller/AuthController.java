@@ -50,20 +50,12 @@ public class AuthController {
 
     //로그아웃 Post
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(@AuthenticationPrincipal CustomUserDetails customUserDetails){
+    public ResponseEntity<ApiResponse<Void>> logout(@AuthenticationPrincipal CustomUserDetails customUserDetails) {
         authService.logout(customUserDetails.getUsername());
 
-        ResponseCookie deleteCookie = ResponseCookie.from("refreshToken", "")
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/")
-                .maxAge(0)
-                .build();
+        return authCookieResponseBuilder.buildWithCookieDeleted("로그아웃되었습니다.");
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
-                .body(ApiResponse.success("로그아웃되었습니다.", null));
+
     }
 
     // Kakao 로그인 Post
