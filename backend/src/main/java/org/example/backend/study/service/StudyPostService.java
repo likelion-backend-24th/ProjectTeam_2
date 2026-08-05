@@ -1,6 +1,7 @@
 package org.example.backend.study.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.backend.auth.exception.AuthErrorCode;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.study.dto.StudyPostRequest;
 import org.example.backend.study.dto.StudyPostResponse;
@@ -27,9 +28,11 @@ public class StudyPostService {
     private final StudyRepository studyRepository;
     private final UserRepository userRepository;
 
+    @Transactional
     public StudyPostResponse createStudyPost(Long userId, Long id, StudyPostRequest request) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
-        Study study = studyRepository.findById(id).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
+        User user = getUserOrThrow(userId);
+        Study study = getStudyOrThrow(id);
+        validateStudyMember(id, userId);
 
         StudyPost post = new StudyPost(study, user, request.getTitle(), request.getContent());
         StudyPost saved = studyPostRepository.save(post);
@@ -38,8 +41,8 @@ public class StudyPostService {
     }
 
     public List<StudyPostResponse> getStudyPosts(Long userId, Long id) {
-        Study study = studyRepository.findById(id).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
-        studyMemberRepository.findByStudyIdAndUserId(id, userId).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_MEMBER_NOT_FOUND));
+        getStudyOrThrow(id);
+        validateStudyMember(id, userId);
 
         List<StudyPost> posts = studyPostRepository.findAllByStudyId(id);
         return posts.stream()
@@ -48,30 +51,20 @@ public class StudyPostService {
     }
 
     public StudyPostResponse getStudyPost(Long userId, Long id, Long postId) {
-        Study study = studyRepository.findById(id).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
-        studyMemberRepository.findByStudyIdAndUserId(id, userId).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_MEMBER_NOT_FOUND));
-        StudyPost post = studyPostRepository.findById(postId).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_POST_NOT_FOUND));
-
-        if (!post.getStudy().getId().equals(id)) {
-            throw new BusinessException(StudyErrorCode.STUDY_POST_MISMATCH);
-        }
+        getStudyOrThrow(id);
+        validateStudyMember(id, userId);
+        StudyPost post = getStudyPostOrThrow(id, postId);
 
         return StudyPostResponse.from(post);
     }
 
     @Transactional
     public StudyPostResponse updateStudyPost(Long userId, Long id, Long postId, StudyPostUpdateRequest request) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
-        Study study = studyRepository.findById(id).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
-        studyMemberRepository.findByStudyIdAndUserId(id, userId).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_MEMBER_NOT_FOUND));
-        StudyPost post = studyPostRepository.findById(postId).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_POST_NOT_FOUND));
-        if (!post.getStudy().getId().equals(id)) {
-            throw new BusinessException(StudyErrorCode.STUDY_POST_MISMATCH);
-        }
-
-        if (!post.getUser().getId().equals(userId)) {
-            throw new BusinessException(StudyErrorCode.STUDY_POST_FORBIDDEN);
-        }
+        getUserOrThrow(userId);
+        getStudyOrThrow(id);
+        validateStudyMember(id, userId);
+        StudyPost post = getStudyPostOrThrow(id, postId);
+        validatePostOwner(post, userId);
 
         post.setTitle(request.getTitle());
         post.setContent(request.getContent());
@@ -81,18 +74,41 @@ public class StudyPostService {
 
     @Transactional
     public void deleteStudyPost(Long userId, Long id, Long postId) {
-        Study study = studyRepository.findById(id).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
-        studyMemberRepository.findByStudyIdAndUserId(id, userId).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_MEMBER_NOT_FOUND));
-        StudyPost post = studyPostRepository.findById(postId).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_POST_NOT_FOUND));
+        getStudyOrThrow(id);
+        validateStudyMember(id, userId);
+        StudyPost post = getStudyPostOrThrow(id, postId);
+        validatePostOwner(post, userId);
 
-        if (!post.getStudy().getId().equals(id)) {
+        studyPostRepository.delete(post);
+    }
+
+    // 검증 및 조회 메서드
+    private User getUserOrThrow(Long userId) {
+        return userRepository.findById(userId).orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
+    }
+
+    private Study getStudyOrThrow(Long studyId) {
+        return studyRepository.findById(studyId).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
+    }
+
+    private void validateStudyMember(Long studyId, Long userId) {
+        studyMemberRepository.findByStudyIdAndUserId(studyId, userId)
+                .orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_MEMBER_NOT_FOUND));
+    }
+
+    private StudyPost getStudyPostOrThrow(Long studyId, Long postId) {
+        StudyPost post = studyPostRepository.findById(postId)
+                .orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_POST_NOT_FOUND));
+
+        if (!post.getStudy().getId().equals(studyId)) {
             throw new BusinessException(StudyErrorCode.STUDY_POST_MISMATCH);
         }
+        return post;
+    }
 
+    private void validatePostOwner(StudyPost post, Long userId) {
         if (!post.getUser().getId().equals(userId)) {
             throw new BusinessException(StudyErrorCode.STUDY_POST_FORBIDDEN);
         }
-
-        studyPostRepository.delete(post);
     }
 }
