@@ -74,8 +74,7 @@ Content-Type: application/json
 }
 
 > {%
-    client.global.set("accessToken", response.body.accessToken);
-    client.global.set("refreshToken", response.body.refreshToken);
+    client.global.set("accessToken", response.body.data.accessToken);
 %}
 
 ### 로그인 - 실패: 존재하지 않는 계정 (404)

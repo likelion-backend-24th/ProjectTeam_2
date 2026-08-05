@@ -8,10 +8,8 @@ Content-Type: application/json
 }
 
 > {%
-    client.global.set("accessToken", response.body.accessToken);
-    client.global.set("refreshToken", response.body.refreshToken);
+    client.global.set("accessToken", response.body.data.accessToken);
 %}
-
 
 ### 닉네임 수정 - 성공
 PATCH http://localhost:8080/api/users/me/nickname
