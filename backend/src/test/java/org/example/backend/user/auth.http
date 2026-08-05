@@ -96,6 +96,10 @@ Content-Type: application/json
   "password": "test5555"
 }
 
+### 내 정보 조회 - 성공
+GET http://localhost:8080/api/users/me
+Authorization: Bearer {{accessToken}}
+
 
 
 ### 로그아웃 - 성공 (200)
@@ -104,3 +108,4 @@ Authorization: Bearer {{accessToken}}
 
 ### 재발급 성공 (200) / 재발급 - 실패: 쿠키 없음 (400)-(로그아웃하고 실행)
 POST http://localhost:8080/api/auth/reissue
+
