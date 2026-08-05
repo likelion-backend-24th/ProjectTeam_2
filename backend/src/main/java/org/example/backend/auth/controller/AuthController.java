@@ -10,6 +10,7 @@ import org.example.backend.auth.dto.oauth.KakaoLoginRequest;
 import org.example.backend.auth.dto.oauth.NaverLoginRequest;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.auth.service.AuthService;
+import org.example.backend.common.dto.ApiResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -62,22 +63,6 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
                 .body("로그아웃되었습니다.");
-    }
-
-
-    // refreshtoken은 쿠키로 내려주기
-    private ResponseEntity<TokenResponse> buildResponseWithCookie(TokenResponse response){
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", response.getRefreshToken())
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/")
-                .maxAge(60 * 60 * 24 * 14) // 14일 (초 단위)
-                .build();
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(response);
     }
 
     // Kakao 로그인 Post
