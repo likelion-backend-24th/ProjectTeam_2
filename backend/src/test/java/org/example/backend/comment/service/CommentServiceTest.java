@@ -1,7 +1,7 @@
 package org.example.backend.comment.service;
 
-import org.example.backend.comment.exception.CommentAccessDeniedException;
-import org.example.backend.comment.exception.CommentNotFoundException;
+import org.example.backend.common.exception.BusinessException;
+import org.example.backend.comment.exception.CommentErrorCode;
 import org.example.backend.comment.repository.CommentRepository;
 import org.example.backend.comment.entity.Comment;
 import org.example.backend.post.repository.PostRepository;
@@ -48,7 +48,8 @@ class CommentServiceTest {
 
         // when & then: 2번 유저가 삭제 시도하면 예외가 터져야 한다
         assertThatThrownBy(() -> commentService.deleteComment(100L, requester))
-                .isInstanceOf(CommentAccessDeniedException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(CommentErrorCode.COMMENT_ACCESS_DENIED);
     }
 
     @Test
@@ -82,6 +83,7 @@ class CommentServiceTest {
 
         // when & then
         assertThatThrownBy(() -> commentService.updateComment(99999L, null, requester))
-                .isInstanceOf(CommentNotFoundException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(CommentErrorCode.COMMENT_NOT_FOUND);
     }
 }

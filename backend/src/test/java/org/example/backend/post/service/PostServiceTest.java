@@ -3,8 +3,8 @@ package org.example.backend.post.service;
 import org.example.backend.comment.repository.CommentRepository;
 import org.example.backend.post.entity.Post;
 import org.example.backend.post.entity.PostCategory;
-import org.example.backend.post.exception.PostAccessDeniedException;
-import org.example.backend.post.exception.PostNotFoundException;
+import org.example.backend.common.exception.BusinessException;
+import org.example.backend.post.exception.PostErrorCode;
 import org.example.backend.post.repository.PostRepository;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
@@ -54,7 +54,8 @@ class PostServiceTest {
 
         // when & then: 2번 유저가 삭제 시도하면 예외가 터져야 한다
         assertThatThrownBy(() -> postService.deletePost(100L, requester))
-                .isInstanceOf(PostAccessDeniedException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(PostErrorCode.POST_ACCESS_DENIED);
     }
 
     @Test
@@ -85,7 +86,8 @@ class PostServiceTest {
 
         // when & then
         assertThatThrownBy(() -> postService.getPostDetail(99999L))
-                .isInstanceOf(PostNotFoundException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(PostErrorCode.POST_NOT_FOUND);
     }
 
     @Test
