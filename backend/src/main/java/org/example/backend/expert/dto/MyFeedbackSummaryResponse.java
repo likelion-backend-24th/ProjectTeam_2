@@ -7,6 +7,11 @@ import org.example.backend.expert.entity.FeedbackStatus;
 
 import java.time.LocalDateTime;
 
+/**
+ * "내 문의 스레드 목록"(GET /api/feedbacks/me) 응답의 개별 항목.
+ */
+
+
 @Getter
 @Builder
 public class MyFeedbackSummaryResponse {
