@@ -1,13 +1,13 @@
 package org.example.backend.expert.service;
 
+import org.example.backend.common.exception.BusinessException;
 import org.example.backend.expert.dto.ExpertListResponse;
 import org.example.backend.expert.dto.ExpertProfileResponse;
 import org.example.backend.expert.dto.ExpertSignupRequest;
 import org.example.backend.expert.dto.ExpertSignupResponse;
 import org.example.backend.expert.entity.ExpertProfile;
 import org.example.backend.expert.entity.ExpertStatus;
-import org.example.backend.expert.exception.ExpertProfileNotFoundException;
-import org.example.backend.expert.exception.InvalidExpertStatusException;
+import org.example.backend.expert.exception.ExpertErrorCode;
 import org.example.backend.expert.repository.ExpertProfileRepository;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
@@ -57,8 +57,9 @@ class ExpertProfileServiceTest {
                 .user(user).career("3년").certification("정보처리기사").build();
         when(expertProfileRepository.findByUserId(1L)).thenReturn(Optional.of(profile));
 
-        assertThrows(InvalidExpertStatusException.class,
+        BusinessException e = assertThrows(BusinessException.class,
                 () -> expertProfileService.signup(1L, new ExpertSignupRequest()));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.EXPERT_REAPPLY_INVALID_STATUS);
 
         verify(userRepository, never()).findById(any());
     }
@@ -70,8 +71,9 @@ class ExpertProfileServiceTest {
         profile.approve();
         when(expertProfileRepository.findByUserId(1L)).thenReturn(Optional.of(profile));
 
-        assertThrows(InvalidExpertStatusException.class,
+        BusinessException e = assertThrows(BusinessException.class,
                 () -> expertProfileService.signup(1L, new ExpertSignupRequest()));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.EXPERT_REAPPLY_INVALID_STATUS);
     }
 
     @Test
@@ -154,7 +156,8 @@ class ExpertProfileServiceTest {
         profile.approve();
         when(expertProfileRepository.findById(11L)).thenReturn(Optional.of(profile));
 
-        assertThrows(InvalidExpertStatusException.class, () -> expertProfileService.approve(11L));
+        BusinessException e = assertThrows(BusinessException.class, () -> expertProfileService.approve(11L));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.EXPERT_APPROVE_INVALID_STATUS);
     }
 
     @Test
@@ -164,7 +167,9 @@ class ExpertProfileServiceTest {
         profile.reject("경력 부족");
         when(expertProfileRepository.findById(12L)).thenReturn(Optional.of(profile));
 
-        assertThrows(InvalidExpertStatusException.class, () -> expertProfileService.reject(12L, "재검토 결과 거절"));
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> expertProfileService.reject(12L, "재검토 결과 거절"));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.EXPERT_REJECT_INVALID_STATUS);
     }
 
     @Test
@@ -173,14 +178,16 @@ class ExpertProfileServiceTest {
                 .user(user).career("3년").certification("정보처리기사").build();
         when(expertProfileRepository.findById(13L)).thenReturn(Optional.of(profile));
 
-        assertThrows(InvalidExpertStatusException.class, () -> expertProfileService.revoke(13L, "사유"));
+        BusinessException e = assertThrows(BusinessException.class, () -> expertProfileService.revoke(13L, "사유"));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.EXPERT_REVOKE_INVALID_STATUS);
     }
 
     @Test
-    void approve_없는id면_ExpertProfileNotFoundException() {
+    void approve_없는id면_EXPERT_PROFILE_NOT_FOUND() {
         when(expertProfileRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThrows(ExpertProfileNotFoundException.class, () -> expertProfileService.approve(999L));
+        BusinessException e = assertThrows(BusinessException.class, () -> expertProfileService.approve(999L));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND);
     }
 
     @Test
