@@ -12,7 +12,7 @@ grant_type=authorization_code&client_id={REST_API_키}&redirect_uri=https://loca
 #  6. 그 access토큰을 복사해서 밑에 카카오 로그인 회원가입 테스트에 붙여 넣어서 테스트
 
 
-# 브라우저에 입력할 주소
+# 브라우저창 열고 수동으로 카카오 엑세스 토큰 받기위해서 들어갈 주소
 #https://kauth.kakao.com/oauth/authorize?client_id={REST_API_키}&redirect_uri=https://localhost:3000/oauth/callback&response_type=code
 
 #     grant_type=authorization_code&client_id={REST_API_키}&redirect_uri=https://localhost:3000/oauth/callback&code=jMuj_szcyT ....인가받은코드
@@ -34,7 +34,7 @@ Content-Type: application/x-www-form-urlencoded
 
 grant_type=authorization_code&client_id=본인의_클라이언트ID&client_secret=본인의_클라이언트시크릿&redirect_uri=https://localhost:3000/oauth/callback&code=방금_받은_인가코드
 
-#브라우저에 입력할 주소
+# 브라우저창 열고 수동으로 구글 엑세스 토큰 받기위해서 들어갈 주소
 #https://accounts.google.com/o/oauth2/v2/auth?client_id={클라이언트ID}&redirect_uri=https://localhost:3000/oauth/callback&response_type=code&scope=email%20profile
 
 #로그인하고 필수항목체크하고 다음 눌렀을때 에러나오면서 나오는 창 code= 뒤에가 인가 받을 코드
@@ -52,3 +52,12 @@ Content-Type: application/json
 }
 ###복사용
 #"googleAccessToken": "access token 여기에 복사"
+
+### NAVER access token 받기
+POST https://nid.naver.com/oauth2.0/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code&client_id=본인의_Client_ID&client_secret=본인의_Client_Secret&code=방금_복사한_코드&state=random_state_123
+
+# 브라우저창 열고 수동으로 네이버 엑세스 토큰 받기위해서 들어갈 주소
+# https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=본인의_Client_ID&redirect_uri=https://localhost:3000/oauth/callback&state=random_state_123
