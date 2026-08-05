@@ -6,6 +6,7 @@ import org.example.backend.user.dto.UserResponse;
 import org.example.backend.user.entity.User;
 import org.example.backend.user.exception.UserErrorCode;
 import org.example.backend.user.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
+    // 내 정보 조회
     public UserResponse getMyInfo(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
@@ -30,6 +33,7 @@ public class UserService {
                 .build();
     }
 
+    // 닉네임 수정
     @Transactional
     public void updateNickname(String username,String newNickname){
         User user = userRepository.findByUsername(username)
@@ -43,5 +47,25 @@ public class UserService {
         userRepository.save(user);
     }
 
+    //비밀번호 변경
+    @Transactional
+    public void updatePassword(String username,String currentPassword,String newPassword, String newpasswordConfirm){
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+        if(user.getPassword() == null){
+            throw new BusinessException(UserErrorCode.SOCIAL_USER_CANNOT_CHANGE_PASSWORD);
+        }
+
+        if(!passwordEncoder.matches(currentPassword,user.getPassword())){
+            throw new BusinessException(UserErrorCode.INVALID_CURRENT_PASSWORD);
+        }
+        if(!newPassword.equals(newpasswordConfirm)){
+            throw new BusinessException((UserErrorCode.PASSWORD_CONFIRM_MISMATCH));
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+    }
 
 }
