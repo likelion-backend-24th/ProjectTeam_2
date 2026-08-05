@@ -3,6 +3,7 @@ package org.example.backend.auth.service;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.dto.oauth.GoogleUserInfoResponse;
 import org.example.backend.auth.dto.oauth.KakaoUserInfoResponse;
+import org.example.backend.auth.dto.oauth.NaverUserInfoResponse;
 import org.example.backend.auth.entity.OauthAccount;
 import org.example.backend.auth.exception.*;
 import org.example.backend.auth.dto.jwt.LoginRequest;
@@ -35,6 +36,8 @@ public class AuthService {
     private final KakaoApiClient kakaoApiClient;
     private final OauthAccountRepository oauthAccountRepository;
     private final GoogleApiClient googleApiClient;
+    private final NaverApiClient naverApiClient;
+
     //회원가입
     @Transactional
     public void signup(SignupRequest signupRequest) {
@@ -210,6 +213,61 @@ public class AuthService {
         User user = oauthAccountRepository.findByProviderAndProviderId("GOOGLE", providerId)
                 .map(oauthAccount -> oauthAccount.getUser())
                 .orElseGet(() -> registerGoogleUser(googleUserInfo, providerId));
+
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
+        String refreshTokenValue = jwtTokenProvider.generateRefreshToken(user.getUsername());
+
+        RefreshToken refreshToken = refreshTokenRepository.findByUser(user)
+                .orElse(new RefreshToken());
+        refreshToken.setUser(user);
+        refreshToken.setToken(refreshTokenValue);
+        refreshToken.setExpiresAt(LocalDateTime.now().plusDays(14));
+
+        refreshTokenRepository.save(refreshToken);
+
+        return new TokenResponse(accessToken, refreshTokenValue);
+    }
+
+    // NAVER 최초 로그인 시 회원가입 처리
+    private User registerNaverUser(NaverUserInfoResponse naverUserInfo,String prviderId){
+        User user = new User();
+        user.setUsername(naverUserInfo.getResponse().getEmail());
+        user.setName(naverUserInfo.getResponse().getName());
+        user.setNickname(naverUserInfo.getResponse().getName() + "_NAVER");
+        user.setPassword(null);
+        user.setRole(Role.USER);
+        user.setStatus(AccountStatus.ACTIVE);
+        user.setSubscribed(false);
+
+        userRepository.save(user);
+
+        OauthAccount oauthAccount = new OauthAccount();
+        oauthAccount.setUser(user);
+        oauthAccount.setProvider("NAVER");
+        oauthAccount.setProviderId(prviderId);
+        oauthAccount.setLinkedAt(LocalDateTime.now());
+
+        oauthAccountRepository.save(oauthAccount);
+
+        return user;
+
+    }
+
+    // NAVER 로그인
+    @Transactional
+    public TokenResponse naverLogin(String naverAccessToken){
+        NaverUserInfoResponse naverUserInfo;
+        try {
+            naverUserInfo = naverApiClient.getUserInfo(naverAccessToken);
+        } catch (HttpClientErrorException e) {
+            throw new BusinessException(AuthErrorCode.OAUTH_TOKEN_INVALID);
+        }
+
+        String providerId = naverUserInfo.getResponse().getId();
+
+        User user = oauthAccountRepository.findByProviderAndProviderId("NAVER", providerId)
+                .map(oauthAccount -> oauthAccount.getUser())
+                .orElseGet(() -> registerNaverUser(naverUserInfo, providerId));
 
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String refreshTokenValue = jwtTokenProvider.generateRefreshToken(user.getUsername());
