@@ -3,16 +3,15 @@ package org.example.backend.study.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.common.dto.ApiResponse;
 import org.example.backend.common.dto.Meta;
 import org.example.backend.common.dto.PageMeta;
 import org.example.backend.study.dto.request.StudyRequest;
 import org.example.backend.study.dto.request.StudyUpdateRequest;
 import org.example.backend.study.dto.response.StudyDetailResponse;
-import org.example.backend.study.dto.response.StudyMemberResponse;
 import org.example.backend.study.dto.response.StudyResponse;
 import org.example.backend.study.service.StudyService;
-import org.example.backend.auth.security.CustomUserDetails;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -85,11 +84,5 @@ public class StudyController {
         return ResponseEntity.ok(ApiResponse.success("스터디 삭제", null));
     }
 
-    @Operation(summary = "스터디 가입 신청")
-    @PostMapping("/{id}/join")
-    public ResponseEntity<ApiResponse<StudyMemberResponse>> joinStudy(@AuthenticationPrincipal CustomUserDetails user, @PathVariable Long id) {
-        Long userId = user.getUser().getId();
-        StudyMemberResponse response = studyService.joinStudy(userId, id);
-        return ResponseEntity.ok(ApiResponse.success("스터디 가입", response));
-    }
+
 }

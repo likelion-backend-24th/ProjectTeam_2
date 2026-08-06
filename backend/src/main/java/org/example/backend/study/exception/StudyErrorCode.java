@@ -20,7 +20,10 @@ public enum StudyErrorCode implements ErrorCode {
     STUDY_POST_MISMATCH(HttpStatus.NOT_FOUND, "해당 스터디에 속한 게시글이 아닙니다."),
     STUDY_POST_FORBIDDEN(HttpStatus.FORBIDDEN, "게시글에 대한 권한이 없습니다."),
     STUDY_POST_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 댓글입니다."),
-    STUDY_POST_COMMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "댓글에 대한 권한이 없습니다.");
+    STUDY_POST_COMMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "댓글에 대한 권한이 없습니다."),
+    STUDY_LEADER_CANNOT_BE_REMOVED(HttpStatus.FORBIDDEN, "방장은 강퇴할 수 없습니다."),
+    STUDY_LEADER_DELEGATE_SELF(HttpStatus.CONFLICT, "본인에게는 방장을 위임할 수 없습니다."),
+    STUDY_LEADER_MUST_DELEGATE(HttpStatus.CONFLICT, "방장은 위임 후에 탈퇴할 수 있습니다.");
 
     private final HttpStatus httpStatus;
     private final String message;
