@@ -2,6 +2,7 @@ package org.example.backend.comment.dto;
 
 import lombok.Builder;
 import lombok.Getter;
+import org.example.backend.comment.entity.Comment;
 
 import java.time.LocalDateTime;
 
@@ -12,4 +13,13 @@ public class CommentResponse {
     private String content;
     private String authorNickname;
     private LocalDateTime createdAt;
+
+    public static CommentResponse from(Comment comment) {
+        return CommentResponse.builder()
+                .id(comment.getId())
+                .content(comment.getContent())
+                .authorNickname(comment.getUser().getNickname())
+                .createdAt(comment.getCreatedAt())
+                .build();
+    }
 }

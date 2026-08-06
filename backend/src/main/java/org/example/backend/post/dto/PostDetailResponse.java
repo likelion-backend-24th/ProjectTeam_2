@@ -3,6 +3,8 @@ package org.example.backend.post.dto;
 import lombok.Builder;
 import lombok.Getter;
 import org.example.backend.comment.dto.CommentResponse; // comment 패키지의 dto 폴더에서 가져오기
+import org.example.backend.comment.entity.Comment;
+import org.example.backend.post.entity.Post;
 import org.example.backend.post.entity.PostCategory;
 
 import java.time.LocalDateTime;
@@ -24,4 +26,21 @@ public class PostDetailResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<CommentResponse> comments; // 게시글에 달린 댓글 목록
+
+    public static PostDetailResponse from(Post post, List<Comment> comments) {
+        List<CommentResponse> commentResponses = comments.stream()
+                .map(CommentResponse::from)
+                .toList();
+
+        return PostDetailResponse.builder()
+                .id(post.getId())
+                .title(post.getTitle())
+                .content(post.getContent())
+                .category(post.getCategory())
+                .authorNickname(post.getUser().getNickname())
+                .createdAt(post.getCreatedAt())
+                .updatedAt(post.getUpdatedAt())
+                .comments(commentResponses)
+                .build();
+    }
 }
