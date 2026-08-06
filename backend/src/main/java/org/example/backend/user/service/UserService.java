@@ -1,7 +1,7 @@
 package org.example.backend.user.service;
 
 import lombok.RequiredArgsConstructor;
-import org.example.backend.auth.entity.AccountStatus;
+import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.auth.repository.RefreshTokenRepository;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.user.dto.UserResponse;
@@ -11,6 +11,8 @@ import org.example.backend.user.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 
 @Service
@@ -82,6 +84,7 @@ public class UserService {
         user.setName("탈퇴한사용자");
         user.setStatus(AccountStatus.WITHDRAWN);
         user.setNickname("탈퇴한사용자_" + user.getId());
+        user.setWithdrawnAt(LocalDateTime.now());
         userRepository.save(user);
 
         refreshTokenRepository.deleteByUser(user);
