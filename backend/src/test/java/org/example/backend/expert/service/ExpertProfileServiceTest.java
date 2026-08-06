@@ -1,12 +1,15 @@
 package org.example.backend.expert.service;
 
 import org.example.backend.common.exception.BusinessException;
+import org.example.backend.expert.dto.request.CareerRequest;
 import org.example.backend.expert.dto.response.ExpertListResponse;
 import org.example.backend.expert.dto.response.ExpertProfileResponse;
 import org.example.backend.expert.dto.request.ExpertSignupRequest;
 import org.example.backend.expert.dto.response.ExpertSignupResponse;
+import org.example.backend.expert.entity.Career;
 import org.example.backend.expert.entity.ExpertProfile;
 import org.example.backend.expert.entity.ExpertStatus;
+import org.example.backend.expert.entity.JobField;
 import org.example.backend.expert.exception.ExpertErrorCode;
 import org.example.backend.expert.repository.ExpertProfileRepository;
 import org.example.backend.user.entity.Role;
@@ -51,14 +54,27 @@ class ExpertProfileServiceTest {
         user.setRole(Role.USER);
     }
 
+    // 신청 요청 하나를 만드는 헬퍼. 경력 1건 + 소개글로 구성한다.
+    private ExpertSignupRequest signupRequest(String companyName, int years, String introduction) {
+        CareerRequest career = new CareerRequest();
+        career.setCompanyName(companyName);
+        career.setPosition("백엔드 개발자");
+        career.setYears(years);
+        career.setJobField(JobField.IT_DEVELOPMENT);
+
+        ExpertSignupRequest request = new ExpertSignupRequest();
+        request.setCareers(List.of(career));
+        request.setIntroduction(introduction);
+        return request;
+    }
+
     @Test
     void signup_기존신청이PENDING이면_예외() {
-        ExpertProfile profile = ExpertProfile.builder()
-                .user(user).career("3년").certification("정보처리기사").build();
+        ExpertProfile profile = ExpertProfile.builder().user(user).introduction("소개").build();
         when(expertProfileRepository.findByUserId(1L)).thenReturn(Optional.of(profile));
 
         BusinessException e = assertThrows(BusinessException.class,
-                () -> expertProfileService.signup(1L, new ExpertSignupRequest()));
+                () -> expertProfileService.signup(1L, signupRequest("카카오", 3, "소개")));
         assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.EXPERT_REAPPLY_INVALID_STATUS);
 
         verify(userRepository, never()).findById(any());
@@ -66,13 +82,12 @@ class ExpertProfileServiceTest {
 
     @Test
     void signup_기존신청이APPROVED면_예외() {
-        ExpertProfile profile = ExpertProfile.builder()
-                .user(user).career("3년").certification("정보처리기사").build();
+        ExpertProfile profile = ExpertProfile.builder().user(user).introduction("소개").build();
         profile.approve();
         when(expertProfileRepository.findByUserId(1L)).thenReturn(Optional.of(profile));
 
         BusinessException e = assertThrows(BusinessException.class,
-                () -> expertProfileService.signup(1L, new ExpertSignupRequest()));
+                () -> expertProfileService.signup(1L, signupRequest("카카오", 3, "소개")));
         assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.EXPERT_REAPPLY_INVALID_STATUS);
     }
 
@@ -81,11 +96,7 @@ class ExpertProfileServiceTest {
         when(expertProfileRepository.findByUserId(1L)).thenReturn(Optional.empty());
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
 
-        ExpertSignupRequest request = new ExpertSignupRequest();
-        request.setCareer("3년");
-        request.setCertification("정보처리기사");
-
-        ExpertSignupResponse response = expertProfileService.signup(1L, request);
+        ExpertSignupResponse response = expertProfileService.signup(1L, signupRequest("카카오", 3, "소개글"));
 
         assertThat(response.getStatus()).isEqualTo(ExpertStatus.PENDING);
         verify(expertProfileRepository).save(any(ExpertProfile.class));
@@ -93,19 +104,16 @@ class ExpertProfileServiceTest {
 
     @Test
     void signup_기존신청이REJECTED면_재신청으로_PENDING전환() {
-        ExpertProfile profile = ExpertProfile.builder()
-                .user(user).career("1년").certification(null).build();
+        ExpertProfile profile = ExpertProfile.builder().user(user).introduction("이전 소개").build();
         profile.reject("경력 부족");
         when(expertProfileRepository.findByUserId(1L)).thenReturn(Optional.of(profile));
 
-        ExpertSignupRequest request = new ExpertSignupRequest();
-        request.setCareer("3년");
-        request.setCertification("정보처리기사");
-
-        ExpertSignupResponse response = expertProfileService.signup(1L, request);
+        ExpertSignupResponse response = expertProfileService.signup(1L, signupRequest("네이버", 5, "새 소개글"));
 
         assertThat(response.getStatus()).isEqualTo(ExpertStatus.PENDING);
-        assertThat(profile.getCareer()).isEqualTo("3년");
+        assertThat(profile.getCareers()).hasSize(1);
+        assertThat(profile.getCareers().get(0).getCompanyName()).isEqualTo("네이버");
+        assertThat(profile.getIntroduction()).isEqualTo("새 소개글");
         assertThat(profile.getRejectReason()).isNull();
         verify(expertProfileRepository, never()).save(any());
         verify(userRepository, never()).findById(any());
@@ -113,8 +121,7 @@ class ExpertProfileServiceTest {
 
     @Test
     void approve_승인시_상태APPROVED_역할EXPERT로_변경() {
-        ExpertProfile profile = ExpertProfile.builder()
-                .user(user).career("3년").certification("정보처리기사").build();
+        ExpertProfile profile = ExpertProfile.builder().user(user).introduction("소개").build();
         when(expertProfileRepository.findById(10L)).thenReturn(Optional.of(profile));
 
         ExpertProfileResponse response = expertProfileService.approve(10L);
@@ -125,8 +132,7 @@ class ExpertProfileServiceTest {
 
     @Test
     void reject_거절시_사유가_저장됨() {
-        ExpertProfile profile = ExpertProfile.builder()
-                .user(user).career("1년").certification(null).build();
+        ExpertProfile profile = ExpertProfile.builder().user(user).introduction("소개").build();
         when(expertProfileRepository.findById(5L)).thenReturn(Optional.of(profile));
 
         ExpertProfileResponse response = expertProfileService.reject(5L, "경력 부족");
@@ -137,8 +143,7 @@ class ExpertProfileServiceTest {
 
     @Test
     void revoke_자격박탈시_상태REJECTED_역할USER로_원복() {
-        ExpertProfile profile = ExpertProfile.builder()
-                .user(user).career("5년").certification("정보처리기사").build();
+        ExpertProfile profile = ExpertProfile.builder().user(user).introduction("소개").build();
         profile.approve();
         user.setRole(Role.EXPERT);
         when(expertProfileRepository.findById(7L)).thenReturn(Optional.of(profile));
@@ -151,8 +156,7 @@ class ExpertProfileServiceTest {
 
     @Test
     void approve_이미승인된대상이면_예외() {
-        ExpertProfile profile = ExpertProfile.builder()
-                .user(user).career("3년").certification("정보처리기사").build();
+        ExpertProfile profile = ExpertProfile.builder().user(user).introduction("소개").build();
         profile.approve();
         when(expertProfileRepository.findById(11L)).thenReturn(Optional.of(profile));
 
@@ -162,8 +166,7 @@ class ExpertProfileServiceTest {
 
     @Test
     void reject_이미거절된대상이면_예외() {
-        ExpertProfile profile = ExpertProfile.builder()
-                .user(user).career("1년").certification(null).build();
+        ExpertProfile profile = ExpertProfile.builder().user(user).introduction("소개").build();
         profile.reject("경력 부족");
         when(expertProfileRepository.findById(12L)).thenReturn(Optional.of(profile));
 
@@ -174,8 +177,7 @@ class ExpertProfileServiceTest {
 
     @Test
     void revoke_PENDING상태면_예외() {
-        ExpertProfile profile = ExpertProfile.builder()
-                .user(user).career("3년").certification("정보처리기사").build();
+        ExpertProfile profile = ExpertProfile.builder().user(user).introduction("소개").build();
         when(expertProfileRepository.findById(13L)).thenReturn(Optional.of(profile));
 
         BusinessException e = assertThrows(BusinessException.class, () -> expertProfileService.revoke(13L, "사유"));
@@ -192,8 +194,7 @@ class ExpertProfileServiceTest {
 
     @Test
     void getList_상태null이면_findAll_호출하고_experts로_감싸서_반환() {
-        ExpertProfile profile = ExpertProfile.builder()
-                .user(user).career("5년").certification("정보처리기사").build();
+        ExpertProfile profile = ExpertProfile.builder().user(user).introduction("소개").build();
         when(expertProfileRepository.findAll()).thenReturn(List.of(profile));
 
         ExpertListResponse response = expertProfileService.getList(null);
@@ -205,8 +206,14 @@ class ExpertProfileServiceTest {
 
     @Test
     void getPublicList_APPROVED만_조회() {
-        ExpertProfile profile = ExpertProfile.builder()
-                .user(user).career("5년").certification("정보처리기사").build();
+        ExpertProfile profile = ExpertProfile.builder().user(user).introduction("소개").build();
+        profile.addCareer(Career.builder()
+                .expertProfile(profile)
+                .companyName("카카오")
+                .position("시니어 개발자")
+                .years(5)
+                .jobField(JobField.IT_DEVELOPMENT)
+                .build());
         profile.approve();
         when(expertProfileRepository.findByStatus(ExpertStatus.APPROVED)).thenReturn(List.of(profile));
 
@@ -214,6 +221,6 @@ class ExpertProfileServiceTest {
 
         assertThat(response.getExperts()).hasSize(1);
         assertThat(response.getExperts().get(0).getNickname()).isEqualTo("테스터");
-        assertThat(response.getExperts().get(0).getCareer()).isEqualTo("5년");
+        assertThat(response.getExperts().get(0).getCareer()).isEqualTo("카카오 · 시니어 개발자 · 5년차");
     }
 }

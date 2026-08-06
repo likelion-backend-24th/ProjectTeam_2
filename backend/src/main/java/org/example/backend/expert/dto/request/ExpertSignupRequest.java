@@ -1,10 +1,15 @@
 package org.example.backend.expert.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.List;
+
 
 /**
  * 전문가 신청(POST /api/experts/signup) 요청 바디.
@@ -16,10 +21,13 @@ import lombok.Setter;
 @NoArgsConstructor
 public class ExpertSignupRequest {
 
-    @NotBlank(message = "career는 필수입니다.")
-    @Size(max = 2000, message = "career는 2000자를 넘을 수 없습니다.")
-    private String career;
+    @NotEmpty(message = "경력은 최소 1건 이상 입력해야 합니다.")
+    @Valid
+    private List<CareerRequest> careers;
 
-    @Size(max = 2000, message = "certification은 2000자를 넘을 수 없습니다.")
-    private String certification;
+    @Valid
+    private List<CertificationRequest> certifications; // 선택 사항
+
+    @Size(max = 500, message = "소개글은 500자를 넘을 수 없습니다.")
+    private String introduction;
 }

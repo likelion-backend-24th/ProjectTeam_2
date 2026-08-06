@@ -19,6 +19,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+
 
 @Tag(name = "전문가", description = "전문가 신청/승인/거절/자격박탈/공개조회 (F-25, F-26, F-27, F-32)")
 @RestController
@@ -30,14 +32,14 @@ public class ExpertProfileController {
     @Operation(summary = "F-25 전문가 신청", description = "로그인한 USER가 경력·자격증을 입력해 전문가를 신청합니다.")
     @PostMapping("/api/experts/signup")
     public ResponseEntity<ApiResponse<ExpertSignupResponse>> signup(
-            Authentication authentication,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody @Valid ExpertSignupRequest request
     ) {
-        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getUser().getId();
-        ExpertSignupResponse response = expertProfileService.signup(userId, request);
+        ExpertSignupResponse response = expertProfileService.signup(userDetails.getUser().getId(), request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("전문가 신청이 접수되었습니다.", response));
     }
+
 
     @Operation(summary = "F-32 전문가 목록 공개 조회", description = "승인된 전문가를 비로그인 포함 전체 공개합니다.")
     @GetMapping("/api/experts")

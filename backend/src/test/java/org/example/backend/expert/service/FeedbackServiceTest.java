@@ -64,14 +64,14 @@ class FeedbackServiceTest {
         expertUser.setRole(Role.EXPERT);
 
         approvedExpertProfile = ExpertProfile.builder()
-                .user(expertUser).career("5년").certification("정보처리기사").build();
+                .user(expertUser).introduction("5년차 백엔드 개발자").build();
         approvedExpertProfile.approve();
     }
 
     @Test
     void createFeedback_미승인전문가면_예외() {
         ExpertProfile pending = ExpertProfile.builder()
-                .user(expertUser).career("1년").certification(null).build();
+                .user(expertUser).introduction("신입 지원자").build();
         when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
         when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(pending));
 
