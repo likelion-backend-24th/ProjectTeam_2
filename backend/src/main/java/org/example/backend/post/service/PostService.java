@@ -46,7 +46,11 @@ public class PostService {
         Page<Post> posts = (category == null)
                 ? postRepository.findAll(pageable)
                 : postRepository.findByCategory(category, pageable);
+        return posts.map(PostResponse::from);
+    }
 
+    public Page<PostResponse> getMyPosts(Long userId, Pageable pageable) {
+        Page<Post> posts = postRepository.findByUserId(userId, pageable);
         return posts.map(PostResponse::from);
     }
 

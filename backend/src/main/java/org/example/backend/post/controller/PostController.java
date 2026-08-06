@@ -47,6 +47,15 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success("게시글 목록을 조회에 성공했습니다", posts));
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<Page<PostResponse>>> getMyPosts(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        Page<PostResponse> posts = postService.getMyPosts(userDetails.getUser().getId(), pageable);
+        return ResponseEntity.ok(ApiResponse.success("내 게시글 목록을 조회에 성공했습니다", posts));
+    }
+
     @GetMapping("/{postId}")
     public ResponseEntity<ApiResponse<PostDetailResponse>> getPostDetail(
             @PathVariable Long postId
