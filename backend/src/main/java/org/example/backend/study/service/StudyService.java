@@ -126,4 +126,9 @@ public class StudyService {
             }
         }
     }
+
+    public Page<StudyResponse> getMyStudies(Long userId, Pageable pageable) {
+        Page<StudyMember> members = studyMemberRepository.findByUserId(userId, pageable);
+        return members.map(member -> StudyResponse.from(member.getStudy()));
+    }
 }

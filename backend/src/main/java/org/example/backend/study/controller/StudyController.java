@@ -38,6 +38,17 @@ public class StudyController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("스터디 생성", response));
     }
 
+    @Operation(summary = "내가 가입된 스터디 목록 조회")
+    @GetMapping("/my")
+    public ResponseEntity<ApiResponse<List<StudyResponse>>> getMyStudies(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PageableDefault(size = 10) Pageable pageable) {
+        Long userId = user.getUser().getId();
+        Page<StudyResponse> page = studyService.getMyStudies(userId, pageable);
+        Meta meta = Meta.builder().pagination(PageMeta.from(page)).build();
+        return ResponseEntity.ok(ApiResponse.success("내가 가입된 스터디 목록 조회", page.getContent(), meta));
+    }
+
     @Operation(summary = "스터디 목록 조회")
     @GetMapping
     public ResponseEntity<ApiResponse<List<StudyResponse>>> getAllStudies(
