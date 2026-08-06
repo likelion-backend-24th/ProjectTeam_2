@@ -13,7 +13,7 @@ Content-Type: {{contentType}}
 }
 
 > {%
-    client.global.set("accessToken", response.body.accessToken);
+    client.global.set("accessToken", response.body.data.accessToken);
 %}
 
 ### 스터디 개설
@@ -35,6 +35,10 @@ Authorization: Bearer {{accessToken}}
 
 ### 스터디 목록 조회 (키워드 검색 O)
 GET {{baseUrl}}/api/studies?keyword=알고리즘&page=0&size=10
+Authorization: Bearer {{accessToken}}
+
+### 내가 가입된 스터디 목록 조회
+GET {{baseUrl}}/api/studies/my?page=0&size=10
 Authorization: Bearer {{accessToken}}
 
 ### 스터디 상세 조회
