@@ -1,4 +1,4 @@
-package org.example.backend.study.dto;
+package org.example.backend.study.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

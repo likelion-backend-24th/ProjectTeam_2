@@ -1,11 +1,7 @@
-package org.example.backend.study.dto;
+package org.example.backend.study.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-
-import java.time.LocalDateTime;
 
 @Getter
 public class StudyPostRequest {
