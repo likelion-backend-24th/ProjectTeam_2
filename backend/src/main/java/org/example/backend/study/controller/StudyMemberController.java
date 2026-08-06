@@ -58,7 +58,7 @@ public class StudyMemberController {
     public ResponseEntity<ApiResponse<Void>> leaveStudy(@AuthenticationPrincipal CustomUserDetails user, @PathVariable Long id) {
         Long userId = user.getUser().getId();
         studyMemberService.leaveStudy(userId, id);
-        return null;
+        return ResponseEntity.ok(ApiResponse.success("스터디 탈퇴 성공", null));
     }
 
 }

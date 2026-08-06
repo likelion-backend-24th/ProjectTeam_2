@@ -12,6 +12,7 @@ import org.example.backend.study.repository.StudyRepository;
 import org.example.backend.user.entity.User;
 import org.example.backend.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -23,6 +24,7 @@ public class StudyMemberService {
     private final UserRepository userRepository;
     private final StudyRepository studyRepository;
 
+    @Transactional
     public StudyMemberResponse joinStudy(Long userId, Long id) {
         User user = getUserOrThrow(userId);
         Study study = getStudyOrThrow(id);
@@ -57,6 +59,7 @@ public class StudyMemberService {
                 .toList();
     }
 
+    @Transactional
     public void removeStudyMember(Long userId, Long id, Long memberId) {
         getUserOrThrow(userId);
         Study study = getStudyOrThrow(id);
@@ -69,6 +72,7 @@ public class StudyMemberService {
         studyMemberRepository.delete(member);
     }
 
+    @Transactional
     public void delegateLeader(Long userId, Long id, Long newLeaderId) {
         getUserOrThrow(userId);
         Study study = getStudyOrThrow(id);
@@ -83,12 +87,13 @@ public class StudyMemberService {
         study.setLeader(newLeaderMember.getUser());
     }
 
+    @Transactional
     public void leaveStudy(Long userId, Long id) {
         getUserOrThrow(userId);
         Study study = getStudyOrThrow(id);
 
         if (study.getLeader().getId().equals(userId)) {
-            Long memberCount = studyRepository.countByStudyId(id);
+            int memberCount = studyMemberRepository.countByStudyId(id);
             if (memberCount <= 1) {
                 studyMemberRepository.deleteByStudyId(id);
                 studyRepository.deleteById(id);

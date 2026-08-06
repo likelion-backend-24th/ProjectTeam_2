@@ -9,5 +9,4 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface StudyRepository extends JpaRepository<Study, Long> {
     Page<Study> findByTitleContaining(String keyword, Pageable pageable);
-    Long countByStudyId(Long id);
 }
