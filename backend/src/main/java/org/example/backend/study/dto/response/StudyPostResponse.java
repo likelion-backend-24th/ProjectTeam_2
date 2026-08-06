@@ -1,4 +1,4 @@
-package org.example.backend.study.dto;
+package org.example.backend.study.dto.response;
 
 import lombok.Builder;
 import lombok.Getter;
