@@ -24,10 +24,10 @@ public class Certification {
     @JoinColumn(name = "expert_profile_id", nullable = false)
     private ExpertProfile expertProfile;
 
-    @Column(nullable = false)
+    @Column(length = 100, nullable = false)
     private String name; // 자격증명
 
-    @Column(nullable = false)
+    @Column(length = 100, nullable = false)
     private String issuer; // 발급 기관
 
     @Column(nullable = false)

@@ -24,17 +24,17 @@ public class Career {
     @JoinColumn(name = "expert_profile_id", nullable = false)
     private ExpertProfile expertProfile;
 
-    @Column(nullable = false)
+    @Column(length = 100, nullable = false)
     private String companyName; // 회사명
 
-    @Column(nullable = false)
+    @Column(length = 100, nullable = false)
     private String position; // 직함
 
     @Column(nullable = false)
     private Integer years; // 경력 연차
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(length = 30, nullable = false)
     private JobField jobField; // 직무 분야
 
     @Builder
