@@ -106,23 +106,26 @@ class FeedbackServiceTest {
 
         FeedbackCreateRequest request = new FeedbackCreateRequest();
         request.setExpertProfileId(99L);
+        request.setTopic("포트폴리오 피드백 요청");
         request.setContent("이력서 첨삭 부탁드려요");
 
         FeedbackResponse response = feedbackService.createFeedback(1L, request);
 
         assertThat(response.getStatus()).isEqualTo(FeedbackStatus.PENDING);
+        assertThat(response.getTopic()).isEqualTo("포트폴리오 피드백 요청");
     }
 
     @Test
     void getFeedback_존재하면_상세반환() {
         Feedback feedback = Feedback.builder()
-                .requester(requester).expertProfile(approvedExpertProfile).build();
+                .requester(requester).expertProfile(approvedExpertProfile).topic("포트폴리오 피드백 요청").build();
         when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
 
         FeedbackResponse response = feedbackService.getFeedback(requester.getId(), 1L);
 
         assertThat(response.getStatus()).isEqualTo(FeedbackStatus.PENDING);
         assertThat(response.getRequesterId()).isEqualTo(1L);
+        assertThat(response.getTopic()).isEqualTo("포트폴리오 피드백 요청");
     }
 
     @Test
@@ -218,13 +221,14 @@ class FeedbackServiceTest {
     void getMyFeedbacks_요약목록_expertNickname_포함() {
         expertUser.setNickname("김전문");
         Feedback feedback = Feedback.builder()
-                .requester(requester).expertProfile(approvedExpertProfile).build();
+                .requester(requester).expertProfile(approvedExpertProfile).topic("포트폴리오 피드백 요청").build();
         when(feedbackRepository.findByRequesterId(1L)).thenReturn(List.of(feedback));
 
         var response = feedbackService.getMyFeedbacks(1L);
 
         assertThat(response.getFeedbacks()).hasSize(1);
         assertThat(response.getFeedbacks().get(0).getExpertNickname()).isEqualTo("김전문");
+        assertThat(response.getFeedbacks().get(0).getTopic()).isEqualTo("포트폴리오 피드백 요청");
         assertThat(response.getFeedbacks().get(0).getStatus()).isEqualTo(FeedbackStatus.PENDING);
     }
 }
