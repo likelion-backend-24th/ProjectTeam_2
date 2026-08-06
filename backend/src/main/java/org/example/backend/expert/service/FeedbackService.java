@@ -48,7 +48,9 @@ public class FeedbackService {
         Feedback feedback = Feedback.builder()
                 .requester(requester)
                 .expertProfile(expertProfile)
+                .topic(request.getTopic())
                 .build();
+
         feedbackRepository.save(feedback);
 
         feedbackMessageRepository.save(

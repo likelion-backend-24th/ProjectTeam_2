@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 public class MyFeedbackSummaryResponse {
     private Long feedbackId;
     private String expertNickname;
+    private String topic;
     private FeedbackStatus status;
     private LocalDateTime answeredAt;
 
@@ -24,6 +25,7 @@ public class MyFeedbackSummaryResponse {
         return MyFeedbackSummaryResponse.builder()
                 .feedbackId(feedback.getId())
                 .expertNickname(feedback.getExpertProfile().getUser().getNickname())
+                .topic(feedback.getTopic())
                 .status(feedback.getStatus())
                 .answeredAt(feedback.getAnsweredAt())
                 .build();

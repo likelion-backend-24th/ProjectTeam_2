@@ -7,13 +7,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 문의 스레드 개설(POST /api/feedbacks) 요청 바디.
- */
 @Getter
 @Setter
 @NoArgsConstructor
 public class FeedbackCreateRequest {
+
+    @NotBlank(message = "topic은 필수입니다.")
+    @Size(max = 100, message = "topic은 100자를 넘을 수 없습니다.")
+    private String topic;
 
     @NotNull(message = "expertProfileId는 필수입니다.")
     private Long expertProfileId;
