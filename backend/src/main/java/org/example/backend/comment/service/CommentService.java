@@ -45,9 +45,14 @@ public class CommentService {
     }
 
     @Transactional
-    public void updateComment(Long commentId, CommentUpdateRequest request, User requester) {
+    public void updateComment(Long postId, Long commentId, CommentUpdateRequest request, User requester) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new BusinessException(CommentErrorCode.COMMENT_NOT_FOUND));
+
+        // 이 댓글이 진짜 그 게시글에 속한 댓글인지 확인
+        if (!comment.getPost().getId().equals(postId)) {
+            throw new BusinessException(CommentErrorCode.COMMENT_POST_MISMATCH);
+        }
 
         // 권한 체크: 작성자 본인이거나 ADMIN이면 허용 (F-08)
         if (!isOwnerOrAdmin(comment, requester)) {
@@ -58,9 +63,14 @@ public class CommentService {
     }
 
     @Transactional
-    public void deleteComment(Long commentId, User requester) {
+    public void deleteComment(Long postId, Long commentId, User requester) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new BusinessException(CommentErrorCode.COMMENT_NOT_FOUND));
+
+        // 이 댓글이 진짜 그 게시글에 속한 댓글인지 확인
+        if (!comment.getPost().getId().equals(postId)) {
+            throw new BusinessException(CommentErrorCode.COMMENT_POST_MISMATCH);
+        }
 
         // 권한 체크: 작성자 본인이거나 ADMIN이면 허용 (F-08)
         if (!isOwnerOrAdmin(comment, requester)) {

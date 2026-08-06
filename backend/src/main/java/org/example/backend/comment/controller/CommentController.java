@@ -39,7 +39,7 @@ public class CommentController {
             @Valid @RequestBody CommentUpdateRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        commentService.updateComment(commentId, request, userDetails.getUser());
+        commentService.updateComment(postId, commentId, request, userDetails.getUser());
         return ResponseEntity.ok(ApiResponse.success("댓글이 수정되었습니다", null));
     }
 
@@ -49,7 +49,7 @@ public class CommentController {
             @PathVariable Long commentId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        commentService.deleteComment(commentId, userDetails.getUser());
+        commentService.deleteComment(postId, commentId, userDetails.getUser());
         return ResponseEntity.ok(ApiResponse.success("댓글이 삭제되었습니다", null));
     }
 }
