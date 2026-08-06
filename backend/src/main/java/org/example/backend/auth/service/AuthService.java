@@ -158,6 +158,10 @@ public class AuthService {
                 .map(oauthAccount -> oauthAccount.getUser())
                 .orElseGet(() -> registerKakaoUser(kakaoUserInfo, providerId));
 
+        if (user.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessException(AuthErrorCode.INACTIVE_ACCOUNT);
+        }
+
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String refreshTokenValue = jwtTokenProvider.generateRefreshToken(user.getUsername());
 
@@ -214,6 +218,10 @@ public class AuthService {
                 .map(oauthAccount -> oauthAccount.getUser())
                 .orElseGet(() -> registerGoogleUser(googleUserInfo, providerId));
 
+        if (user.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessException(AuthErrorCode.INACTIVE_ACCOUNT);
+        }
+
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String refreshTokenValue = jwtTokenProvider.generateRefreshToken(user.getUsername());
 
@@ -268,6 +276,10 @@ public class AuthService {
         User user = oauthAccountRepository.findByProviderAndProviderId("NAVER", providerId)
                 .map(oauthAccount -> oauthAccount.getUser())
                 .orElseGet(() -> registerNaverUser(naverUserInfo, providerId));
+
+        if (user.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessException(AuthErrorCode.INACTIVE_ACCOUNT);
+        }
 
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String refreshTokenValue = jwtTokenProvider.generateRefreshToken(user.getUsername());
