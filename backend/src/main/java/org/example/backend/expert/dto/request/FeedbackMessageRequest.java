@@ -6,9 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 문의 스레드에 메시지 추가(POST /api/feedbacks/{id}/messages) 요청 바디.
- */
 @Getter
 @Setter
 @NoArgsConstructor

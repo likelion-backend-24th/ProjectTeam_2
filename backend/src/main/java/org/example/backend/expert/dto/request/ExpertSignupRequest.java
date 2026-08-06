@@ -10,12 +10,6 @@ import lombok.Setter;
 
 import java.util.List;
 
-
-/**
- * 전문가 신청(POST /api/experts/signup) 요청 바디.
- * 사용 : 신규 신청, 거절 후 재신청할 때
- */
-
 @Getter
 @Setter
 @NoArgsConstructor

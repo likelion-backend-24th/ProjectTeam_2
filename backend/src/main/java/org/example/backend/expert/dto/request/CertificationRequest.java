@@ -6,9 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * 전문가 신청 시 자격증 1건 입력값.
- */
 @Getter
 @Setter
 @NoArgsConstructor

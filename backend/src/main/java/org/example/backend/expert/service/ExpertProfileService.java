@@ -84,7 +84,6 @@ public class ExpertProfileService {
         return ExpertProfileResponse.from(profile);
     }
 
-
     @Transactional
     public ExpertProfileResponse reject(Long expertProfileId, String reason) {
         ExpertProfile profile = getProfileOrThrow(expertProfileId);
@@ -114,14 +113,11 @@ public class ExpertProfileService {
         return PublicExpertListResponse.from(responses);
     }
 
-    // id로 ExpertProfile을 조회하고, 없으면 BusinessException(EXPERT_PROFILE_NOT_FOUND, 404)을 던지는 공용 헬퍼.
     private ExpertProfile getProfileOrThrow(Long id) {
         return expertProfileRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND));
     }
 
-    // 요청의 career/certification 목록을 프로필에 반영한다.
-    // 재신청 시에는 기존 목록을 비우고(clearCareersAndCertifications) 새로 채운다.
     private void applyCareersAndCertifications(ExpertProfile profile, ExpertSignupRequest request) {
         profile.clearCareersAndCertifications();
         request.getCareers().forEach(c -> profile.addCareer(

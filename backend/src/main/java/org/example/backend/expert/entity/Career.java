@@ -6,10 +6,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/**
- * 전문가 신청자의 경력 1건.
- * 하나의 ExpertProfile은 여러 개의 Career를 가질 수 있다(1:N).
- */
 @Entity
 @Table(name = "career")
 @Getter

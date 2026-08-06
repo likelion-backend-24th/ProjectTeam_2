@@ -5,10 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-/**
- * FeedbackMessage(1:1 문의 스레드 내 개별 메시지) 조회용 Repository.
- */
-
 public interface FeedbackMessageRepository extends JpaRepository<FeedbackMessage, Long> {
 
     // 특정 스레드에 속한 메시지를 작성 시각 오름차순으로 조회.

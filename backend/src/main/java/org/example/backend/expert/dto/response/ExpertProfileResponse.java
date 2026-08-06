@@ -7,9 +7,6 @@ import org.example.backend.expert.entity.ExpertStatus;
 
 import java.util.List;
 
-/**
- * 전문가 프로필의 관리자용(비공개) 표현.
- */
 @Getter
 @Builder
 public class ExpertProfileResponse {

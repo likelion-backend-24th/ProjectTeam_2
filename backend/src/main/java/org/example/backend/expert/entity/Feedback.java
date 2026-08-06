@@ -29,7 +29,6 @@ public class Feedback {
     @JoinColumn(name = "expert_profile_id", nullable = false)
     private ExpertProfile expertProfile;
 
-    // 상담 주제. 스레드 개설 시 필수 입력, 채팅 화면 상단에 고정 노출됨.
     @Column(name = "topic", nullable = false, length = 100)
     private String topic;
 
