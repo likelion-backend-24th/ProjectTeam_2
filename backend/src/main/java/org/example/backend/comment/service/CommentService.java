@@ -36,12 +36,7 @@ public class CommentService {
 
         Comment savedComment = commentRepository.save(comment);
 
-        return CommentResponse.builder()
-                .id(savedComment.getId())
-                .content(savedComment.getContent())
-                .authorNickname(savedComment.getUser().getNickname())
-                .createdAt(savedComment.getCreatedAt())
-                .build();
+        return CommentResponse.from(savedComment);
     }
 
     @Transactional

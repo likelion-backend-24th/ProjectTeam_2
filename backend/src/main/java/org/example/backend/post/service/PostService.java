@@ -39,15 +39,7 @@ public class PostService {
 
         Post savedPost = postRepository.save(post);
 
-        return PostDetailResponse.builder()
-                .id(savedPost.getId())
-                .title(savedPost.getTitle())
-                .content(savedPost.getContent())
-                .category(savedPost.getCategory())
-                .authorNickname(savedPost.getUser().getNickname())
-                .createdAt(savedPost.getCreatedAt())
-                .updatedAt(savedPost.getUpdatedAt())
-                .build();
+        return PostDetailResponse.from(savedPost, List.of());
     }
 
     public Page<PostResponse> getPosts(PostCategory category, Pageable pageable) {
@@ -55,15 +47,7 @@ public class PostService {
                 ? postRepository.findAll(pageable)
                 : postRepository.findByCategory(category, pageable);
 
-        return posts.map(post -> PostResponse.builder()
-                .id(post.getId())
-                .title(post.getTitle())
-                .content(post.getContent())
-                .category(post.getCategory())
-                .authorNickname(post.getUser().getNickname())
-                .createdAt(post.getCreatedAt())
-                .updatedAt(post.getUpdatedAt())
-                .build());
+        return posts.map(PostResponse::from);
     }
 
     public PostDetailResponse getPostDetail(Long postId) {
@@ -74,27 +58,8 @@ public class PostService {
         // 2. 댓글 목록 조회
         List<Comment> comments = commentRepository.findByPostIdOrderByCreatedAtAsc(postId);
 
-        // 3. Comment 목록 → CommentResponse 목록으로 변환
-        List<CommentResponse> commentResponses = comments.stream()
-                .map(comment -> CommentResponse.builder()
-                        .id(comment.getId())
-                        .content(comment.getContent())
-                        .authorNickname(comment.getUser().getNickname())
-                        .createdAt(comment.getCreatedAt())
-                        .build())
-                .toList();
-
-        //4. 최종 응답 조립
-        return PostDetailResponse.builder()
-                .id(post.getId())
-                .title(post.getTitle())
-                .content(post.getContent())
-                .category(post.getCategory())
-                .authorNickname(post.getUser().getNickname())
-                .createdAt(post.getCreatedAt())
-                .updatedAt(post.getUpdatedAt())
-                .comments(commentResponses)
-                .build();
+        // 3. Comment 목록 → CommentResponse 목록으로 변환 및 최종 응답 조립
+        return PostDetailResponse.from(post, comments);
     }
 
     @Transactional
