@@ -1,17 +1,18 @@
 package org.example.backend.expert.service;
 
 import org.example.backend.common.exception.BusinessException;
-import org.example.backend.expert.dto.FeedbackCreateRequest;
-import org.example.backend.expert.dto.FeedbackMessageRequest;
-import org.example.backend.expert.dto.FeedbackResponse;
+import org.example.backend.expert.dto.request.FeedbackCreateRequest;
+import org.example.backend.expert.dto.request.FeedbackMessageRequest;
+import org.example.backend.expert.dto.response.FeedbackMessageResponse;
+import org.example.backend.expert.dto.response.FeedbackResponse;
 import org.example.backend.expert.entity.ExpertProfile;
 import org.example.backend.expert.entity.Feedback;
+import org.example.backend.expert.entity.FeedbackMessage;
 import org.example.backend.expert.entity.FeedbackStatus;
 import org.example.backend.expert.exception.ExpertErrorCode;
 import org.example.backend.expert.repository.ExpertProfileRepository;
 import org.example.backend.expert.repository.FeedbackMessageRepository;
 import org.example.backend.expert.repository.FeedbackRepository;
-import org.example.backend.expert.service.FeedbackService;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
 import org.example.backend.user.repository.UserRepository;
@@ -22,6 +23,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -117,10 +119,49 @@ class FeedbackServiceTest {
                 .requester(requester).expertProfile(approvedExpertProfile).build();
         when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
 
-        FeedbackResponse response = feedbackService.getFeedback(1L);
+        FeedbackResponse response = feedbackService.getFeedback(requester.getId(), 1L);
 
         assertThat(response.getStatus()).isEqualTo(FeedbackStatus.PENDING);
         assertThat(response.getRequesterId()).isEqualTo(1L);
+    }
+
+    @Test
+    void getFeedback_당사자가아니면_예외() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.getFeedback(999L, 1L));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_ACCESS_DENIED);
+    }
+
+    @Test
+    void getMessages_당사자면_목록반환() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(feedbackMessageRepository.findByFeedbackIdOrderByCreatedAtAsc(1L))
+                .thenReturn(List.of(
+                        FeedbackMessage.builder().feedback(feedback).sender(requester).content("첫 메시지").build()
+                ));
+
+        List<FeedbackMessageResponse> response = feedbackService.getMessages(requester.getId(), 1L);
+
+        assertThat(response).hasSize(1);
+    }
+
+    @Test
+    void getMessages_당사자가아니면_예외() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.getMessages(999L, 1L));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_ACCESS_DENIED);
+
+        verify(feedbackMessageRepository, never()).findByFeedbackIdOrderByCreatedAtAsc(any());
     }
 
     @Test
@@ -178,7 +219,7 @@ class FeedbackServiceTest {
         expertUser.setNickname("김전문");
         Feedback feedback = Feedback.builder()
                 .requester(requester).expertProfile(approvedExpertProfile).build();
-        when(feedbackRepository.findByRequesterId(1L)).thenReturn(java.util.List.of(feedback));
+        when(feedbackRepository.findByRequesterId(1L)).thenReturn(List.of(feedback));
 
         var response = feedbackService.getMyFeedbacks(1L);
 

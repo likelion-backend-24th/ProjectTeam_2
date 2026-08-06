@@ -1,10 +1,10 @@
 package org.example.backend.expert.service;
 
 import org.example.backend.common.exception.BusinessException;
-import org.example.backend.expert.dto.ExpertListResponse;
-import org.example.backend.expert.dto.ExpertProfileResponse;
-import org.example.backend.expert.dto.ExpertSignupRequest;
-import org.example.backend.expert.dto.ExpertSignupResponse;
+import org.example.backend.expert.dto.response.ExpertListResponse;
+import org.example.backend.expert.dto.response.ExpertProfileResponse;
+import org.example.backend.expert.dto.request.ExpertSignupRequest;
+import org.example.backend.expert.dto.response.ExpertSignupResponse;
 import org.example.backend.expert.entity.ExpertProfile;
 import org.example.backend.expert.entity.ExpertStatus;
 import org.example.backend.expert.exception.ExpertErrorCode;

@@ -1,4 +1,4 @@
-package org.example.backend.expert.dto;
+package org.example.backend.expert.dto.request;
 
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
