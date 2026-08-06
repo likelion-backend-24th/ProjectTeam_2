@@ -11,17 +11,37 @@ CREATE TABLE `comment`
 
 CREATE TABLE expert_profile
 (
-  id            BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  user_id       BIGINT       NOT NULL COMMENT '유저 ID',
-  career        TEXT         NULL     COMMENT '경력',
-  certification TEXT         NULL     COMMENT '자격증',
-  status        VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT '심사 상태 (PENDING, APPROVED, REJECTED)',
-  reject_reason VARCHAR(255) NULL     COMMENT '거절 이유',
-  PRIMARY KEY (id)
+    id            BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
+    user_id       BIGINT       NOT NULL COMMENT '유저 ID',
+    introduction  VARCHAR(500) NULL     COMMENT '소개글',
+    status        VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT '심사 상태 (PENDING, APPROVED, REJECTED)',
+    reject_reason VARCHAR(255) NULL     COMMENT '거절 이유',
+    PRIMARY KEY (id)
 ) COMMENT '전문가';
 
 ALTER TABLE expert_profile
-  ADD CONSTRAINT UQ_expert_profile_user_id UNIQUE (user_id);
+    ADD CONSTRAINT UQ_expert_profile_user_id UNIQUE (user_id);
+
+CREATE TABLE career
+(
+    id                BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
+    expert_profile_id BIGINT       NOT NULL COMMENT '전문가 프로필 ID',
+    company_name      VARCHAR(100) NOT NULL COMMENT '회사명',
+    position          VARCHAR(100) NOT NULL COMMENT '직함',
+    years             INT          NOT NULL COMMENT '경력 연차',
+    job_field         VARCHAR(30)  NOT NULL COMMENT '직무 분야',
+    PRIMARY KEY (id)
+) COMMENT '전문가 경력';
+
+CREATE TABLE certification
+(
+    id                BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
+    expert_profile_id BIGINT       NOT NULL COMMENT '전문가 프로필 ID',
+    name              VARCHAR(100) NOT NULL COMMENT '자격증명',
+    issuer            VARCHAR(100) NOT NULL COMMENT '발급 기관',
+    acquired_year     INT          NOT NULL COMMENT '취득 연도',
+    PRIMARY KEY (id)
+) COMMENT '전문가 자격증';
 
 CREATE TABLE post
 (
@@ -213,6 +233,19 @@ ALTER TABLE expert_profile
   ADD CONSTRAINT FK_users_TO_expert_profile
     FOREIGN KEY (user_id)
     REFERENCES users (id);
+
+ALTER TABLE career
+    ADD CONSTRAINT FK_expert_profile_TO_career
+        FOREIGN KEY (expert_profile_id)
+            REFERENCES expert_profile (id)
+            ON DELETE CASCADE;
+
+ALTER TABLE certification
+    ADD CONSTRAINT FK_expert_profile_TO_certification
+        FOREIGN KEY (expert_profile_id)
+            REFERENCES expert_profile (id)
+            ON DELETE CASCADE;
+
 
 ALTER TABLE subscription
   ADD CONSTRAINT FK_users_TO_subscription
