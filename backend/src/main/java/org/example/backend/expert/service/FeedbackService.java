@@ -2,12 +2,12 @@ package org.example.backend.expert.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.backend.common.exception.BusinessException;
-import org.example.backend.expert.dto.FeedbackCreateRequest;
-import org.example.backend.expert.dto.FeedbackMessageRequest;
-import org.example.backend.expert.dto.FeedbackMessageResponse;
-import org.example.backend.expert.dto.FeedbackResponse;
-import org.example.backend.expert.dto.MyFeedbackListResponse;
-import org.example.backend.expert.dto.MyFeedbackSummaryResponse;
+import org.example.backend.expert.dto.request.FeedbackCreateRequest;
+import org.example.backend.expert.dto.request.FeedbackMessageRequest;
+import org.example.backend.expert.dto.response.FeedbackMessageResponse;
+import org.example.backend.expert.dto.response.FeedbackResponse;
+import org.example.backend.expert.dto.response.MyFeedbackListResponse;
+import org.example.backend.expert.dto.response.MyFeedbackSummaryResponse;
 import org.example.backend.expert.entity.ExpertProfile;
 import org.example.backend.expert.entity.Feedback;
 import org.example.backend.expert.entity.FeedbackMessage;
