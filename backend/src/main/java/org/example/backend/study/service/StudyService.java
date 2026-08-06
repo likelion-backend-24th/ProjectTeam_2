@@ -2,6 +2,7 @@ package org.example.backend.study.service;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.backend.auth.exception.AuthErrorCode;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.study.dto.request.StudyRequest;
 import org.example.backend.study.dto.request.StudyUpdateRequest;
@@ -70,7 +71,6 @@ public class StudyService {
         return StudyResponse.from(study);
     }
 
-
     public void deleteStudy(Long userId, Long id) {
         Study study = getStudyOrThrow(id);
         validateStudyLeader(study, userId);
@@ -78,34 +78,8 @@ public class StudyService {
         studyRepository.delete(study);
     }
 
-    public StudyMemberResponse joinStudy(Long userId, Long id) {
-        User user = getUserOrThrow(userId);
-        Study study = getStudyOrThrow(id);
-
-        if (study.getLeader().getId().equals(userId)) {
-            throw new BusinessException(StudyErrorCode.STUDY_LEADER_CANNOT_JOIN);
-        }
-
-        studyMemberRepository.findByStudyIdAndUserId(id, userId)
-                .ifPresent(member -> {
-                    throw new BusinessException(StudyErrorCode.STUDY_ALREADY_JOINED);
-                });
-
-        int currentCount = studyMemberRepository.countByStudyId(id);
-        if (currentCount >= study.getCapacity()) {
-            throw new BusinessException(StudyErrorCode.STUDY_CAPACITY_EXCEEDED);
-        }
-
-        validateFreeTierLimit(user);
-
-        StudyMember member = new StudyMember(study, user);
-        StudyMember saved = studyMemberRepository.save(member);
-
-        return StudyMemberResponse.from(saved);
-    }
-
     private User getUserOrThrow(Long userId) {
-        return userRepository.findById(userId).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
+        return userRepository.findById(userId).orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
     }
 
     private Study getStudyOrThrow(Long id) {

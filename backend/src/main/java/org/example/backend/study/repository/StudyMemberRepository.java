@@ -16,4 +16,5 @@ public interface StudyMemberRepository extends JpaRepository<StudyMember, Long> 
     int countByUserId(Long userId);
     List<StudyMember> findByStudyId(Long id);
     Page<StudyMember> findByUserId(Long userId, Pageable pageable);
+    void deleteByStudyId(Long id);
 }
