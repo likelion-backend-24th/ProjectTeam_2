@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.example.backend.auth.entity.AccountStatus;
+import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.Role;
 
 @Getter

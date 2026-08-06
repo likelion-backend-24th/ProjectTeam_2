@@ -1,6 +1,8 @@
 package org.example.backend.user.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.backend.user.entity.AccountStatus;
+import org.example.backend.auth.repository.RefreshTokenRepository;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.user.dto.UserResponse;
 import org.example.backend.user.entity.User;
@@ -10,12 +12,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     // 내 정보 조회
     public UserResponse getMyInfo(String username) {
@@ -65,6 +70,25 @@ public class UserService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+    }
+
+    //회원탈퇴
+    @Transactional
+    public void withdrawAccount(String username,String password){
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+        if(user.getPassword() != null && !passwordEncoder.matches(password,user.getPassword())){
+            throw new BusinessException(UserErrorCode.INVALID_CURRENT_PASSWORD);
+        }
+
+        user.setName("탈퇴한사용자");
+        user.setStatus(AccountStatus.WITHDRAWN);
+        user.setNickname("탈퇴한사용자_" + user.getId());
+        user.setWithdrawnAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        refreshTokenRepository.deleteByUser(user);
+
 
     }
 

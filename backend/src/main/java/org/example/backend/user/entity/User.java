@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.backend.auth.entity.AccountStatus;
 import org.hibernate.annotations.ColumnDefault;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -53,6 +52,9 @@ public class User {
     @Column(name = "is_subscribed", nullable = false)
     @ColumnDefault("false")
     private boolean subscribed;
+
+    @Column(name = "withdrawn_at")
+    private LocalDateTime withdrawnAt;
 
     // 나중에 필요시 사용할 예정
 //    @LastModifiedDate

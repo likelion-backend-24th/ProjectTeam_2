@@ -1,6 +1,6 @@
 package org.example.backend.auth.security;
 
-import org.example.backend.auth.entity.AccountStatus;
+import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

@@ -7,6 +7,7 @@ import org.example.backend.common.dto.ApiResponse;
 import org.example.backend.user.dto.NicknameUpdateRequest;
 import org.example.backend.user.dto.PasswordUpdateRequest;
 import org.example.backend.user.dto.UserResponse;
+import org.example.backend.user.dto.WithdrawAccountRequest;
 import org.example.backend.user.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -34,7 +35,6 @@ public class UserController {
         userService.updateNickname(customUserDetails.getUsername(),nicknameUpdateRequest.getNickname());
 
         return ResponseEntity.ok(ApiResponse.success("닉네임이 변경되었습니다.",null));
-
     }
 
     // 비밀번호 변경
@@ -49,6 +49,16 @@ public class UserController {
 
         return ResponseEntity.ok(ApiResponse.success("비밀번호가 변경되었습니다.",null));
     }
+
+    //회원탈퇴
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> withdraw(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
+            @Valid  @RequestBody WithdrawAccountRequest withdrawAccountRequest){
+        userService.withdrawAccount(customUserDetails.getUsername(),withdrawAccountRequest.getPassword());
+        return ResponseEntity.ok(ApiResponse.success("회원 탈퇴가 완료되었습니다.",null));
+    }
+
 
 
 

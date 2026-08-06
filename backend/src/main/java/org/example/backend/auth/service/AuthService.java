@@ -9,7 +9,7 @@ import org.example.backend.auth.exception.*;
 import org.example.backend.auth.dto.jwt.LoginRequest;
 import org.example.backend.auth.dto.jwt.SignupRequest;
 import org.example.backend.auth.dto.jwt.TokenResponse;
-import org.example.backend.auth.entity.AccountStatus;
+import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.auth.entity.RefreshToken;
 import org.example.backend.auth.repository.OauthAccountRepository;
 import org.example.backend.common.exception.BusinessException;
