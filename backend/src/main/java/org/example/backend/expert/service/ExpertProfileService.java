@@ -17,6 +17,8 @@ import org.example.backend.user.entity.User;
 import org.example.backend.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.example.backend.expert.entity.Career;
+import org.example.backend.expert.entity.Certification;
 
 import java.util.List;
 
@@ -56,7 +58,9 @@ public class ExpertProfileService {
     public ExpertSignupResponse signup(Long userId, ExpertSignupRequest request) {
         return expertProfileRepository.findByUserId(userId)
                 .map(profile -> {
-                    profile.reapply(request.getCareer(), request.getCertification());
+                    profile.reapply();
+                    profile.updateIntroduction(request.getIntroduction());
+                    applyCareersAndCertifications(profile, request);
                     return ExpertSignupResponse.from(profile);
                 })
                 .orElseGet(() -> {
@@ -64,9 +68,9 @@ public class ExpertProfileService {
                             .orElseThrow(() -> new BusinessException(ExpertErrorCode.USER_NOT_FOUND));
                     ExpertProfile profile = ExpertProfile.builder()
                             .user(user)
-                            .career(request.getCareer())
-                            .certification(request.getCertification())
+                            .introduction(request.getIntroduction())
                             .build();
+                    applyCareersAndCertifications(profile, request);
                     expertProfileRepository.save(profile);
                     return ExpertSignupResponse.from(profile);
                 });
@@ -114,5 +118,30 @@ public class ExpertProfileService {
     private ExpertProfile getProfileOrThrow(Long id) {
         return expertProfileRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND));
+    }
+
+    // 요청의 career/certification 목록을 프로필에 반영한다.
+    // 재신청 시에는 기존 목록을 비우고(clearCareersAndCertifications) 새로 채운다.
+    private void applyCareersAndCertifications(ExpertProfile profile, ExpertSignupRequest request) {
+        profile.clearCareersAndCertifications();
+        request.getCareers().forEach(c -> profile.addCareer(
+                Career.builder()
+                        .expertProfile(profile)
+                        .companyName(c.getCompanyName())
+                        .position(c.getPosition())
+                        .years(c.getYears())
+                        .jobField(c.getJobField())
+                        .build()
+        ));
+        if (request.getCertifications() != null) {
+            request.getCertifications().forEach(c -> profile.addCertification(
+                    Certification.builder()
+                            .expertProfile(profile)
+                            .name(c.getName())
+                            .issuer(c.getIssuer())
+                            .acquiredYear(c.getAcquiredYear())
+                            .build()
+            ));
+        }
     }
 }
