@@ -5,11 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 
-/**
- * 1. 전문가 거절(PATCH /api/admin/experts/{id}/reject)
- * 2. 자격 박탈(DELETE /api/admin/experts/{id})
- */
-
 @Getter
 @Setter
 @NoArgsConstructor

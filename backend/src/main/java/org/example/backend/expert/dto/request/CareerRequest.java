@@ -7,9 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.example.backend.expert.entity.JobField;
 
-/**
- * 전문가 신청 시 경력 1건 입력값.
- */
+
 @Getter
 @Setter
 @NoArgsConstructor

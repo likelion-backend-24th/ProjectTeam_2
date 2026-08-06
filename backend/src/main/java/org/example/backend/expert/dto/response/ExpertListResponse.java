@@ -5,11 +5,6 @@ import lombok.Getter;
 
 import java.util.List;
 
-/**
- * ADMIN 전문가 목록 조회(GET /api/admin/experts) 응답 바디.
- */
-
-
 @Getter
 @Builder
 public class ExpertListResponse {
