@@ -29,6 +29,9 @@ public class Post {
     @Column(columnDefinition = "Text", nullable = false)
     private String content;
 
+    @Column(name = "view_count", nullable = false)
+    private long viewCount = 0;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private PostCategory category;
