@@ -14,6 +14,7 @@ public class PostResponse {
     private String content;
     private PostCategory category;
     private String categoryLabel;
+    private long viewCount;
     private String authorNickname;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -25,6 +26,7 @@ public class PostResponse {
                 .content(post.getContent())
                 .category(post.getCategory())
                 .categoryLabel(post.getCategory().getLabel())
+                .viewCount(post.getViewCount())
                 .authorNickname(post.getUser().getNickname())
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())

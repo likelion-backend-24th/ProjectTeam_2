@@ -53,15 +53,19 @@ public class PostService {
         return posts.map(PostResponse::from);
     }
 
+    @Transactional
     public PostDetailResponse getPostDetail(Long postId, Pageable pageable) {
         // 1. 게시글 조회, 없으면 예외
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(PostErrorCode.POST_NOT_FOUND));
 
-        // 2. 댓글 목록 페이징 조회
+        // 2. 조회수 1 증가
+        post.setViewCount(post.getViewCount() + 1);
+
+        // 3. 댓글 목록 페이징 조회
         Page<Comment> comments = commentRepository.findByPostId(postId, pageable);
 
-        // 3. Comment 목록 → CommentResponse 목록으로 변환 및 최종 응답 조립
+        // 4. Comment 목록 → CommentResponse 목록으로 변환 및 최종 응답 조립
         return PostDetailResponse.from(post, comments);
     }
 

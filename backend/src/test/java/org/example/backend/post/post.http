@@ -115,6 +115,9 @@ Authorization: Bearer {{accessToken}}
 GET {{baseUrl}}/api/posts/1?page=0&size=2
 Authorization: Bearer {{accessToken}}
 
+### 9-3. 게시글 상세 조회 - viewCount 확인 (여러 번 실행해서 숫자 올라가는지 확인)
+GET {{baseUrl}}/api/posts/3
+Authorization: Bearer {{accessToken}}
 
 ### 10. 게시글 상세 조회 실패 - 없는 게시글 (404 + POST_NOT_FOUND 기대)
 GET {{baseUrl}}/api/posts/99999
