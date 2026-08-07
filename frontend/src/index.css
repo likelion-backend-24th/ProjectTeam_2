@@ -2,9 +2,66 @@
   box-sizing: border-box;
 }
 
+:root {
+  /* 배경 */
+  --color-bg: #06080a;
+  --color-bg-elevated: #12171d;
+  --color-bg-elevated-2: #0a0e12;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.14);
+
+  /* 텍스트 */
+  --color-text: #f5f7f6;
+  --color-text-secondary: #9aa5a1;
+  --color-text-muted: #6b7570;
+
+  /* 포인트 컬러 (라임 그린) */
+  --color-accent: #c6ff3d;
+  --color-accent-strong: #d9ff70;
+  --color-accent-ink: #0b1006;
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-full: 999px;
+
+  --container-width: 1200px;
+
+  color-scheme: dark;
+}
+
+html,
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  color: #1a1a1a;
-  background-color: #ffffff;
+  padding: 0;
+}
+
+body {
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Segoe UI',
+    'Malgun Gothic', sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+svg {
+  display: block;
 }
