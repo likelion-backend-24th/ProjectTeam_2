@@ -29,7 +29,7 @@ public class ExpertProfileController {
 
     private final ExpertProfileService expertProfileService;
 
-    @Operation(summary = "F-25 전문가 신청", description = "로그인한 USER가 경력·자격증을 입력해 전문가를 신청합니다.")
+    @Operation(summary = "전문가 신청", description = "로그인한 USER가 경력·자격증을 입력해 전문가를 신청합니다.")
     @PostMapping("/api/experts/signup")
     public ResponseEntity<ApiResponse<ExpertSignupResponse>> signup(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -41,14 +41,14 @@ public class ExpertProfileController {
     }
 
 
-    @Operation(summary = "F-32 전문가 목록 공개 조회", description = "승인된 전문가를 비로그인 포함 전체 공개합니다.")
+    @Operation(summary = "전문가 목록 공개 조회", description = "승인된 전문가를 비로그인 포함 전체 공개합니다.")
     @GetMapping("/api/experts")
     public ResponseEntity<ApiResponse<PublicExpertListResponse>> getPublicList() {
         PublicExpertListResponse response = expertProfileService.getPublicList();
         return ResponseEntity.ok(ApiResponse.success("전문가 목록 조회 성공", response));
     }
 
-    @Operation(summary = "F-27 ADMIN 전문가 목록 조회", description = "status 파라미터로 필터링, 없으면 전체 조회.")
+    @Operation(summary = "ADMIN 전문가 목록 조회", description = "status 파라미터로 필터링, 없으면 전체 조회.")
     @GetMapping("/api/admin/experts")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ExpertListResponse>> getList(
@@ -58,7 +58,7 @@ public class ExpertProfileController {
         return ResponseEntity.ok(ApiResponse.success("전문가 목록 조회 성공", response));
     }
 
-    @Operation(summary = "F-26 ADMIN 전문가 승인", description = "PENDING 상태의 신청을 승인, role이 EXPERT로 전환됩니다.")
+    @Operation(summary = "ADMIN 전문가 승인", description = "PENDING 상태의 신청을 승인, role이 EXPERT로 전환됩니다.")
     @PatchMapping("/api/admin/experts/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ExpertProfileResponse>> approve(@PathVariable Long id) {
@@ -66,7 +66,7 @@ public class ExpertProfileController {
         return ResponseEntity.ok(ApiResponse.success("전문가 승인이 완료되었습니다.", response));
     }
 
-    @Operation(summary = "F-26 ADMIN 전문가 거절", description = "PENDING 상태의 신청을 거절, 사유를 저장합니다.")
+    @Operation(summary = "ADMIN 전문가 거절", description = "PENDING 상태의 신청을 거절, 사유를 저장합니다.")
     @PatchMapping("/api/admin/experts/{id}/reject")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ExpertProfileResponse>> reject(
@@ -78,7 +78,7 @@ public class ExpertProfileController {
         return ResponseEntity.ok(ApiResponse.success("전문가 신청이 거절되었습니다.", response));
     }
 
-    @Operation(summary = "F-27 ADMIN 전문가 자격 박탈", description = "APPROVED 전문가를 박탈, role은 USER로 원복됩니다.")
+    @Operation(summary = "ADMIN 전문가 자격 박탈", description = "APPROVED 전문가를 박탈, role은 USER로 원복됩니다.")
     @DeleteMapping("/api/admin/experts/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> revoke(

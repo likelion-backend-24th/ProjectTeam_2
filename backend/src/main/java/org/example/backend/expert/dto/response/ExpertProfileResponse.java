@@ -24,7 +24,9 @@ public class ExpertProfileResponse {
                 .userId(profile.getUser().getId())
                 .introduction(profile.getIntroduction())
                 .careers(profile.getCareers().stream().map(career -> CareerResponse.from(career)).toList())
-                .certifications(profile.getCertifications().stream().map(certification -> CertificationResponse.from(certification)).toList())
+                .certifications(profile.getCertifications().stream()
+                        .map(certification -> CertificationResponse.from(certification))
+                        .toList())
                 .status(profile.getStatus())
                 .rejectReason(profile.getRejectReason())
                 .build();
