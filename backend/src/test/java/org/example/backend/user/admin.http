@@ -81,3 +81,27 @@ Authorization: Bearer {{accessToken}}
 ### 스터디 강제 삭제 - 실패: ADMIN 아님 (403)
 DELETE http://localhost:8080/api/admin/studies/1
 Authorization: Bearer {{accessToken}}
+
+### 스터디 게시글 강제 삭제 - 성공 (ADMIN, 댓글 있어도 됨)
+DELETE http://localhost:8080/api/admin/study-posts/1
+Authorization: Bearer {{accessToken}}
+
+### 스터디 게시글 강제 삭제 - 실패: 없는 id (404)
+DELETE http://localhost:8080/api/admin/study-posts/99999
+Authorization: Bearer {{accessToken}}
+
+### 스터디 게시글 강제 삭제 - 실패: ADMIN 아님 (403)
+DELETE http://localhost:8080/api/admin/study-posts/1
+Authorization: Bearer {{accessToken}}
+
+### 스터디 게시글 댓글 강제 삭제 - 성공 (ADMIN)
+DELETE http://localhost:8080/api/admin/study-post-comments/1
+Authorization: Bearer {{accessToken}}
+
+### 스터디 게시글 댓글 강제 삭제 - 실패: 없는 id (404)
+DELETE http://localhost:8080/api/admin/study-post-comments/99999
+Authorization: Bearer {{accessToken}}
+
+### 스터디 게시글 댓글 강제 삭제 - 실패: ADMIN 아님 (403)
+DELETE http://localhost:8080/api/admin/study-post-comments/1
+Authorization: Bearer {{accessToken}}

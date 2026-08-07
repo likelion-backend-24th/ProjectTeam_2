@@ -64,4 +64,18 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("스터디가 강제 삭제되었습니다.", null));
     }
 
+    //스터디 게시글 강제 삭제
+    @DeleteMapping("/study-posts/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteStudyPost(@PathVariable Long id){
+        adminService.deleteStudyPost(id);
+        return ResponseEntity.ok(ApiResponse.success("스터디 게시글이 강제 삭제되었습니다.", null));
+    }
+
+    //스터디 게시글 댓글 강제 삭제
+    @DeleteMapping("/study-post-comments/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteStudyPostComment(@PathVariable Long id){
+        adminService.deleteStudyPostComment(id);
+        return ResponseEntity.ok(ApiResponse.success("스터디 게시글 댓글이 강제 삭제되었습니다.", null));
+    }
+
 }

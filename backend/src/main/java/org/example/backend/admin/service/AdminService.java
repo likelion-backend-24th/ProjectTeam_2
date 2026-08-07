@@ -92,4 +92,25 @@ public class AdminService {
 
         studyRepository.delete(study);
     }
+
+    //스터디 게시글 강제 삭제 (연관된 댓글까지 함께 삭제)
+    @Transactional
+    public void deleteStudyPost(Long studyPostId){
+        StudyPost studyPost = studyPostRepository.findById(studyPostId)
+                .orElseThrow(() -> new BusinessException(AdminErrorCode.STUDY_POST_NOT_FOUND));
+
+        List<StudyPostComment> comments = studyPostCommentRepository.findAllByStudyPostId(studyPostId);
+        studyPostCommentRepository.deleteAll(comments);
+
+        studyPostRepository.delete(studyPost);
+    }
+
+    //스터디 게시글 댓글 강제 삭제
+    @Transactional
+    public void deleteStudyPostComment(Long commentId){
+        StudyPostComment comment = studyPostCommentRepository.findById(commentId)
+                .orElseThrow(() -> new BusinessException(AdminErrorCode.STUDY_POST_COMMENT_NOT_FOUND));
+
+        studyPostCommentRepository.delete(comment);
+    }
 }

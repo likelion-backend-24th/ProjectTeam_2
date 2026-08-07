@@ -13,7 +13,10 @@ public enum AdminErrorCode implements ErrorCode {
     INVALID_STATUS_CHANGE(HttpStatus.BAD_REQUEST, "ACTIVE 또는 SUSPENDED 상태로만 변경할 수 있습니다."),
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 게시글입니다."),
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 댓글입니다."),
-    STUDY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 스터디입니다.");
+    STUDY_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 스터디입니다."),
+    STUDY_POST_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 스터디 게시글입니다."),
+    STUDY_POST_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 스터디 게시글 댓글입니다.");
+
 
 
     private final HttpStatus httpStatus;
