@@ -1,7 +1,6 @@
 import { ArrowRight, UserPlus } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import styles from './CtaBanner.module.css'
-
-// TODO: 무료로 가입하기 -> /signup, 이미 계정이 있어요 -> /login
 export default function CtaBanner() {
   return (
     <section className={styles.section}>
@@ -20,14 +19,14 @@ export default function CtaBanner() {
         </div>
 
         <div className={styles.buttons}>
-          <a href="#" className={styles.primaryButton}>
+          <Link to="/signup" className={styles.primaryButton}>
             <UserPlus size={18} />
             무료로 가입하기
-          </a>
-          <a href="#" className={styles.secondaryButton}>
+          </Link>
+          <Link to="/login" className={styles.secondaryButton}>
             <ArrowRight size={18} />
             이미 계정이 있어요
-          </a>
+          </Link>
         </div>
       </div>
     </section>

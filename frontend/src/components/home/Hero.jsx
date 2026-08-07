@@ -1,7 +1,8 @@
 import { ArrowRight, ChevronRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import styles from './Hero.module.css'
 
-// TODO: 무료로 시작하기 -> /signup, 게시글 둘러보기 -> /posts
+// TODO: 게시글 둘러보기 -> /posts (게시판 페이지 생기면 연결)
 export default function Hero() {
   return (
     <section className={styles.hero}>
@@ -29,10 +30,10 @@ export default function Hero() {
           </p>
 
           <div className={styles.ctaGroup}>
-            <a href="#" className={styles.primaryButton}>
+            <Link to="/signup" className={styles.primaryButton}>
               무료로 시작하기
               <ArrowRight size={18} />
-            </a>
+            </Link>
             <a href="#" className={styles.secondaryButton}>
               게시글 둘러보기
               <ChevronRight size={18} />
