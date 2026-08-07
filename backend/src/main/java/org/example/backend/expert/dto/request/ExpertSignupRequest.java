@@ -20,8 +20,10 @@ public class ExpertSignupRequest {
     private List<CareerRequest> careers;
 
     @Valid
-    private List<CertificationRequest> certifications; // 선택 사항
+    private List<CertificationRequest> certifications;
 
+    // TODO: 소개글을 필수로 할지,선택으로 할지 확인 필요함.
+    //  필수로 할거면 @NotBlank 추가해야 함.
     @Size(max = 500, message = "소개글은 500자를 넘을 수 없습니다.")
     private String introduction;
 }

@@ -10,6 +10,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ExpertRejectRequest {
 
-    @Size(max = 255, message = "reason은 255자를 넘을 수 없습니다.")
+    @Size(max = 255, message = "거절 사유는 255자를 넘을 수 없습니다.")
     private String reason;
 }
