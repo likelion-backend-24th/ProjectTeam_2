@@ -4,12 +4,15 @@ import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.exception.AuthErrorCode;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.study.dto.request.StudyPostRequest;
+import org.example.backend.study.dto.response.StudyPostCommentResponse;
+import org.example.backend.study.dto.response.StudyPostDetailResponse;
 import org.example.backend.study.dto.response.StudyPostResponse;
 import org.example.backend.study.dto.request.StudyPostUpdateRequest;
 import org.example.backend.study.entity.Study;
 import org.example.backend.study.entity.StudyPost;
 import org.example.backend.study.exception.*;
 import org.example.backend.study.repository.StudyMemberRepository;
+import org.example.backend.study.repository.StudyPostCommentRepository;
 import org.example.backend.study.repository.StudyPostRepository;
 import org.example.backend.study.repository.StudyRepository;
 import org.example.backend.user.entity.User;
@@ -27,6 +30,7 @@ public class StudyPostService {
     private final StudyMemberRepository studyMemberRepository;
     private final StudyRepository studyRepository;
     private final UserRepository userRepository;
+    private final StudyPostCommentService studyPostCommentService;
 
     @Transactional
     public StudyPostResponse createStudyPost(Long userId, Long id, StudyPostRequest request) {
@@ -50,12 +54,14 @@ public class StudyPostService {
                 .toList();
     }
 
-    public StudyPostResponse getStudyPost(Long userId, Long id, Long postId) {
+    public StudyPostDetailResponse getStudyPostDetail(Long userId, Long id, Long postId) {
         getStudyOrThrow(id);
         validateStudyMember(id, userId);
         StudyPost post = getStudyPostOrThrow(id, postId);
 
-        return StudyPostResponse.from(post);
+        List<StudyPostCommentResponse> comments = studyPostCommentService.getStudyPostComments(userId, id, postId);
+
+        return StudyPostDetailResponse.from(post, comments);
     }
 
     @Transactional

@@ -43,11 +43,6 @@ public class StudyPostCommentService {
     }
 
     public List<StudyPostCommentResponse> getStudyPostComments(Long userId, Long id, Long postId) {
-        getUserOrThrow(userId);
-        getStudyOrThrow(id);
-        validateStudyMember(id, userId);
-        getStudyPostOrThrow(id, postId);
-
         List<StudyPostComment> comments = studyPostCommentRepository.findAllByStudyPostId(postId);
         return comments.stream()
                 .map(StudyPostCommentResponse::from)
