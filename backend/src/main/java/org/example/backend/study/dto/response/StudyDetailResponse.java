@@ -20,6 +20,8 @@ public class StudyDetailResponse {
     private LocalDate recruitEnd;
     private Long leaderId;
     private String leaderNickname;
+    private String category;
+    private String categoryLabel;
     private LocalDateTime createdAt;
 
     public static StudyDetailResponse from(Study study, int memberCount) {
@@ -33,6 +35,8 @@ public class StudyDetailResponse {
                 .recruitEnd(study.getRecruitEnd())
                 .leaderId(study.getLeader().getId())
                 .leaderNickname(study.getLeader().getNickname())
+                .category(study.getCategory().name())
+                .categoryLabel(study.getCategory().getLabel())
                 .createdAt(study.getCreatedAt())
                 .build();
     }

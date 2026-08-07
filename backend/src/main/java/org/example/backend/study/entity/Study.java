@@ -45,6 +45,10 @@ public class Study {
     @JoinColumn(name = "leader_id", nullable = false)
     private User leader;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StudyCategory category;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -54,12 +58,13 @@ public class Study {
     private LocalDateTime updatedAt;
 
     public Study(String title, String description, Integer capacity,
-                 LocalDate recruitStart, LocalDate recruitEnd, User leader) {
+                 LocalDate recruitStart, LocalDate recruitEnd, User leader, StudyCategory category) {
         this.title = title;
         this.description = description;
         this.capacity = capacity;
         this.recruitStart = recruitStart;
         this.recruitEnd = recruitEnd;
         this.leader = leader;
+        this.category = category;
     }
 }

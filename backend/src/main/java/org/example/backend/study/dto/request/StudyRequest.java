@@ -2,6 +2,7 @@ package org.example.backend.study.dto.request;
 
 import jakarta.validation.constraints.*;
 import lombok.Getter;
+import org.example.backend.study.entity.StudyCategory;
 
 import java.time.LocalDate;
 
@@ -25,10 +26,12 @@ public class StudyRequest {
     @NotNull(message = "모집 마감일을 입력해주세요.")
     private LocalDate recruitEnd;
 
+    @NotNull(message = "카테고리를 선택해주세요.")
+    private StudyCategory category;
+
     @AssertTrue(message = "모집 마감일은 시작일보다 빠를 수 없습니다.")
     public boolean isRecruitPeriodValid() {
         if (recruitStart == null || recruitEnd == null) return true;
         return !recruitEnd.isBefore(recruitStart);
     }
-
 }
