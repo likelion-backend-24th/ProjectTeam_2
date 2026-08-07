@@ -25,7 +25,7 @@ Content-Type: {{contentType}}
 }
 
 > {%
-    client.global.set("accessToken", response.body.accessToken);
+    client.global.set("accessToken", response.body.data.accessToken);
 %}
 
 ### 0-3. 테스트용 게시글 하나 미리 등록 (postId 필요하니까)
@@ -145,7 +145,7 @@ Content-Type: {{contentType}}
 }
 
 > {%
-    client.global.set("otherAccessToken", response.body.accessToken);
+    client.global.set("otherAccessToken", response.body.data.accessToken);
 %}
 
 ### 10-3. 남의 댓글 수정 시도 (403 + COMMENT_ACCESS_DENIED 기대, commentId는 실제 존재하는 남의 댓글 번호로 바꿔서 실행)
