@@ -50,4 +50,11 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("게시글이 강제 삭제되었습니다.", null));
     }
 
+    //댓글 강제 삭제
+    @DeleteMapping("/comments/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteComment(@PathVariable Long id){
+        adminService.deleteComment(id);
+        return ResponseEntity.ok(ApiResponse.success("댓글이 강제 삭제되었습니다.", null));
+    }
+
 }

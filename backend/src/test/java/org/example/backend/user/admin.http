@@ -57,3 +57,15 @@ Authorization: Bearer {{accessToken}}
 ### 게시글 강제 삭제 - 실패: ADMIN 아님 (403) 일반유저로 로그인해서 테스트
 DELETE http://localhost:8080/api/admin/posts/2
 Authorization: Bearer {{accessToken}}
+
+### 댓글 강제 삭제 - 성공 (ADMIN)
+DELETE http://localhost:8080/api/admin/comments/1
+Authorization: Bearer {{accessToken}}
+
+### 댓글 강제 삭제 - 실패: 없는 id (404)
+DELETE http://localhost:8080/api/admin/comments/99999
+Authorization: Bearer {{accessToken}}
+
+### 댓글 강제 삭제 - 실패: ADMIN 아님 (403)
+DELETE http://localhost:8080/api/admin/comments/1
+Authorization: Bearer {{accessToken}}

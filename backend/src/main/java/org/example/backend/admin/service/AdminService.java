@@ -3,6 +3,8 @@ package org.example.backend.admin.service;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.admin.dto.AdminUserResponse;
 import org.example.backend.admin.exception.AdminErrorCode;
+import org.example.backend.comment.entity.Comment;
+import org.example.backend.comment.repository.CommentRepository;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.post.entity.Post;
 import org.example.backend.post.repository.PostRepository;
@@ -20,6 +22,8 @@ public class AdminService {
 
     private final UserRepository userRepository;
     private final PostRepository postRepository;
+    private final CommentRepository commentRepository;
+
 
     //유저 목록 조회
     public Page<AdminUserResponse> getUsers(Pageable pageable){
@@ -48,6 +52,14 @@ public class AdminService {
                 .orElseThrow(() -> new BusinessException(AdminErrorCode.POST_NOT_FOUND));
 
         postRepository.delete(post);
+    }
 
+    //댓글 강제 삭제
+    @Transactional
+    public void deleteComment(Long commentId){
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new BusinessException(AdminErrorCode.COMMENT_NOT_FOUND));
+
+        commentRepository.delete(comment);
     }
 }
