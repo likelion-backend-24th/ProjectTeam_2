@@ -48,8 +48,16 @@
   color: var(--color-accent);
 }
 
+.bottomRow {
+  margin-top: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
 .subtext {
-  margin-top: 28px;
   font-size: 17px;
   line-height: 1.6;
   color: var(--color-text-secondary);
@@ -59,7 +67,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-top: 40px;
+  flex-shrink: 0;
 }
 
 .primaryButton {

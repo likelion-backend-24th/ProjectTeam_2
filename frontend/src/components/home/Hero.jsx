@@ -21,21 +21,23 @@ export default function Hero() {
           마세요.
         </h1>
 
-        <p className={styles.subtext}>
-          게시글 · 스터디 · 전문가 상담까지,
-          <br />
-          취업 준비의 모든 과정을 함께합니다.
-        </p>
+        <div className={styles.bottomRow}>
+          <p className={styles.subtext}>
+            게시글 · 스터디 · 전문가 상담까지,
+            <br />
+            취업 준비의 모든 과정을 함께합니다.
+          </p>
 
-        <div className={styles.ctaGroup}>
-          <a href="#" className={styles.primaryButton}>
-            무료로 시작하기
-            <ArrowRight size={18} />
-          </a>
-          <a href="#" className={styles.secondaryButton}>
-            게시글 둘러보기
-            <ChevronRight size={18} />
-          </a>
+          <div className={styles.ctaGroup}>
+            <a href="#" className={styles.primaryButton}>
+              무료로 시작하기
+              <ArrowRight size={18} />
+            </a>
+            <a href="#" className={styles.secondaryButton}>
+              게시글 둘러보기
+              <ChevronRight size={18} />
+            </a>
+          </div>
         </div>
 
         <div className={styles.scrollHint} aria-hidden="true">
