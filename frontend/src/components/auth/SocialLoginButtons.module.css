@@ -1,0 +1,48 @@
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.divider span {
+  flex: 1;
+  height: 1px;
+  background-color: var(--color-border);
+}
+
+.buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.kakao {
+  background-color: #fee500;
+  color: #391b1b;
+}
+
+.google {
+  background-color: #ffffff;
+  color: #1f1f1f;
+  border-color: var(--color-border-strong);
+}
+
+.naver {
+  background-color: #03c75a;
+  color: #ffffff;
+}
