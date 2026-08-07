@@ -3,12 +3,13 @@
 }
 
 :root {
-  /* 배경 */
-  --color-bg: #06080a;
-  --color-bg-elevated: #12171d;
-  --color-bg-elevated-2: #0a0e12;
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-border-strong: rgba(255, 255, 255, 0.14);
+  /* 배경 (와이어프레임 JPG 픽셀 샘플링으로 추출한 값) */
+  --color-bg: #080e1e;
+  --color-bg-elevated: #131a28;
+  --color-bg-elevated-2: #0b1120;
+  --color-input-bg: #1b2338;
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
 
   /* 텍스트 */
   --color-text: #f5f7f6;
