@@ -2,7 +2,6 @@ package org.example.backend.post.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.backend.comment.repository.CommentRepository;
-import org.example.backend.comment.dto.CommentResponse;
 import org.example.backend.comment.entity.Comment;
 import org.example.backend.post.entity.Post;
 import org.example.backend.post.dto.PostCreateRequest;
@@ -39,7 +38,7 @@ public class PostService {
 
         Post savedPost = postRepository.save(post);
 
-        return PostDetailResponse.from(savedPost, List.of());
+        return PostDetailResponse.from(savedPost, Page.empty());
     }
 
     public Page<PostResponse> getPosts(PostCategory category, Pageable pageable) {
@@ -54,13 +53,13 @@ public class PostService {
         return posts.map(PostResponse::from);
     }
 
-    public PostDetailResponse getPostDetail(Long postId) {
+    public PostDetailResponse getPostDetail(Long postId, Pageable pageable) {
         // 1. 게시글 조회, 없으면 예외
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(PostErrorCode.POST_NOT_FOUND));
 
-        // 2. 댓글 목록 조회
-        List<Comment> comments = commentRepository.findByPostIdOrderByCreatedAtAsc(postId);
+        // 2. 댓글 목록 페이징 조회
+        Page<Comment> comments = commentRepository.findByPostId(postId, pageable);
 
         // 3. Comment 목록 → CommentResponse 목록으로 변환 및 최종 응답 조립
         return PostDetailResponse.from(post, comments);

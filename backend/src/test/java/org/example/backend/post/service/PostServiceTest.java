@@ -85,7 +85,7 @@ class PostServiceTest {
         when(postRepository.findById(99999L)).thenReturn(Optional.empty());
 
         // when & then
-        assertThatThrownBy(() -> postService.getPostDetail(99999L))
+        assertThatThrownBy(() -> postService.getPostDetail(99999L, PageRequest.of(0, 10)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(PostErrorCode.POST_NOT_FOUND);
     }
