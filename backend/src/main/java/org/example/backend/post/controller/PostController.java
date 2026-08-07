@@ -58,9 +58,10 @@ public class PostController {
 
     @GetMapping("/{postId}")
     public ResponseEntity<ApiResponse<PostDetailResponse>> getPostDetail(
-            @PathVariable Long postId
+            @PathVariable Long postId,
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.ASC) Pageable pageable
     ) {
-        PostDetailResponse detail = postService.getPostDetail(postId);
+        PostDetailResponse detail = postService.getPostDetail(postId, pageable);
         return ResponseEntity.ok(ApiResponse.success("게시글 상세 조회에 성공했습니다", detail));
     }
 
