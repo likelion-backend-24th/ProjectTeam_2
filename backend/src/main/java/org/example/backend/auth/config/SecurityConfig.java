@@ -6,6 +6,7 @@ import org.example.backend.auth.security.JwtAuthenticationFilter;
 import org.example.backend.auth.security.JwtTokenProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -42,6 +43,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/logout").authenticated() //로그아웃 인증!!
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/studies").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/posts").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(
