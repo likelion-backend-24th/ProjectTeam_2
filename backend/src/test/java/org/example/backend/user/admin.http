@@ -69,3 +69,15 @@ Authorization: Bearer {{accessToken}}
 ### 댓글 강제 삭제 - 실패: ADMIN 아님 (403)
 DELETE http://localhost:8080/api/admin/comments/1
 Authorization: Bearer {{accessToken}}
+
+### 스터디 강제 삭제 - 성공 (ADMIN)
+DELETE http://localhost:8080/api/admin/studies/2
+Authorization: Bearer {{accessToken}}
+
+### 스터디 강제 삭제 - 실패: 없는 id (404)
+DELETE http://localhost:8080/api/admin/studies/99999
+Authorization: Bearer {{accessToken}}
+
+### 스터디 강제 삭제 - 실패: ADMIN 아님 (403)
+DELETE http://localhost:8080/api/admin/studies/1
+Authorization: Bearer {{accessToken}}
