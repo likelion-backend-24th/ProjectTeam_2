@@ -19,7 +19,7 @@ public class AdminService {
     private final UserRepository userRepository;
 
     //유저 목록 조회
-    private Page<AdminUserResponse> getUsers(Pageable pageable){
+    public Page<AdminUserResponse> getUsers(Pageable pageable){
         return userRepository.findAll(pageable)
                 .map(user -> AdminUserResponse.from(user));
     }
