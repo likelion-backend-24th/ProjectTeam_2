@@ -10,6 +10,7 @@ import {
   Users,
   Zap,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import styles from './QuickAccess.module.css'
 
 const ICON_COLORS = {
@@ -24,13 +25,21 @@ const ICON_COLORS = {
   red: { bg: 'rgba(248, 113, 113, 0.14)', fg: '#f87171' },
 }
 
-// TODO: react-router 도입 후 각 카드에 실제 경로(to) 연결
+// TODO: 스터디/전문가/구독 플랜/마이페이지 페이지가 생기면 실제 경로(to) 연결
 const QUICK_LINKS = [
-  { icon: FileText, color: 'blue', title: '게시글', subtitle: '커뮤니티 게시판', tag: '전체 공개' },
-  { icon: Edit3, color: 'lime', title: '글쓰기', subtitle: '새 게시글 작성', tag: '로그인 필요' },
-  { icon: Search, color: 'purple', title: '스터디', subtitle: '그룹 찾기 · 신청', tag: '전체 공개' },
-  { icon: Users, color: 'orange', title: '스터디 개설', subtitle: '방장 되기', tag: '로그인 필요' },
-  { icon: Crown, color: 'gold', title: '구독 플랜', subtitle: '프리미엄 멤버십', tag: '유료', badge: 'PRO' },
+  { icon: FileText, color: 'blue', title: '게시글', subtitle: '커뮤니티 게시판', tag: '전체 공개', to: '/posts' },
+  { icon: Edit3, color: 'lime', title: '글쓰기', subtitle: '새 게시글 작성', tag: '로그인 필요', to: '/posts/new' },
+  { icon: Search, color: 'purple', title: '스터디', subtitle: '그룹 찾기 · 신청', tag: '전체 공개', to: null },
+  { icon: Users, color: 'orange', title: '스터디 개설', subtitle: '방장 되기', tag: '로그인 필요', to: null },
+  {
+    icon: Crown,
+    color: 'gold',
+    title: '구독 플랜',
+    subtitle: '프리미엄 멤버십',
+    tag: '유료',
+    badge: 'PRO',
+    to: null,
+  },
   {
     icon: MessageCircle,
     color: 'teal',
@@ -38,15 +47,17 @@ const QUICK_LINKS = [
     subtitle: '1:1 스레드',
     tag: '구독 필요',
     badge: 'PRO',
+    to: null,
   },
-  { icon: BookOpen, color: 'indigo', title: '전문가 등록', subtitle: '현직자 신청', tag: '신청 가능' },
-  { icon: User, color: 'slate', title: '마이페이지', subtitle: '내 활동 관리', tag: '로그인 필요' },
+  { icon: BookOpen, color: 'indigo', title: '전문가 등록', subtitle: '현직자 신청', tag: '신청 가능', to: null },
+  { icon: User, color: 'slate', title: '마이페이지', subtitle: '내 활동 관리', tag: '로그인 필요', to: null },
 ]
 
-function QuickLinkCard({ icon: Icon, color, title, subtitle, tag, badge }) {
+function QuickLinkCard({ icon: Icon, color, title, subtitle, tag, badge, to }) {
   const { bg, fg } = ICON_COLORS[color]
+  const Component = to ? Link : 'a'
   return (
-    <a href="#" className={styles.card}>
+    <Component to={to} href={to ? undefined : '#'} className={styles.card}>
       {badge && <span className={styles.badge}>★ {badge}</span>}
       <span className={styles.iconBox} style={{ backgroundColor: bg, color: fg }}>
         <Icon size={20} />
@@ -57,7 +68,7 @@ function QuickLinkCard({ icon: Icon, color, title, subtitle, tag, badge }) {
         <span className={styles.cardTag}>{tag}</span>
         <ChevronRight size={16} />
       </span>
-    </a>
+    </Component>
   )
 }
 

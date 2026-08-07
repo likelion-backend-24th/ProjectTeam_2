@@ -2,10 +2,15 @@ import { ChevronLeft, LogIn, UserPlus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import styles from './SiteHeader.module.css'
 
-const NAV_ITEMS = ['게시글', '스터디', '전문가 상담', '구독 플랜']
+const NAV_ITEMS = [
+  { label: '게시글', to: '/posts' },
+  { label: '스터디', to: null },
+  { label: '전문가 상담', to: null },
+  { label: '구독 플랜', to: null },
+]
 
-// TODO: 게시글/스터디/전문가 상담/구독 플랜 페이지가 생기면 실제 경로 연결
-// 게시글 -> /posts, 스터디 -> /studies, 전문가 상담 -> /experts, 구독 플랜 -> /subscription
+// TODO: 스터디/전문가 상담/구독 플랜 페이지가 생기면 실제 경로 연결
+// 스터디 -> /studies, 전문가 상담 -> /experts, 구독 플랜 -> /subscription
 export default function SiteHeader({ backTo }) {
   return (
     <header className={styles.header}>
@@ -24,11 +29,17 @@ export default function SiteHeader({ backTo }) {
         </div>
 
         <nav className={styles.nav}>
-          {NAV_ITEMS.map((item) => (
-            <a key={item} href="#" className={styles.navLink}>
-              {item}
-            </a>
-          ))}
+          {NAV_ITEMS.map((item) =>
+            item.to ? (
+              <Link key={item.label} to={item.to} className={styles.navLink}>
+                {item.label}
+              </Link>
+            ) : (
+              <a key={item.label} href="#" className={styles.navLink}>
+                {item.label}
+              </a>
+            ),
+          )}
         </nav>
 
         <div className={styles.actions}>

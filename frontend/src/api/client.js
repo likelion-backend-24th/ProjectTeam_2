@@ -43,17 +43,24 @@ apiClient.interceptors.request.use((config) => {
 })
 
 // ---------------------------------------------------------------------------
-// 응답 인터셉터: 401 발생 시 /api/auth/reissue로 accessToken을 재발급받아
-// 실패했던 요청을 한 번 재시도한다. 동시에 여러 요청이 401을 맞아도
+// 응답 인터셉터: accessToken이 없거나 만료됐을 때 /api/auth/reissue로 재발급받아
+// 실패했던 요청을 한 번 재시도한다. 동시에 여러 요청이 인증 실패를 맞아도
 // reissue는 한 번만 호출되도록 큐잉한다.
+//
+// 주의: 이 백엔드는 인증 실패 시 401이 아니라 403을 내려준다(SecurityConfig가
+// 별도 AuthenticationEntryPoint를 설정하지 않아 익명 사용자의 접근이 403으로
+// 처리됨). 다만 "남의 글 삭제 시도" 같은 정상적인 비즈니스 권한 오류도 403이라
+// 이 둘을 구분해야 한다 — 비즈니스 403은 GlobalExceptionHandler를 거쳐
+// { errorCode: "..." } 바디가 실리고, 인증 실패 403은 Spring Security가 바로
+// 막아서 바디가 비어 있다. 그래서 "errorCode 없는 403"만 인증 실패로 간주한다.
 // ---------------------------------------------------------------------------
 let isRefreshing = false
 let pendingQueue = []
 
-function resolveQueue(newToken) {
+function resolveQueue(newToken, originalError) {
   pendingQueue.forEach(({ resolve, reject, config }) => {
     if (!newToken) {
-      reject(new Error('토큰 재발급에 실패했습니다.'))
+      reject(originalError)
       return
     }
     config.headers.Authorization = `Bearer ${newToken}`
@@ -64,6 +71,12 @@ function resolveQueue(newToken) {
 
 const AUTH_FREE_PATHS = ['/api/auth/login', '/api/auth/signup', '/api/auth/reissue']
 
+function isAuthFailure(response) {
+  if (!response) return false
+  if (response.status === 401) return true
+  return response.status === 403 && !response.data?.errorCode
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -71,7 +84,7 @@ apiClient.interceptors.response.use(
 
     const isAuthFreeRequest = AUTH_FREE_PATHS.some((path) => config?.url?.includes(path))
 
-    if (!response || response.status !== 401 || isAuthFreeRequest || config._retry) {
+    if (!isAuthFailure(response) || isAuthFreeRequest || config._retry) {
       return Promise.reject(error)
     }
 
@@ -91,10 +104,11 @@ apiClient.interceptors.response.use(
       resolveQueue(newAccessToken)
       config.headers.Authorization = `Bearer ${newAccessToken}`
       return apiClient(config)
-    } catch (refreshError) {
+    } catch {
+      // reissue 자체가 실패하면(비로그인 등) 원래 요청의 에러를 그대로 돌려준다.
       setAccessToken(null)
-      resolveQueue(null)
-      return Promise.reject(refreshError)
+      resolveQueue(null, error)
+      return Promise.reject(error)
     } finally {
       isRefreshing = false
     }
