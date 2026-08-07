@@ -1,6 +1,8 @@
-// 라우터/페이지는 아직 없음. 와이어프레임 확정 후 하나씩 추가 예정.
+import HomePage from './pages/HomePage'
+
+// 라우터는 아직 없음. 다른 페이지 와이어프레임이 오면 이어서 라우팅을 붙일 예정.
 function App() {
-  return <div>frontend setup complete</div>
+  return <HomePage />
 }
 
 export default App
