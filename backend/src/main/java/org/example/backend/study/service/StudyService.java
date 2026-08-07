@@ -51,11 +51,9 @@ public class StudyService {
 
     public StudyDetailResponse getStudyById(Long id) {
         Study study = getStudyOrThrow(id);
-        List<StudyMemberResponse> members = studyMemberRepository.findByStudyId(id).stream()
-                .map(StudyMemberResponse::from)
-                .toList();
+        int memberCount = studyMemberRepository.countByStudyId(id);
 
-        return StudyDetailResponse.from(study, members);
+        return StudyDetailResponse.from(study, memberCount);
     }
 
     public StudyResponse updateStudy(Long userId, Long id, @Valid StudyUpdateRequest request) {

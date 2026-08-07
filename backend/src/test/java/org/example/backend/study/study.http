@@ -58,10 +58,6 @@ Authorization: Bearer {{accessToken}}
   "recruitEnd": "2026-08-25"
 }
 
-### 스터디 가입 신청
-POST {{baseUrl}}/api/studies/2/join
-Authorization: Bearer {{accessToken}}
-
 ### 스터디 삭제
 DELETE {{baseUrl}}/api/studies/1
 Authorization: Bearer {{accessToken}}

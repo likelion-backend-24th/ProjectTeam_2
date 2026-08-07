@@ -1,8 +1,8 @@
 ### 변수 설정
 @baseUrl = http://localhost:8080
 @contentType = application/json
-@studyId = 2
-@postId = 1
+@studyId = 3
+@postId = 2
 
 ### 로그인 (accessToken 발급 - 아래 요청들에서 사용)
 # @name login

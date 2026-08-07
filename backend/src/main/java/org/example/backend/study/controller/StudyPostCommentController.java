@@ -31,14 +31,6 @@ public class StudyPostCommentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("댓글 작성 성공", response));
     }
 
-    @Operation(summary = "스터디 게시판 댓글 목록 조회")
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<StudyPostCommentResponse>>> getStudyPostComments(@AuthenticationPrincipal CustomUserDetails user, @PathVariable Long id, @PathVariable Long postId){
-        Long userId = user.getUser().getId();
-        List<StudyPostCommentResponse> response = studyPostCommentService.getStudyPostComments(userId, id, postId);
-        return ResponseEntity.ok(ApiResponse.success("댓글 조회 성공", response));
-    }
-
     @Operation(summary = "스터디 게시판 댓글 수정")
     @PutMapping("/{commentId}")
     public ResponseEntity<ApiResponse<StudyPostCommentResponse>> updateStudyPostComment(@AuthenticationPrincipal CustomUserDetails user, @PathVariable Long id, @PathVariable Long postId, @PathVariable Long commentId, @Valid @RequestBody StudyPostCommentUpdateRequest request){
