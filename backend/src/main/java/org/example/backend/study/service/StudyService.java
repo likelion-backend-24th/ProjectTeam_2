@@ -33,7 +33,7 @@ public class StudyService {
         User user = getUserOrThrow(userId);
         validateFreeTierLimit(user);
 
-        Study study = new Study(request.getTitle(), request.getDescription(), request.getCapacity(), request.getRecruitStart(), request.getRecruitEnd(), user);
+        Study study = new Study(request.getTitle(), request.getDescription(), request.getCapacity(), request.getRecruitStart(), request.getRecruitEnd(), user, request.getCategory());
         Study saved = studyRepository.save(study);
 
         studyMemberRepository.save(new StudyMember(saved, user));
@@ -65,6 +65,7 @@ public class StudyService {
         study.setCapacity(request.getCapacity());
         study.setRecruitStart(request.getRecruitStart());
         study.setRecruitEnd(request.getRecruitEnd());
+        study.setCategory(request.getCategory());
 
         return StudyResponse.from(study);
     }

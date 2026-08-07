@@ -8,7 +8,7 @@ POST {{baseUrl}}/api/auth/login
 Content-Type: {{contentType}}
 
 {
-  "username": "test4@naver.com",
+  "username": "test@naver.com",
   "password": "test1234"
 }
 
@@ -26,16 +26,15 @@ Authorization: Bearer {{accessToken}}
   "description": "매주 백준 3문제씩 풀어요",
   "capacity": 5,
   "recruitStart": "2026-08-10",
-  "recruitEnd": "2026-08-20"
+  "recruitEnd": "2026-08-20",
+  "category": "IT_DEVELOPMENT"
 }
 
 ### 스터디 목록 조회 (키워드 검색 X)
 GET {{baseUrl}}/api/studies?page=0&size=10
-Authorization: Bearer {{accessToken}}
 
 ### 스터디 목록 조회 (키워드 검색 O)
 GET {{baseUrl}}/api/studies?keyword=알고리즘&page=0&size=10
-Authorization: Bearer {{accessToken}}
 
 ### 내가 가입된 스터디 목록 조회
 GET {{baseUrl}}/api/studies/my?page=0&size=10
@@ -55,7 +54,8 @@ Authorization: Bearer {{accessToken}}
   "description": "매주 백준 5문제씩 풀어요",
   "capacity": 8,
   "recruitStart": "2026-08-10",
-  "recruitEnd": "2026-08-25"
+  "recruitEnd": "2026-08-25",
+  "category": "JOB_PREP"
 }
 
 ### 스터디 삭제
