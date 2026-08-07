@@ -1,0 +1,74 @@
+import apiClient from './client'
+
+// POST /api/studies
+function createStudy(payload) {
+  // payload: { title, description, capacity, recruitStart, recruitEnd, category }
+  return apiClient.post('/api/studies', payload)
+}
+
+// GET /api/studies/my
+function getMyStudies(params) {
+  return apiClient.get('/api/studies/my', { params })
+}
+
+// GET /api/studies (비로그인 접근 가능)
+function getStudies(params) {
+  // params: { keyword, page, size, sort }
+  return apiClient.get('/api/studies', { params })
+}
+
+// GET /api/studies/:id
+function getStudyById(id) {
+  return apiClient.get(`/api/studies/${id}`)
+}
+
+// PUT /api/studies/:id
+function updateStudy(id, payload) {
+  return apiClient.put(`/api/studies/${id}`, payload)
+}
+
+// DELETE /api/studies/:id
+function deleteStudy(id) {
+  return apiClient.delete(`/api/studies/${id}`)
+}
+
+// ---- 스터디 멤버 ----
+
+// POST /api/studies/:id/members
+function joinStudy(id) {
+  return apiClient.post(`/api/studies/${id}/members`)
+}
+
+// GET /api/studies/:id/members
+function getStudyMembers(id) {
+  return apiClient.get(`/api/studies/${id}/members`)
+}
+
+// DELETE /api/studies/:id/members/:memberId
+function removeStudyMember(id, memberId) {
+  return apiClient.delete(`/api/studies/${id}/members/${memberId}`)
+}
+
+// PATCH /api/studies/:id/leader
+function delegateLeader(id, newLeaderId) {
+  return apiClient.patch(`/api/studies/${id}/leader`, { newLeaderId })
+}
+
+// DELETE /api/studies/:id/leave
+function leaveStudy(id) {
+  return apiClient.delete(`/api/studies/${id}/leave`)
+}
+
+export const studyApi = {
+  createStudy,
+  getMyStudies,
+  getStudies,
+  getStudyById,
+  updateStudy,
+  deleteStudy,
+  joinStudy,
+  getStudyMembers,
+  removeStudyMember,
+  delegateLeader,
+  leaveStudy,
+}
