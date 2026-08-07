@@ -43,8 +43,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/logout").authenticated() //로그아웃 인증!!
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/studies").permitAll()
-                        .requestMatchers(HttpMethod.GET,"/api/posts").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/studies").permitAll() //비회원
+                        .requestMatchers(HttpMethod.GET,"/api/posts").permitAll()//비회원
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(
