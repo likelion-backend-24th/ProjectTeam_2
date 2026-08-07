@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.example.backend.admin.dto.AdminUserResponse;
 import org.example.backend.admin.exception.AdminErrorCode;
 import org.example.backend.common.exception.BusinessException;
+import org.example.backend.post.entity.Post;
+import org.example.backend.post.repository.PostRepository;
 import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.User;
 import org.example.backend.user.repository.UserRepository;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminService {
 
     private final UserRepository userRepository;
+    private final PostRepository postRepository;
 
     //유저 목록 조회
     public Page<AdminUserResponse> getUsers(Pageable pageable){
@@ -36,5 +39,15 @@ public class AdminService {
 
         user.setStatus(status);
         userRepository.save(user);
+    }
+
+    // 게시글 강제 삭제
+    @Transactional
+    public void deletePost(Long postId){
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new BusinessException(AdminErrorCode.POST_NOT_FOUND));
+
+        postRepository.delete(post);
+
     }
 }

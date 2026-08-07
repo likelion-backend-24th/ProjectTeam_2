@@ -43,4 +43,11 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("유저 상태가 변경되었습니다.", null));
     }
 
+    //게시글 강제 삭제
+    @DeleteMapping("/posts/{id}")
+    public ResponseEntity<ApiResponse<Void>> deletePost(@PathVariable Long id){
+        adminService.deletePost(id);
+        return ResponseEntity.ok(ApiResponse.success("게시글이 강제 삭제되었습니다.", null));
+    }
+
 }
