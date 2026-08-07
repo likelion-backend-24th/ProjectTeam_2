@@ -5,6 +5,7 @@ import lombok.Getter;
 import org.example.backend.expert.entity.Career;
 import org.example.backend.expert.entity.JobField;
 
+// 경력을 통째로 보여줄 때 사용할 DTO
 @Getter
 @Builder
 public class CareerResponse {
