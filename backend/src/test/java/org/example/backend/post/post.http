@@ -24,7 +24,7 @@ Content-Type: {{contentType}}
 }
 
 > {%
-    client.global.set("accessToken", response.body.accessToken);
+    client.global.set("accessToken", response.body.data.accessToken);
 %}
 
 ### =========================
@@ -182,7 +182,7 @@ Content-Type: {{contentType}}
 }
 
 > {%
-    client.global.set("otherAccessToken", response.body.accessToken);
+    client.global.set("otherAccessToken", response.body.data.accessToken);
 %}
 
 ### 15-3. 남의 글 수정 시도 (403 + POST_ACCESS_DENIED 기대, postId는 실제 존재하는 남의 글 번호로 바꿔서 실행)

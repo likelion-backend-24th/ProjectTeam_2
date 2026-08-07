@@ -18,6 +18,7 @@ public class PostDetailResponse {
     private String title;
     private String content;
     private PostCategory category;
+    private String categoryLabel;
     private String authorNickname;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -35,6 +36,7 @@ public class PostDetailResponse {
                 .title(post.getTitle())
                 .content(post.getContent())
                 .category(post.getCategory())
+                .categoryLabel(post.getCategory().getLabel())
                 .authorNickname(post.getUser().getNickname())
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
