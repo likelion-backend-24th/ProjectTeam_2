@@ -1,5 +1,8 @@
 package org.example.backend.post.entity;
 
+import lombok.Getter;
+
+@Getter
 public enum PostCategory {
     JOB_INFO("취업정보"),
     INTERVIEW_REVIEW("면접후기"),
@@ -10,9 +13,5 @@ public enum PostCategory {
 
     PostCategory(String label) {
         this.label = label;
-    }
-
-    public String getLabel() {
-        return label;
     }
 }
