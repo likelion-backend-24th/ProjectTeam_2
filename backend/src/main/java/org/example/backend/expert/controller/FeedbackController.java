@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "전문가 피드백", description = "구독자-전문가 1:1 문의 스레드 (F-30)")
+@Tag(name = "전문가 피드백", description = "구독자-전문가 1:1 문의 스레드를 개설하고, 구독자와 전문가가 메세지를 주고받는 API")
 @RestController
 @RequiredArgsConstructor
 public class FeedbackController {
