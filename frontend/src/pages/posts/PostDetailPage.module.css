@@ -61,6 +61,31 @@
   font-weight: 600;
 }
 
+.ownerActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.iconButton:hover {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
 .divider {
   height: 1px;
   background-color: var(--color-border);

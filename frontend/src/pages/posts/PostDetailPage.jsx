@@ -1,11 +1,12 @@
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { postApi } from '../../api'
 import SiteHeader from '../../components/common/SiteHeader'
 import CommentForm from '../../components/posts/CommentForm'
 import CommentItem from '../../components/posts/CommentItem'
 import { getPostCategoryMeta } from '../../constants/postCategory'
+import { useAuth } from '../../context/AuthContext'
 import { getAvatarColor } from '../../utils/avatarColor'
 import { formatDate } from '../../utils/formatDate'
 import styles from './PostDetailPage.module.css'
@@ -13,6 +14,8 @@ import styles from './PostDetailPage.module.css'
 export default function PostDetailPage() {
   const { postId } = useParams()
   const location = useLocation()
+  const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [post, setPost] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -83,6 +86,21 @@ export default function PostDetailPage() {
     setRefetchTrigger((prev) => prev + 1)
   }
 
+  // 백엔드가 게시글에 작성자 id를 내려주지 않아서(닉네임만 제공), 닉네임으로 소유 여부를 판별한다.
+  // User.nickname은 DB에서 unique 제약이 걸려 있어 닉네임 일치 = 본인으로 봐도 안전하다.
+  const isOwner = Boolean(user) && post && user.nickname === post.authorNickname
+
+  async function handleDelete() {
+    if (!window.confirm('게시글을 삭제할까요? 삭제하면 되돌릴 수 없어요.')) return
+
+    try {
+      await postApi.deletePost(postId)
+      navigate('/posts')
+    } catch (err) {
+      window.alert(err.response?.data?.message ?? '게시글 삭제에 실패했습니다.')
+    }
+  }
+
   // 비로그인 사용자는 안내 문구 없이 곧장 로그인 페이지로 보내고,
   // 로그인 후에는 이 게시글로 되돌아올 수 있도록 원래 경로를 state에 담아 전달한다.
   if (!isLoading && requiresLogin) {
@@ -120,6 +138,24 @@ export default function PostDetailPage() {
               <span className={styles.name}>{post.authorNickname}</span>
               <span>·</span>
               <span>{formatDate(post.createdAt)}</span>
+
+              {isOwner && (
+                <span className={styles.ownerActions}>
+                  <button
+                    type="button"
+                    className={styles.iconButton}
+                    onClick={() => navigate(`/posts/${postId}/edit`)}
+                    aria-label="게시글 수정"
+                  >
+                    <Pencil size={14} />
+                    수정
+                  </button>
+                  <button type="button" className={styles.iconButton} onClick={handleDelete} aria-label="게시글 삭제">
+                    <Trash2 size={14} />
+                    삭제
+                  </button>
+                </span>
+              )}
             </div>
 
             <div className={styles.divider} />
