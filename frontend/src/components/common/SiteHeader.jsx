@@ -5,13 +5,13 @@ import styles from './SiteHeader.module.css'
 
 const NAV_ITEMS = [
   { label: '게시글', to: '/posts' },
-  { label: '스터디', to: null },
+  { label: '스터디', to: '/studies' },
   { label: '전문가 상담', to: null },
   { label: '구독 플랜', to: null },
 ]
 
-// TODO: 스터디/전문가 상담/구독 플랜 페이지가 생기면 실제 경로 연결
-// 스터디 -> /studies, 전문가 상담 -> /experts, 구독 플랜 -> /subscription
+// TODO: 전문가 상담/구독 플랜 페이지가 생기면 실제 경로 연결
+// 전문가 상담 -> /experts, 구독 플랜 -> /subscription
 export default function SiteHeader({ backTo }) {
   const { user, isAuthenticated, isLoading, logout } = useAuth()
   const navigate = useNavigate()
