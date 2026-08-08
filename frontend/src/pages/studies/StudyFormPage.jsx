@@ -136,7 +136,7 @@ export default function StudyFormPage() {
 
   return (
     <>
-      <SiteHeader backTo={backTo} />
+      <SiteHeader />
       <main className={styles.main}>
         <Link to={backTo} className={styles.breadcrumb}>
           <ChevronLeft size={16} />

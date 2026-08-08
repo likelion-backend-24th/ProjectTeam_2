@@ -63,7 +63,7 @@ export default function PostListPage() {
 
   return (
     <>
-      <SiteHeader backTo="/" />
+      <SiteHeader />
       <main className={styles.main}>
         <div className={styles.headingRow}>
           <div>

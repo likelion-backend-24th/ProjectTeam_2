@@ -86,7 +86,7 @@ export default function StudyPostDetailPage() {
 
   return (
     <>
-      <SiteHeader backTo={`/studies/${studyId}`} />
+      <SiteHeader />
       <main className={styles.main}>
         <Link to={`/studies/${studyId}`} className={styles.breadcrumb}>
           <ChevronLeft size={16} />

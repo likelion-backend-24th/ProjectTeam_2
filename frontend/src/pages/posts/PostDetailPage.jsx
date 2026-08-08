@@ -111,7 +111,7 @@ export default function PostDetailPage() {
 
   return (
     <>
-      <SiteHeader backTo="/posts" />
+      <SiteHeader />
       <main className={styles.main}>
         <Link to="/posts" className={styles.breadcrumb}>
           <ChevronLeft size={16} />

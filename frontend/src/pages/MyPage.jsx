@@ -52,7 +52,7 @@ export default function MyPage() {
 
   return (
     <>
-      <SiteHeader backTo="/" />
+      <SiteHeader />
       <main className={styles.main}>
         <section className={styles.profileCard}>
           <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(user.nickname) }}>

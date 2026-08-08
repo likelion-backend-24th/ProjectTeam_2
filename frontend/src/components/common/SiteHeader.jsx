@@ -1,4 +1,4 @@
-import { ChevronLeft, LogIn, LogOut, UserPlus } from 'lucide-react'
+import { LogIn, LogOut, UserPlus } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import styles from './SiteHeader.module.css'
@@ -12,7 +12,7 @@ const NAV_ITEMS = [
 
 // TODO: 전문가 상담/구독 플랜 페이지가 생기면 실제 경로 연결
 // 전문가 상담 -> /experts, 구독 플랜 -> /subscription
-export default function SiteHeader({ backTo }) {
+export default function SiteHeader() {
   const { user, isAuthenticated, isLoading, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -25,12 +25,6 @@ export default function SiteHeader({ backTo }) {
     <header className={styles.header}>
       <div className={styles.inner}>
         <div className={styles.left}>
-          {backTo && (
-            <Link to={backTo} className={styles.backLink}>
-              <ChevronLeft size={16} />홈
-            </Link>
-          )}
-
           <Link to="/" className={styles.logo}>
             <span className={styles.logoMark}>P</span>
             <span className={styles.logoText}>prep2gether</span>

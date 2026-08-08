@@ -133,7 +133,7 @@ export default function StudyDetailPage() {
   if (isLoading) {
     return (
       <>
-        <SiteHeader backTo="/studies" />
+        <SiteHeader />
         <main className={styles.main}>
           <p className={styles.state}>불러오는 중...</p>
         </main>
@@ -144,7 +144,7 @@ export default function StudyDetailPage() {
   if (error || !study) {
     return (
       <>
-        <SiteHeader backTo="/studies" />
+        <SiteHeader />
         <main className={styles.main}>
           <p className={styles.state}>{error || '스터디 정보를 불러오지 못했습니다.'}</p>
         </main>
@@ -158,7 +158,7 @@ export default function StudyDetailPage() {
 
   return (
     <>
-      <SiteHeader backTo="/studies" />
+      <SiteHeader />
       <main className={styles.main}>
         <Link to="/studies" className={styles.breadcrumb}>
           <ChevronLeft size={16} />

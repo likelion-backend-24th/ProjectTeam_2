@@ -7,7 +7,7 @@ import styles from './AuthPageLayout.module.css'
 export default function LoginPage() {
   return (
     <>
-      <SiteHeader backTo="/" />
+      <SiteHeader />
       <main className={styles.main}>
         <div className={styles.card}>
           <AuthShowcase

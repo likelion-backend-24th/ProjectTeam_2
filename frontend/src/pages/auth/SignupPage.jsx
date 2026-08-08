@@ -58,7 +58,7 @@ export default function SignupPage() {
 
   return (
     <>
-      <SiteHeader backTo="/" />
+      <SiteHeader />
       <main className={styles.main}>
         <div className={styles.card}>
           <AuthShowcase
