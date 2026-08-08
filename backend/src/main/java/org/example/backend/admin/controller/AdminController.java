@@ -1,6 +1,8 @@
 package org.example.backend.admin.controller;
 
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.admin.dto.AdminUserResponse;
@@ -21,11 +23,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
+@Tag(name = "관리자", description = "유저 관리, 게시글/댓글/스터디 강제 삭제 등 관리자 전용 API")
 public class AdminController {
 
     private final AdminService adminService;
 
     //유저 목록 조회
+    @Operation(summary = "유저 목록 조회", description = "전체 유저 목록을 페이징하여 조회합니다.")
     @GetMapping("/users")
     public ResponseEntity<ApiResponse<List<AdminUserResponse>>> getUsers(
             @PageableDefault(size = 10)Pageable pageable){
@@ -35,6 +39,7 @@ public class AdminController {
     }
 
     //유저 상태 변경
+    @Operation(summary = "유저 상태 변경", description = "특정 유저의 계정 상태를 ACTIVE 또는 SUSPENDED로 변경합니다.")
     @PatchMapping("/users/{id}/status")
     public ResponseEntity<ApiResponse<Void>> changeUserStatus(
             @PathVariable Long id,
@@ -44,6 +49,7 @@ public class AdminController {
     }
 
     //게시글 강제 삭제
+    @Operation(summary = "게시글 강제 삭제", description = "관리자 권한으로 특정 게시글을 강제 삭제합니다.")
     @DeleteMapping("/posts/{id}")
     public ResponseEntity<ApiResponse<Void>> deletePost(@PathVariable Long id){
         adminService.deletePost(id);
@@ -51,6 +57,7 @@ public class AdminController {
     }
 
     //댓글 강제 삭제
+    @Operation(summary = "댓글 강제 삭제", description = "관리자 권한으로 특정 게시글을 강제 삭제합니다.")
     @DeleteMapping("/comments/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteComment(@PathVariable Long id){
         adminService.deleteComment(id);
@@ -58,6 +65,7 @@ public class AdminController {
     }
 
     //스터디 강제 삭제
+    @Operation(summary = "스터디 강제 삭제", description = "관리자 권한으로 특정 스터디를 강제 삭제합니다.")
     @DeleteMapping("/studies/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteStudy(@PathVariable Long id){
         adminService.deleteStudy(id);
@@ -65,6 +73,7 @@ public class AdminController {
     }
 
     //스터디 게시글 강제 삭제
+    @Operation(summary = "스터디 게시글 강제 삭제", description = "관리자 권한으로 특정 스터디 게시글을 강제 삭제합니다.")
     @DeleteMapping("/study-posts/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteStudyPost(@PathVariable Long id){
         adminService.deleteStudyPost(id);
@@ -72,10 +81,10 @@ public class AdminController {
     }
 
     //스터디 게시글 댓글 강제 삭제
+    @Operation(summary = "스터디 게시글 댓글 강제 삭제", description = "관리자 권한으로 특정 스터디 게시글 댓글을 강제 삭제합니다.")
     @DeleteMapping("/study-post-comments/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteStudyPostComment(@PathVariable Long id){
         adminService.deleteStudyPostComment(id);
         return ResponseEntity.ok(ApiResponse.success("스터디 게시글 댓글이 강제 삭제되었습니다.", null));
     }
-
 }
