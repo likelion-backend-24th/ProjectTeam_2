@@ -8,13 +8,15 @@ import lombok.NoArgsConstructor;
 import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.Role;
 
+import java.time.LocalDateTime;
+
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class UserResponse {
 
-    @Schema(description = "유저 고유 아이디", example = "1")
+    @Schema(description = "유저 고유 ID", example = "1")
     private Long id;
     @Schema(description = "내 이메일", example = "test@naver.com")
     private String username;
@@ -28,4 +30,6 @@ public class UserResponse {
     private AccountStatus status;
     @Schema(description = "내 구독 여부", example = "false")
     private boolean subscribed;
+    @Schema(description = "내 가입일시", example = "2026-08-01T10:00:00")
+    private LocalDateTime createdAt;
 }

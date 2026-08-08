@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Getter
 @Builder
 public class AdminUserResponse {
-    @Schema(description = "대상 유저 고유 아이디", example = "1")
+    @Schema(description = "대상 유저 고유 ID", example = "1")
     private Long id;
     @Schema(description = "대상 유저 이메일", example = "kjs@naver.com")
     private String usernmae;

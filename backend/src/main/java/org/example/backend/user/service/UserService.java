@@ -35,6 +35,7 @@ public class UserService {
                 .role(user.getRole())
                 .status(user.getStatus())
                 .subscribed(user.isSubscribed())
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 
