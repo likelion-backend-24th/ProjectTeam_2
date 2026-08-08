@@ -1,5 +1,6 @@
 package org.example.backend.expert.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 import org.example.backend.expert.entity.ExpertProfile;
@@ -10,12 +11,26 @@ import java.util.List;
 @Getter
 @Builder
 public class ExpertProfileResponse {
+
+    @Schema(description = "전문가 프로필 ID", example = "1")
     private Long id;
+
+    @Schema(description = "신청자 유저 ID", example = "3")
     private Long userId;
+
+    @Schema(description = "자기소개", example = "5년차 백엔드 개발자입니다.")
     private String introduction;
+
+    @Schema(description = "경력 목록")
     private List<CareerResponse> careers;
+
+    @Schema(description = "자격증 목록")
     private List<CertificationResponse> certifications;
+
+    @Schema(description = "심사 상태 (PENDING/APPROVED/REJECTED)", example = "PENDING")
     private ExpertStatus status;
+
+    @Schema(description = "거절 또는 자격 박탈 사유", example = "아쉽게도 제출한 경력 정보가 확인되지 않습니다. ")
     private String rejectReason;
 
     public static ExpertProfileResponse from(ExpertProfile profile) {
