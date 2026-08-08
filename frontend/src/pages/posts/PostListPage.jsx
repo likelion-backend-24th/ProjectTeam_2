@@ -1,9 +1,8 @@
 import { Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { postApi } from '../../api'
 import Pagination from '../../components/common/Pagination'
-import SiteFooter from '../../components/common/SiteFooter'
 import SiteHeader from '../../components/common/SiteHeader'
 import CategoryFilterTabs from '../../components/posts/CategoryFilterTabs'
 import PostListItem from '../../components/posts/PostListItem'
@@ -15,11 +14,17 @@ export default function PostListPage() {
   const [posts, setPosts] = useState([])
   const [totalPages, setTotalPages] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+  const [isFetching, setIsFetching] = useState(false)
   const [error, setError] = useState('')
+  // 처음 목록을 열 때만 "불러오는 중..." 문구를 보여준다. 카테고리 탭/페이지를 바꿀 때는
+  // 이미 그려진 목록을 유지한 채 살짝 흐리게만 표시해서, 목록이 통째로 사라졌다가 다시
+  // 나타나는 깜빡임을 없앤다.
+  const isFirstLoadRef = useRef(true)
 
   useEffect(() => {
     let ignore = false
-    setIsLoading(true)
+    setIsFetching(true)
+    if (isFirstLoadRef.current) setIsLoading(true)
     setError('')
 
     const params = { page }
@@ -39,7 +44,11 @@ export default function PostListPage() {
         if (!ignore) setError('게시글 목록을 불러오지 못했습니다.')
       })
       .finally(() => {
-        if (!ignore) setIsLoading(false)
+        if (!ignore) {
+          setIsLoading(false)
+          setIsFetching(false)
+          isFirstLoadRef.current = false
+        }
       })
 
     return () => {
@@ -73,13 +82,16 @@ export default function PostListPage() {
         {!isLoading && error && <p className={styles.errorState}>{error}</p>}
         {!isLoading && !error && posts.length === 0 && <p className={styles.state}>등록된 게시글이 없어요.</p>}
 
-        {!isLoading &&
-          !error &&
-          posts.map((post) => <PostListItem key={post.id} post={post} />)}
+        {!isLoading && !error && posts.length > 0 && (
+          <div className={isFetching ? styles.listFetching : styles.list}>
+            {posts.map((post) => (
+              <PostListItem key={post.id} post={post} />
+            ))}
+          </div>
+        )}
 
         <Pagination page={page} totalPages={totalPages} onChange={setPage} />
       </main>
-      <SiteFooter />
     </>
   )
 }

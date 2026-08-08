@@ -1,7 +1,6 @@
 import AuthShowcase from '../../components/auth/AuthShowcase'
 import LoginForm from '../../components/auth/LoginForm'
 import Testimonial from '../../components/auth/Testimonial'
-import SiteFooter from '../../components/common/SiteFooter'
 import SiteHeader from '../../components/common/SiteHeader'
 import styles from './AuthPageLayout.module.css'
 
@@ -24,7 +23,6 @@ export default function LoginPage() {
           <LoginForm />
         </div>
       </main>
-      <SiteFooter />
     </>
   )
 }

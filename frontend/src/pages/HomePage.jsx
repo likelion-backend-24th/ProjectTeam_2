@@ -1,4 +1,3 @@
-import SiteFooter from '../components/common/SiteFooter'
 import SiteHeader from '../components/common/SiteHeader'
 import CtaBanner from '../components/home/CtaBanner'
 import Hero from '../components/home/Hero'
@@ -17,7 +16,6 @@ export default function HomePage() {
         <WhySection />
         <CtaBanner />
       </main>
-      <SiteFooter />
     </>
   )
 }

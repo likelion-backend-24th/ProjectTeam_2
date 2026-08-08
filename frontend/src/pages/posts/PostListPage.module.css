@@ -54,3 +54,16 @@
   font-size: 14px;
   color: #f87171;
 }
+
+.list {
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+/* 카테고리 탭/페이지 전환으로 다시 불러오는 동안, 목록을 지우는 대신 살짝 흐리게만
+   보여줘서 화면이 통째로 깜빡이지 않게 한다. */
+.listFetching {
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}

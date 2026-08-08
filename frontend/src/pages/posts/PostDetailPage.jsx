@@ -1,8 +1,7 @@
 import { ChevronLeft } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 import { postApi } from '../../api'
-import SiteFooter from '../../components/common/SiteFooter'
 import SiteHeader from '../../components/common/SiteHeader'
 import CommentForm from '../../components/posts/CommentForm'
 import CommentItem from '../../components/posts/CommentItem'
@@ -13,6 +12,7 @@ import styles from './PostDetailPage.module.css'
 
 export default function PostDetailPage() {
   const { postId } = useParams()
+  const location = useLocation()
 
   const [post, setPost] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -22,10 +22,31 @@ export default function PostDetailPage() {
   // (React 19 StrictMode가 dev에서 effect를 두 번 실행해 요청이 겹치는 걸 막기 위해
   // effect 안에서 ignore 플래그로 경쟁 상태를 방지한다).
   const [refetchTrigger, setRefetchTrigger] = useState(0)
+  // 게시글을 처음 열 때만 전체 로딩 문구를 보여주고, 댓글 등록 후 refetch할 때는
+  // 이미 화면에 떠 있는 내용을 그대로 유지해 "불러오는 중..."으로 깜빡이지 않게 한다.
+  const isFirstLoadRef = useRef(true)
+  // 로컬/빠른 네트워크에서는 요청이 200ms 안에 끝나버려서 "불러오는 중..." 문구가
+  // 한 프레임 반짝이고 사라지는 것처럼 보인다(그게 바로 깜빡임으로 느껴짐).
+  // 로딩이 200ms 넘게 걸릴 때만 문구를 보여주고, 그 전에 끝나면 문구 없이
+  // 목록 -> 본문으로 바로 이어지게 한다.
+  const [showLoadingText, setShowLoadingText] = useState(false)
+
+  useEffect(() => {
+    isFirstLoadRef.current = true
+  }, [postId])
+
+  useEffect(() => {
+    if (!isLoading) {
+      setShowLoadingText(false)
+      return
+    }
+    const timer = setTimeout(() => setShowLoadingText(true), 200)
+    return () => clearTimeout(timer)
+  }, [isLoading])
 
   useEffect(() => {
     let ignore = false
-    setIsLoading(true)
+    if (isFirstLoadRef.current) setIsLoading(true)
     setError('')
     setRequiresLogin(false)
 
@@ -47,7 +68,10 @@ export default function PostDetailPage() {
         }
       })
       .finally(() => {
-        if (!ignore) setIsLoading(false)
+        if (!ignore) {
+          setIsLoading(false)
+          isFirstLoadRef.current = false
+        }
       })
 
     return () => {
@@ -57,6 +81,12 @@ export default function PostDetailPage() {
 
   function refetch() {
     setRefetchTrigger((prev) => prev + 1)
+  }
+
+  // 비로그인 사용자는 안내 문구 없이 곧장 로그인 페이지로 보내고,
+  // 로그인 후에는 이 게시글로 되돌아올 수 있도록 원래 경로를 state에 담아 전달한다.
+  if (!isLoading && requiresLogin) {
+    return <Navigate to="/login" replace state={{ from: location }} />
   }
 
   const categoryMeta = post ? getPostCategoryMeta(post.category) : null
@@ -70,20 +100,12 @@ export default function PostDetailPage() {
           게시글 목록
         </Link>
 
-        {isLoading && <p className={styles.state}>불러오는 중...</p>}
-
-        {!isLoading && requiresLogin && (
-          <p className={styles.loginNotice}>
-            이 글을 보려면 로그인이 필요해요.
-            <br />
-            <Link to="/login">로그인하러 가기</Link>
-          </p>
-        )}
+        {isLoading && showLoadingText && <p className={styles.state}>불러오는 중...</p>}
 
         {!isLoading && error && <p className={styles.state}>{error}</p>}
 
         {!isLoading && post && (
-          <>
+          <div className={styles.fadeIn}>
             {categoryMeta && (
               <span className={styles.badge} style={{ backgroundColor: categoryMeta.bg, color: categoryMeta.color }}>
                 {post.categoryLabel}
@@ -111,12 +133,11 @@ export default function PostDetailPage() {
             <CommentForm postId={postId} onCommentAdded={refetch} />
 
             {post.comments.map((comment) => (
-              <CommentItem key={comment.id} comment={comment} />
+              <CommentItem key={comment.id} postId={postId} comment={comment} onChanged={refetch} />
             ))}
-          </>
+          </div>
         )}
       </main>
-      <SiteFooter />
     </>
   )
 }

@@ -5,10 +5,10 @@ export default function SiteFooter() {
     <footer className={styles.footer}>
       <div className={styles.inner}>
         <a href="#" className={styles.logo}>
-          <span className={styles.logoMark}>취</span>
-          <span className={styles.logoText}>JOBtogether</span>
+          <span className={styles.logoMark}>P</span>
+          <span className={styles.logoText}>prep2gether</span>
         </a>
-        <p className={styles.copyright}>© 2026 JOBtogether. 취준생을 위한 커뮤니티 플랫폼.</p>
+        <p className={styles.copyright}>© 2026 prep2gether. 취준생을 위한 커뮤니티 플랫폼.</p>
       </div>
     </footer>
   )

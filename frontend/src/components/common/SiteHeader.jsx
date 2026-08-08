@@ -1,5 +1,6 @@
-import { ChevronLeft, LogIn, UserPlus } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { ChevronLeft, LogIn, LogOut, UserPlus } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import styles from './SiteHeader.module.css'
 
 const NAV_ITEMS = [
@@ -12,6 +13,14 @@ const NAV_ITEMS = [
 // TODO: 스터디/전문가 상담/구독 플랜 페이지가 생기면 실제 경로 연결
 // 스터디 -> /studies, 전문가 상담 -> /experts, 구독 플랜 -> /subscription
 export default function SiteHeader({ backTo }) {
+  const { user, isAuthenticated, isLoading, logout } = useAuth()
+  const navigate = useNavigate()
+
+  async function handleLogout() {
+    await logout()
+    navigate('/')
+  }
+
   return (
     <header className={styles.header}>
       <div className={styles.inner}>
@@ -23,8 +32,8 @@ export default function SiteHeader({ backTo }) {
           )}
 
           <Link to="/" className={styles.logo}>
-            <span className={styles.logoMark}>취</span>
-            <span className={styles.logoText}>JOBtogether</span>
+            <span className={styles.logoMark}>P</span>
+            <span className={styles.logoText}>prep2gether</span>
           </Link>
         </div>
 
@@ -43,14 +52,31 @@ export default function SiteHeader({ backTo }) {
         </nav>
 
         <div className={styles.actions}>
-          <Link to="/login" className={styles.loginLink}>
-            <LogIn size={16} />
-            로그인
-          </Link>
-          <Link to="/signup" className={styles.signupButton}>
-            <UserPlus size={16} />
-            무료 가입
-          </Link>
+          {/* 로그인 상태 복원(getMe) 중에는 아무것도 그리지 않아 로그인/회원가입 -> 닉네임으로
+              바뀌는 깜빡임을 막는다. */}
+          {!isLoading &&
+            (isAuthenticated ? (
+              <>
+                <Link to="/mypage" className={styles.userGreeting}>
+                  {user.nickname}님
+                </Link>
+                <button type="button" className={styles.logoutButton} onClick={handleLogout}>
+                  <LogOut size={16} />
+                  로그아웃
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className={styles.loginLink}>
+                  <LogIn size={16} />
+                  로그인
+                </Link>
+                <Link to="/signup" className={styles.signupButton}>
+                  <UserPlus size={16} />
+                  무료 가입
+                </Link>
+              </>
+            ))}
         </div>
       </div>
     </header>

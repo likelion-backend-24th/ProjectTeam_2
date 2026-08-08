@@ -88,14 +88,17 @@
   font-size: 14px;
 }
 
-.loginNotice {
-  padding: 80px 24px;
-  text-align: center;
-  color: var(--color-text-secondary);
-  font-size: 14px;
+/* 로딩 문구 없이 곧바로 본문이 나타날 때 뚝 끊기지 않도록 살짝 페이드인 */
+.fadeIn {
+  animation: fadeIn 0.2s ease;
 }
 
-.loginNotice a {
-  color: var(--color-accent);
-  font-weight: 700;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
+

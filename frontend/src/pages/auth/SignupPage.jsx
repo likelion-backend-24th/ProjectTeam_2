@@ -4,7 +4,6 @@ import { authApi } from '../../api'
 import AuthShowcase from '../../components/auth/AuthShowcase'
 import SignupForm from '../../components/auth/SignupForm'
 import SignupProgress from '../../components/auth/SignupProgress'
-import SiteFooter from '../../components/common/SiteFooter'
 import SiteHeader from '../../components/common/SiteHeader'
 import styles from './AuthPageLayout.module.css'
 
@@ -88,7 +87,6 @@ export default function SignupPage() {
           />
         </div>
       </main>
-      <SiteFooter />
     </>
   )
 }

@@ -1,6 +1,7 @@
 import { createBrowserRouter, Outlet, ScrollRestoration } from 'react-router-dom'
 import RequireAuth from './components/common/RequireAuth'
 import HomePage from './pages/HomePage'
+import MyPage from './pages/MyPage'
 import LoginPage from './pages/auth/LoginPage'
 import SignupPage from './pages/auth/SignupPage'
 import PostDetailPage from './pages/posts/PostDetailPage'
@@ -27,9 +28,25 @@ export const router = createBrowserRouter([
       { path: '/', element: <HomePage /> },
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
+      {
+        path: '/mypage',
+        element: (
+          <RequireAuth>
+            <MyPage />
+          </RequireAuth>
+        ),
+      },
       { path: '/posts', element: <PostListPage /> },
       {
         path: '/posts/new',
+        element: (
+          <RequireAuth>
+            <PostFormPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: '/posts/:postId/edit',
         element: (
           <RequireAuth>
             <PostFormPage />
