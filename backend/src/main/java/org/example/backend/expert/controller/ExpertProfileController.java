@@ -22,14 +22,14 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 
-@Tag(name = "전문가", description = "전문가 신청/승인/거절/자격박탈/공개조회 (F-25, F-26, F-27, F-32)")
+@Tag(name = "전문가", description = "전문가 신청, 프로필 조회, 재신청 및 관리자 승인/거절/자격 박탈 API")
 @RestController
 @RequiredArgsConstructor
 public class ExpertProfileController {
 
     private final ExpertProfileService expertProfileService;
 
-    @Operation(summary = "전문가 신청", description = "로그인한 USER가 경력·자격증을 입력해 전문가를 신청합니다.")
+    @Operation(summary = "전문가 신청", description = "로그인한 사용자가 경력, 자격증, 소개글을 입력하여 전문가 자격을 신청합니다. 신청 시 상태는 PENDING이 됩니다.")
     @PostMapping("/api/experts/signup")
     public ResponseEntity<ApiResponse<ExpertSignupResponse>> signup(
             @AuthenticationPrincipal CustomUserDetails userDetails,
