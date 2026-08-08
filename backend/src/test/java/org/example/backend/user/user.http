@@ -11,6 +11,11 @@ Content-Type: application/json
     client.global.set("accessToken", response.body.data.accessToken);
 %}
 
+### 내 정보 조회 - 성공
+GET http://localhost:8080/api/users/me
+Authorization: Bearer {{accessToken}}
+
+
 ### 닉네임 수정 - 성공
 PATCH http://localhost:8080/api/users/me/nickname
 Authorization: Bearer {{accessToken}}
