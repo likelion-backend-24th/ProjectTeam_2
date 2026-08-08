@@ -53,10 +53,16 @@
   font-weight: 700;
 }
 
-.username {
+.realName {
   margin-top: 6px;
   font-size: 14px;
   color: var(--color-text-secondary);
+}
+
+.username {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--color-text-muted);
 }
 
 .postCountPill {

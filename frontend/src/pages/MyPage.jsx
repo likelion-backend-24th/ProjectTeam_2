@@ -65,7 +65,8 @@ export default function MyPage() {
                 {roleMeta.label}
               </span>
             </div>
-            <p className={styles.username}>@{user.username}</p>
+            <p className={styles.realName}>{user.name}</p>
+            <p className={styles.username}>{user.username}</p>
           </div>
           <div className={styles.postCountPill}>
             <strong>{postCount}</strong>
