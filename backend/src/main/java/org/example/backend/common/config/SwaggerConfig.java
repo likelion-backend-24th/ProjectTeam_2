@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Configuration;
         ),
         security = @SecurityRequirement(name = "bearerAuth")
 )
-@SecurityScheme(
+@SecurityScheme( //Authorize 버튼 설정
         name = "bearerAuth",
         type = SecuritySchemeType.HTTP,
         scheme = "bearer",
