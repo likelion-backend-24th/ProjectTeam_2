@@ -43,16 +43,25 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
+  const kakaoLogin = useCallback(
+  async (kakaoAccessToken) => {
+    await authApi.kakaoLogin(kakaoAccessToken)
+    await loadMe()
+  },
+  [loadMe],
+)
+
   const value = useMemo(
     () => ({
       user,
       isLoading,
       isAuthenticated: Boolean(user),
       login,
+      kakaoLogin,
       logout,
       refetchMe: loadMe,
     }),
-    [user, isLoading, login, logout, loadMe],
+    [user, isLoading, login, kakaoLogin, logout, loadMe],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
