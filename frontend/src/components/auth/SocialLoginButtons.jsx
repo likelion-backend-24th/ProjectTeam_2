@@ -1,5 +1,7 @@
 import { MessageCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { GoogleIcon, NaverIcon } from './SocialIcons'
+import { useAuth } from '../../context/AuthContext'
 import styles from './SocialLoginButtons.module.css'
 
 const LABELS = {
@@ -13,9 +15,24 @@ const LABELS = {
 // SDK 앱 키·리다이렉트 URI 설정이 필요해서 지금은 버튼만 구현하고 연동은 TODO로 남겨둔다.
 export default function SocialLoginButtons({ mode }) {
   const labels = LABELS[mode]
+  const navigate = useNavigate() 
+  const { kakaoLogin } = useAuth()
 
   function handleKakao() {
     // TODO: Kakao SDK 로그인 -> authApi.kakaoLogin(kakaoAccessToken)
+    window.Kakao.Auth.login({
+      success: async function (authObj) {
+        try {
+          await kakaoLogin(authObj.access_token)
+          navigate('/', { replace: true })
+        } catch (err) {
+          console.error('카카오 로그인 실패', err)
+        }
+      },
+      fail: function (err) {
+        console.error('카카오 SDK 로그인 실패', err)
+      },
+    })
   }
 
   function handleGoogle() {
