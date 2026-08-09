@@ -9,8 +9,8 @@ export default function AuthShowcase({ heading, description, children }) {
       <span className={`${styles.ring} ${styles.ringTwo}`} aria-hidden="true" />
 
       <div className={styles.brand}>
-        <span className={styles.brandMark}>취</span>
-        <span className={styles.brandText}>JOBtogether</span>
+        <span className={styles.brandMark}>P</span>
+        <span className={styles.brandText}>prep2gether</span>
       </div>
 
       <div className={styles.body}>

@@ -1,13 +1,18 @@
 import { ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import styles from './AuthFormLayout.module.css'
 import SocialLoginButtons from './SocialLoginButtons'
 
 export default function LoginForm() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { login } = useAuth()
+  // 게시글 상세 등 로그인이 필요해 이 페이지로 넘어온 경우, 로그인 후 원래 보려던 페이지로 되돌려준다.
+  const from = location.state?.from
+    ? `${location.state.from.pathname}${location.state.from.search ?? ''}`
+    : '/'
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -21,7 +26,7 @@ export default function LoginForm() {
     setIsSubmitting(true)
     try {
       await login({ username, password })
-      navigate('/')
+      navigate(from, { replace: true })
     } catch (err) {
       setError(err.response?.data?.message ?? '이메일 또는 비밀번호를 확인해주세요.')
     } finally {
