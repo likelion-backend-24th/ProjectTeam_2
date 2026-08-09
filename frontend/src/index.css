@@ -37,6 +37,12 @@ body {
   padding: 0;
 }
 
+html {
+  /* 페이지마다 세로 스크롤바 유무가 달라 콘텐츠 폭이 미세하게 달라지는 걸 막기 위해
+     스크롤바 자리를 항상 확보해둔다(짧은 페이지에서도 스크롤바가 보이진 않음). */
+  scrollbar-gutter: stable;
+}
+
 body {
   font-family: 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Segoe UI',
     'Malgun Gothic', sans-serif;
