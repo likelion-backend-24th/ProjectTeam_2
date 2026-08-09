@@ -51,6 +51,14 @@ export function AuthProvider({ children }) {
   [loadMe],
 )
 
+const googleLogin = useCallback(
+    async (googleAccessToken) => {
+      await authApi.googleLogin(googleAccessToken)
+      await loadMe()
+    },
+    [loadMe],
+  )
+
   const value = useMemo(
     () => ({
       user,
@@ -58,10 +66,11 @@ export function AuthProvider({ children }) {
       isAuthenticated: Boolean(user),
       login,
       kakaoLogin,
+      googleLogin,
       logout,
       refetchMe: loadMe,
     }),
-    [user, isLoading, login, kakaoLogin, logout, loadMe],
+    [user, isLoading, login, kakaoLogin, googleLogin, logout, loadMe],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
