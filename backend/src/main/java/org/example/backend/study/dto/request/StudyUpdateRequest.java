@@ -19,9 +19,9 @@ public class StudyUpdateRequest {
     @Size(max = 2000, message = "설명은 2000자를 초과할 수 없습니다.")
     private String description;
 
-    @Schema(description = "수정할 모집 인원 (1명 이상)", example = "8")
+    @Schema(description = "수정할 모집 인원 (2명 이상)", example = "8")
     @NotNull(message = "모집 인원을 입력해주세요.")
-    @Positive(message = "모집 인원은 1명 이상이어야 합니다.")
+    @Min(value = 2, message = "모집 인원은 2명 이상이어야 합니다.")
     private Integer capacity;
 
     @Schema(description = "수정할 모집 마감일", example = "2026-08-25")

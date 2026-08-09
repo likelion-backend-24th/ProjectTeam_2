@@ -71,13 +71,16 @@ public class StudyService {
         Study study = getStudyOrThrow(id);
         validateStudyLeader(study, userId);
 
+        int memberCount = studyMemberRepository.countByStudyId(id);
+        if (request.getCapacity() < memberCount) {
+            throw new BusinessException(StudyErrorCode.STUDY_CAPACITY_BELOW_CURRENT_MEMBERS);
+        }
+
         study.setTitle(request.getTitle());
         study.setDescription(request.getDescription());
         study.setCapacity(request.getCapacity());
         study.setRecruitEnd(request.getRecruitEnd());
         study.setCategory(request.getCategory());
-
-        int memberCount = studyMemberRepository.countByStudyId(id);
 
         return StudyResponse.from(study, memberCount);
     }
