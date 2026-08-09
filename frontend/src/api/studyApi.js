@@ -2,7 +2,7 @@ import apiClient from './client'
 
 // POST /api/studies
 function createStudy(payload) {
-  // payload: { title, description, capacity, recruitStart, recruitEnd, category }
+  // payload: { title, description, capacity, recruitEnd, category } — recruitEnd는 선택(null이면 상시 모집)
   return apiClient.post('/api/studies', payload)
 }
 

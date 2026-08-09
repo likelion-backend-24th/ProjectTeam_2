@@ -99,6 +99,13 @@
   margin-left: 2px;
 }
 
+.optionalHint {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
 .input {
   width: 100%;
   padding: 13px 14px;
