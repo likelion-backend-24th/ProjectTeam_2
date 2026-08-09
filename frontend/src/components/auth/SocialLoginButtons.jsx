@@ -20,18 +20,8 @@ export default function SocialLoginButtons({ mode }) {
 
   function handleKakao() {
     // TODO: Kakao SDK 로그인 -> authApi.kakaoLogin(kakaoAccessToken)
-    window.Kakao.Auth.login({
-      success: async function (authObj) {
-        try {
-          await kakaoLogin(authObj.access_token)
-          navigate('/', { replace: true })
-        } catch (err) {
-          console.error('카카오 로그인 실패', err)
-        }
-      },
-      fail: function (err) {
-        console.error('카카오 SDK 로그인 실패', err)
-      },
+    window.Kakao.Auth.authorize({
+      redirectUri: import.meta.env.VITE_KAKAO_REDIRECT_URI,
     })
   }
 
