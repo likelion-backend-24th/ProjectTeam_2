@@ -6,6 +6,7 @@ import SiteHeader from '../../components/common/SiteHeader'
 import CategoryPicker from '../../components/posts/CategoryPicker'
 import { STUDY_CATEGORIES } from '../../constants/studyCategory'
 import { useAuth } from '../../context/AuthContext'
+import { isOverFreeStudyLimit } from '../../utils/studyLimit'
 import styles from './StudyFormPage.module.css'
 
 const TITLE_MAX_LENGTH = 100
@@ -103,6 +104,11 @@ export default function StudyFormPage() {
     }
     if (recruitEnd < recruitStartRef.current) {
       setError('모집 마감일이 너무 이릅니다.')
+      return
+    }
+
+    if (!isEditMode && (await isOverFreeStudyLimit(user))) {
+      navigate('/subscription')
       return
     }
 

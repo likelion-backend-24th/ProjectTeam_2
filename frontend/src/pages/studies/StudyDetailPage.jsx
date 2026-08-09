@@ -7,6 +7,7 @@ import { getStudyCategoryMeta } from '../../constants/studyCategory'
 import { useAuth } from '../../context/AuthContext'
 import { getAvatarColor } from '../../utils/avatarColor'
 import { formatDate } from '../../utils/formatDate'
+import { isOverFreeStudyLimit } from '../../utils/studyLimit'
 import styles from './StudyDetailPage.module.css'
 
 const TABS = [
@@ -99,6 +100,12 @@ export default function StudyDetailPage() {
 
   async function handleJoin() {
     setActionError('')
+
+    if (await isOverFreeStudyLimit(user)) {
+      navigate('/subscription')
+      return
+    }
+
     setIsJoining(true)
     try {
       await studyApi.joinStudy(studyId)

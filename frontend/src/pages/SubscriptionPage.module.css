@@ -1,0 +1,160 @@
+.main {
+  max-width: var(--container-width);
+  margin: 0 auto;
+  padding: 64px 24px 120px;
+  text-align: center;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--color-accent);
+  margin-bottom: 14px;
+}
+
+.title {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 14px;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  margin-bottom: 48px;
+}
+
+.plans {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 36px 32px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-elevated);
+}
+
+.premiumCard {
+  border-color: var(--color-accent);
+  background-color: rgba(198, 255, 61, 0.04);
+}
+
+.recommendedBadge {
+  position: absolute;
+  top: 24px;
+  right: 32px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent);
+  color: var(--color-accent-ink);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.planLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+  margin-bottom: 14px;
+}
+
+.price {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 28px;
+}
+
+.priceUnit {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.featureList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 32px;
+  flex: 1;
+}
+
+.featureItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.bullet,
+.bulletPremium {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.bullet {
+  background-color: var(--color-text-muted);
+}
+
+.bulletPremium {
+  background-color: var(--color-accent);
+}
+
+.freeButton,
+.premiumButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.freeButton {
+  background-color: var(--color-bg-elevated-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.freeButton:hover {
+  border-color: var(--color-border-strong);
+}
+
+.premiumButton {
+  background-color: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+
+.premiumButton:hover {
+  background-color: var(--color-accent-strong);
+}
+
+@media (max-width: 720px) {
+  .plans {
+    grid-template-columns: 1fr;
+  }
+
+  .title {
+    font-size: 30px;
+  }
+}

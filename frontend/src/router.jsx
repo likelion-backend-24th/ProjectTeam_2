@@ -7,6 +7,7 @@ import SignupPage from './pages/auth/SignupPage'
 import PostDetailPage from './pages/posts/PostDetailPage'
 import PostFormPage from './pages/posts/PostFormPage'
 import PostListPage from './pages/posts/PostListPage'
+import SubscriptionPage from './pages/SubscriptionPage'
 import StudyDetailPage from './pages/studies/StudyDetailPage'
 import StudyFormPage from './pages/studies/StudyFormPage'
 import StudyListPage from './pages/studies/StudyListPage'
@@ -41,6 +42,7 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
       },
+      { path: '/subscription', element: <SubscriptionPage /> },
       { path: '/posts', element: <PostListPage /> },
       {
         path: '/posts/new',
