@@ -1,7 +1,7 @@
-import { ChevronRight, Eye, LayoutGrid, Pencil, Settings, Trash2, User as UserIcon } from 'lucide-react'
+import { ChevronRight, Crown, Eye, LayoutGrid, Pencil, Settings, Trash2, User as UserIcon, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { postApi, userApi } from '../api'
+import { postApi, studyApi, userApi } from '../api'
 import Pagination from '../components/common/Pagination'
 import SiteHeader from '../components/common/SiteHeader'
 import { getPostCategoryMeta } from '../constants/postCategory'
@@ -19,6 +19,7 @@ const ROLE_META = {
 const TABS = [
   { key: 'activity', label: '내 활동', icon: UserIcon },
   { key: 'posts', label: '게시글', icon: LayoutGrid },
+  { key: 'studies', label: '스터디', icon: Users },
   { key: 'settings', label: '설정', icon: Settings },
 ]
 
@@ -46,6 +47,22 @@ export default function MyPage() {
     }
   }, [postsVersion])
 
+  // 프로필 카드의 "스터디 N개"와 [내 활동] 탭의 최근 스터디 3건.
+  const [recentStudies, setRecentStudies] = useState([])
+  const [studyCount, setStudyCount] = useState(0)
+
+  useEffect(() => {
+    let ignore = false
+    studyApi.getMyStudies({ page: 0, size: 3 }).then(({ data }) => {
+      if (ignore) return
+      setRecentStudies(data.data)
+      setStudyCount(data.meta.pagination.totalItems)
+    })
+    return () => {
+      ignore = true
+    }
+  }, [])
+
   if (!user) return null
 
   const roleMeta = ROLE_META[user.role] ?? ROLE_META.USER
@@ -68,9 +85,15 @@ export default function MyPage() {
             <p className={styles.realName}>{user.name}</p>
             <p className={styles.username}>{user.username}</p>
           </div>
-          <div className={styles.postCountPill}>
-            <strong>{postCount}</strong>
-            게시글
+          <div className={styles.statsRow}>
+            <div className={styles.postCountPill}>
+              <strong>{postCount}</strong>
+              게시글
+            </div>
+            <div className={styles.postCountPill}>
+              <strong>{studyCount}</strong>
+              스터디
+            </div>
           </div>
         </section>
 
@@ -89,12 +112,19 @@ export default function MyPage() {
         </nav>
 
         {activeTab === 'activity' && (
-          <ActivityTab recentPosts={recentPosts} onSeeAllPosts={() => setActiveTab('posts')} />
+          <ActivityTab
+            recentPosts={recentPosts}
+            onSeeAllPosts={() => setActiveTab('posts')}
+            recentStudies={recentStudies}
+            onSeeAllStudies={() => setActiveTab('studies')}
+          />
         )}
 
         {activeTab === 'posts' && (
           <PostsTab onPostsChanged={() => setPostsVersion((prev) => prev + 1)} />
         )}
+
+        {activeTab === 'studies' && <StudiesTab />}
 
         {activeTab === 'settings' && (
           <SettingsTab
@@ -111,7 +141,7 @@ export default function MyPage() {
   )
 }
 
-function ActivityTab({ recentPosts, onSeeAllPosts }) {
+function ActivityTab({ recentPosts, onSeeAllPosts, recentStudies, onSeeAllStudies }) {
   return (
     <section className={styles.section}>
       <div className={styles.sectionHeadingRow}>
@@ -134,6 +164,32 @@ function ActivityTab({ recentPosts, onSeeAllPosts }) {
                 <span className={styles.dot}>·</span>
                 <Eye size={13} />
                 <span>{post.viewCount}</span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <div className={styles.sectionHeadingRow}>
+        <h2 className={styles.sectionHeading}>최근 스터디</h2>
+        <button type="button" className={styles.seeAllButton} onClick={onSeeAllStudies}>
+          전체 보기
+          <ChevronRight size={14} />
+        </button>
+      </div>
+
+      {recentStudies.length === 0 ? (
+        <p className={styles.emptyState}>아직 가입한 스터디가 없어요.</p>
+      ) : (
+        <div className={styles.list}>
+          {recentStudies.map((study) => (
+            <Link key={study.id} to={`/studies/${study.id}`} className={styles.activityRow}>
+              <span className={styles.activityTitle}>{study.title}</span>
+              <span className={styles.activityMeta}>
+                <span>{study.categoryLabel}</span>
+                <span className={styles.dot}>·</span>
+                <Users size={13} />
+                <span>정원 {study.capacity}명</span>
               </span>
             </Link>
           ))}
@@ -250,6 +306,143 @@ function PostsTab({ onPostsChanged }) {
       )}
 
       <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+    </section>
+  )
+}
+
+function StudiesTab() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [studies, setStudies] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  // 카테고리 필터 없이 내가 가입한 스터디 전체를 받아온 뒤, 방장 여부로 프론트에서 두 섹션으로 나눈다.
+  useEffect(() => {
+    let ignore = false
+    setIsLoading(true)
+    studyApi
+      .getMyStudies({ size: 100 })
+      .then(({ data }) => {
+        if (ignore) return
+        setStudies(data.data)
+        setError('')
+      })
+      .catch(() => {
+        if (!ignore) setError('스터디 목록을 불러오지 못했습니다.')
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  async function handleLeave(study) {
+    if (!window.confirm(`"${study.title}" 스터디를 탈퇴할까요?`)) return
+    try {
+      await studyApi.leaveStudy(study.id)
+      setStudies((prev) => prev.filter((item) => item.id !== study.id))
+    } catch (err) {
+      window.alert(err.response?.data?.message ?? '탈퇴에 실패했습니다.')
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <section className={styles.section}>
+        <p className={styles.emptyState}>불러오는 중...</p>
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section className={styles.section}>
+        <p className={styles.emptyState}>{error}</p>
+      </section>
+    )
+  }
+
+  const ledStudies = studies.filter((study) => study.leaderId === user.id)
+  const joinedStudies = studies.filter((study) => study.leaderId !== user.id)
+
+  return (
+    <section className={styles.section}>
+      <div className={styles.sectionHeadingRow}>
+        <h2 className={styles.sectionHeading}>내가 개설한 스터디</h2>
+      </div>
+
+      {ledStudies.length === 0 ? (
+        <p className={styles.emptyState}>아직 개설한 스터디가 없어요.</p>
+      ) : (
+        <div className={styles.list}>
+          {ledStudies.map((study) => (
+            <div key={study.id} className={styles.studyRow}>
+              <span className={styles.studyAvatar} style={{ backgroundColor: getAvatarColor(study.title) }}>
+                {study.title?.[0]}
+              </span>
+              <Link to={`/studies/${study.id}`} className={styles.studyRowMain}>
+                <p className={styles.studyRowTitle}>
+                  {study.title}
+                  <span className={styles.leaderBadge}>
+                    <Crown size={11} />
+                    방장
+                  </span>
+                </p>
+                <span className={styles.activityMeta}>
+                  <span>{study.categoryLabel}</span>
+                  <span className={styles.dot}>·</span>
+                  <Users size={13} />
+                  <span>정원 {study.capacity}명</span>
+                </span>
+              </Link>
+              <button
+                type="button"
+                className={styles.rowActionButton}
+                onClick={() => navigate(`/studies/${study.id}/edit`)}
+              >
+                관리
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className={styles.sectionHeadingRow}>
+        <h2 className={styles.sectionHeading}>참여 중인 스터디</h2>
+        <Link to="/studies" className={styles.seeAllButton}>
+          스터디 찾기
+          <ChevronRight size={14} />
+        </Link>
+      </div>
+
+      {joinedStudies.length === 0 ? (
+        <p className={styles.emptyState}>아직 참여 중인 스터디가 없어요.</p>
+      ) : (
+        <div className={styles.list}>
+          {joinedStudies.map((study) => (
+            <div key={study.id} className={styles.studyRow}>
+              <span className={styles.studyAvatar} style={{ backgroundColor: getAvatarColor(study.title) }}>
+                {study.title?.[0]}
+              </span>
+              <Link to={`/studies/${study.id}`} className={styles.studyRowMain}>
+                <p className={styles.studyRowTitle}>{study.title}</p>
+                <span className={styles.activityMeta}>
+                  <span>{study.categoryLabel}</span>
+                  <span className={styles.dot}>·</span>
+                  <Users size={13} />
+                  <span>정원 {study.capacity}명</span>
+                </span>
+              </Link>
+              <button type="button" className={styles.rowActionButton} onClick={() => handleLeave(study)}>
+                탈퇴
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   )
 }
