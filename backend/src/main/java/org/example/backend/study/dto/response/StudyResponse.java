@@ -23,6 +23,9 @@ public class StudyResponse {
     @Schema(description = "모집 인원", example = "5")
     private Integer capacity;
 
+    @Schema(description = "모집된 인원", example = "3")
+    private Integer currentMemberCount;
+
     @Schema(description = "모집 시작일", example = "2026-08-10")
     private LocalDate recruitStart;
 
@@ -44,12 +47,13 @@ public class StudyResponse {
     @Schema(description = "스터디 개설일시", example = "2026-08-05T10:00:00")
     private LocalDateTime createdAt;
 
-    public static StudyResponse from(Study study) {
+    public static StudyResponse from(Study study, int memberCount) {
         return StudyResponse.builder()
                 .id(study.getId())
                 .title(study.getTitle())
                 .description(study.getDescription())
                 .capacity(study.getCapacity())
+                .currentMemberCount(memberCount)
                 .recruitStart(study.getRecruitStart())
                 .recruitEnd(study.getRecruitEnd())
                 .leaderId(study.getLeader().getId())

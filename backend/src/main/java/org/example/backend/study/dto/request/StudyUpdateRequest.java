@@ -24,10 +24,6 @@ public class StudyUpdateRequest {
     @Positive(message = "모집 인원은 1명 이상이어야 합니다.")
     private Integer capacity;
 
-    @Schema(description = "수정할 모집 시작일", example = "2026-08-10")
-    @NotNull(message = "모집 시작일을 입력해주세요.")
-    private LocalDate recruitStart;
-
     @Schema(description = "수정할 모집 마감일", example = "2026-08-25")
     @NotNull(message = "모집 마감일을 입력해주세요.")
     private LocalDate recruitEnd;
@@ -35,11 +31,5 @@ public class StudyUpdateRequest {
     @Schema(description = "수정할 스터디 카테고리", example = "CERTIFICATE")
     @NotNull(message = "카테고리를 선택해주세요.")
     private StudyCategory category;
-
-    @AssertTrue(message = "모집 마감일은 시작일보다 빠를 수 없습니다.")
-    public boolean isRecruitPeriodValid() {
-        if (recruitStart == null || recruitEnd == null) return true;
-        return !recruitEnd.isBefore(recruitStart);
-    }
 
 }
