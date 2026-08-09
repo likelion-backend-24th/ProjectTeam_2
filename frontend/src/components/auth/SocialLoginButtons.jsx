@@ -27,6 +27,7 @@ export default function SocialLoginButtons({ mode }) {
         callbackUrl: import.meta.env.VITE_NAVER_REDIRECT_URI,
         isPopup: false,
         callbackHandle: true,
+        loginButton: { color: 'green', type: 3, height: 60 },
       })
       naverLoginRef.current.init()
     }

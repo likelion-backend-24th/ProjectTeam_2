@@ -14,6 +14,7 @@ import StudyListPage from './pages/studies/StudyListPage'
 import StudyPostDetailPage from './pages/studies/StudyPostDetailPage'
 import StudyPostFormPage from './pages/studies/StudyPostFormPage'
 import KakaoCallbackPage from './pages/auth/KakaoCallbackPage'
+import NaverCallbackPage from './pages/auth/NaverCallbackPage'
 // 페이지 이동 시 스크롤 위치를 맨 위로 초기화(뒤로가기/앞으로가기는 위치 복원)하기 위한
 // 최상위 레이아웃. 실제 화면 레이아웃에는 관여하지 않고 <Outlet/>만 그대로 렌더링한다.
 function RootLayout() {
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
       { path: '/oauth/callback', element: <KakaoCallbackPage /> },
+      { path: '/oauth/naver/callback', element: <NaverCallbackPage /> },
       {
         path: '/mypage',
         element: (
