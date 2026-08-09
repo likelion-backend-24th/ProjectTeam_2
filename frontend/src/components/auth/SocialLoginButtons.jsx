@@ -1,4 +1,5 @@
 import { MessageCircle } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GoogleIcon, NaverIcon } from './SocialIcons'
 import { useAuth } from '../../context/AuthContext'
@@ -17,6 +18,20 @@ export default function SocialLoginButtons({ mode }) {
   const labels = LABELS[mode]
   const navigate = useNavigate() 
   const { kakaoLogin, googleLogin } = useAuth()
+  const naverLoginRef = useRef(null)
+
+  useEffect(() => {
+    if (window.naver && !naverLoginRef.current) {
+      naverLoginRef.current = new window.naver.LoginWithNaverId({
+        clientId: import.meta.env.VITE_NAVER_CLIENT_ID,
+        callbackUrl: import.meta.env.VITE_NAVER_REDIRECT_URI,
+        isPopup: false,
+        callbackHandle: true,
+        loginButton: { color: 'green', type: 3, height: 60 },
+      })
+      naverLoginRef.current.init()
+    }
+}, [])
 
   function handleKakao() {
     // TODO: Kakao SDK 로그인 -> authApi.kakaoLogin(kakaoAccessToken)
@@ -48,10 +63,13 @@ export default function SocialLoginButtons({ mode }) {
 
   function handleNaver() {
     // TODO: 네이버 로그인 SDK -> authApi.naverLogin(naverAccessToken)
+     const hiddenButton = document.getElementById('naverIdLogin')?.querySelector('a')
+    hiddenButton?.click()
   }
 
   return (
     <>
+      <div id="naverIdLogin" style={{ display: 'none' }} />
       <div className={styles.divider}>
         <span />
         또는

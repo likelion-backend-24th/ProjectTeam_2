@@ -44,16 +44,24 @@ export function AuthProvider({ children }) {
   }, [])
 
   const kakaoLogin = useCallback(
-  async (kakaoAccessToken) => {
-    await authApi.kakaoLogin(kakaoAccessToken)
-    await loadMe()
-  },
-  [loadMe],
-)
+    async (kakaoAccessToken) => {
+      await authApi.kakaoLogin(kakaoAccessToken)
+      await loadMe()
+    },
+    [loadMe],
+  )
 
-const googleLogin = useCallback(
+  const googleLogin = useCallback(
     async (googleAccessToken) => {
       await authApi.googleLogin(googleAccessToken)
+      await loadMe()
+    },
+    [loadMe],
+  )
+
+  const naverLogin = useCallback(
+    async (naverAccessToken) => {
+      await authApi.naverLogin(naverAccessToken)
       await loadMe()
     },
     [loadMe],
@@ -67,10 +75,11 @@ const googleLogin = useCallback(
       login,
       kakaoLogin,
       googleLogin,
+      naverLogin,
       logout,
       refetchMe: loadMe,
     }),
-    [user, isLoading, login, kakaoLogin, googleLogin, logout, loadMe],
+    [user, isLoading, login, kakaoLogin, googleLogin, naverLogin, logout, loadMe],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
