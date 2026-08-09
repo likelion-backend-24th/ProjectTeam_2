@@ -25,11 +25,16 @@ public class StudyUpdateRequest {
     private Integer capacity;
 
     @Schema(description = "수정할 모집 마감일", example = "2026-08-25")
-    @NotNull(message = "모집 마감일을 입력해주세요.")
     private LocalDate recruitEnd;
 
     @Schema(description = "수정할 스터디 카테고리", example = "CERTIFICATE")
     @NotNull(message = "카테고리를 선택해주세요.")
     private StudyCategory category;
+
+    @AssertTrue(message = "모집 마감일은 오늘보다 빠를 수 없습니다.")
+    public boolean isRecruitEndValid() {
+        if (recruitEnd == null) return true; // null이면 상시 모집으로 간주, 검증 통과
+        return !recruitEnd.isBefore(LocalDate.now());
+    }
 
 }
