@@ -16,7 +16,7 @@ const LABELS = {
 export default function SocialLoginButtons({ mode }) {
   const labels = LABELS[mode]
   const navigate = useNavigate() 
-  const { kakaoLogin } = useAuth()
+  const { kakaoLogin, googleLogin } = useAuth()
 
   function handleKakao() {
     // TODO: Kakao SDK 로그인 -> authApi.kakaoLogin(kakaoAccessToken)
@@ -27,6 +27,23 @@ export default function SocialLoginButtons({ mode }) {
 
   function handleGoogle() {
     // TODO: Google Identity Services -> authApi.googleLogin(googleAccessToken)
+     const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      scope: 'email profile',
+      callback: async (response) => {
+        if (response.error) {
+          console.error('구글 로그인 실패', response)
+          return
+        }
+        try {
+          await googleLogin(response.access_token)
+          navigate('/', { replace: true })
+        } catch (err) {
+          console.error('구글 로그인 처리 실패', err)
+        }
+      },
+    })
+    client.requestAccessToken()
   }
 
   function handleNaver() {
