@@ -19,6 +19,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -67,6 +68,7 @@ public class StudyController {
         return ResponseEntity.ok(ApiResponse.success("스터디 상세 조회", response));
     }
 
+    @Transactional
     @Operation(summary = "스터디 수정", description = "방장 본인이 스터디 정보를 수정합니다.")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<StudyResponse>> updateStudy(
@@ -77,14 +79,5 @@ public class StudyController {
         StudyResponse response = studyService.updateStudy(userId, id, request);
         return ResponseEntity.ok(ApiResponse.success("스터디 수정", response));
     }
-
-    @Operation(summary = "스터디 삭제", description = "방장 본인이 스터디를 삭제합니다.")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteStudy(@AuthenticationPrincipal CustomUserDetails user, @PathVariable Long id) {
-        Long userId = user.getUser().getId();
-        studyService.deleteStudy(userId, id);
-        return ResponseEntity.ok(ApiResponse.success("스터디 삭제", null));
-    }
-
 
 }

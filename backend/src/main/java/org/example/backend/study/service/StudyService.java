@@ -19,8 +19,12 @@ import org.example.backend.user.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,16 +33,17 @@ public class StudyService {
     private final StudyMemberRepository studyMemberRepository;
     private final UserRepository userRepository;
 
+    @Transactional
     public StudyResponse createStudy(Long userId, StudyRequest request){
         User user = getUserOrThrow(userId);
         validateFreeTierLimit(user);
 
-        Study study = new Study(request.getTitle(), request.getDescription(), request.getCapacity(), request.getRecruitStart(), request.getRecruitEnd(), user, request.getCategory());
-        Study saved = studyRepository.save(study);
+        Study study = new Study(request.getTitle(), request.getDescription(), request.getCapacity(), LocalDate.now(), request.getRecruitEnd(), user, request.getCategory());
 
+        Study saved = studyRepository.save(study);
         studyMemberRepository.save(new StudyMember(saved, user));
 
-        return StudyResponse.from(saved);
+        return StudyResponse.from(saved, 1);
     }
 
     public Page<StudyResponse> getStudies(String keyword, Pageable pageable) {
@@ -46,7 +51,12 @@ public class StudyService {
                 ? studyRepository.findAll(pageable)
                 : studyRepository.findByTitleContaining(keyword, pageable);
 
-        return page.map(StudyResponse::from);
+        Map<Long, Integer> memberCountMap = getMemberCountMap(page.getContent());
+
+        return page.map(study -> {
+            int memberCount = memberCountMap.getOrDefault(study.getId(), 0);
+            return StudyResponse.from(study, memberCount);
+        });
     }
 
     public StudyDetailResponse getStudyById(Long id) {
@@ -56,25 +66,60 @@ public class StudyService {
         return StudyDetailResponse.from(study, memberCount);
     }
 
+    @Transactional
     public StudyResponse updateStudy(Long userId, Long id, @Valid StudyUpdateRequest request) {
         Study study = getStudyOrThrow(id);
         validateStudyLeader(study, userId);
 
+        int memberCount = studyMemberRepository.countByStudyId(id);
+        if (request.getCapacity() < memberCount) {
+            throw new BusinessException(StudyErrorCode.STUDY_CAPACITY_BELOW_CURRENT_MEMBERS);
+        }
+
         study.setTitle(request.getTitle());
         study.setDescription(request.getDescription());
         study.setCapacity(request.getCapacity());
-        study.setRecruitStart(request.getRecruitStart());
         study.setRecruitEnd(request.getRecruitEnd());
         study.setCategory(request.getCategory());
 
-        return StudyResponse.from(study);
+        return StudyResponse.from(study, memberCount);
     }
 
+    @Transactional
     public void deleteStudy(Long userId, Long id) {
         Study study = getStudyOrThrow(id);
         validateStudyLeader(study, userId);
 
         studyRepository.delete(study);
+    }
+
+    public Page<StudyResponse> getMyStudies(Long userId, Pageable pageable) {
+        Page<StudyMember> members = studyMemberRepository.findByUserId(userId, pageable);
+
+        List<Study> studies = members.getContent().stream()
+                .map(StudyMember::getStudy)
+                .toList();
+        Map<Long, Integer> memberCountMap = getMemberCountMap(studies);
+
+        return members.map(member -> {
+            Study study = member.getStudy();
+            int memberCount = memberCountMap.getOrDefault(study.getId(), 0);
+            return StudyResponse.from(study, memberCount);
+        });
+    }
+
+    private Map<Long, Integer> getMemberCountMap(List<Study> studies) {
+        List<Long> studyIds = studies.stream().map(Study::getId).toList();
+
+        if (studyIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return studyMemberRepository.countByStudyIds(studyIds).stream()
+                .collect(Collectors.toMap(
+                        StudyMemberRepository.StudyMemberCountProjection::getStudyId,
+                        p -> p.getMemberCount().intValue()
+                ));
     }
 
     private User getUserOrThrow(Long userId) {
@@ -95,13 +140,9 @@ public class StudyService {
         if (!user.isSubscribed()) {
             int joinedStudyCount = studyMemberRepository.countByUserId(user.getId());
             if (joinedStudyCount >= 2) {
-                throw new BusinessException(StudyErrorCode.STUDY_ALREADY_JOINED);
+                throw new BusinessException(StudyErrorCode.STUDY_JOIN_LIMIT_EXCEEDED);
             }
         }
     }
 
-    public Page<StudyResponse> getMyStudies(Long userId, Pageable pageable) {
-        Page<StudyMember> members = studyMemberRepository.findByUserId(userId, pageable);
-        return members.map(member -> StudyResponse.from(member.getStudy()));
-    }
 }

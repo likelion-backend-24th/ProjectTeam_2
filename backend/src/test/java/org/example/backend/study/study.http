@@ -58,7 +58,3 @@ Authorization: Bearer {{accessToken}}
   "category": "JOB_PREP"
 }
 
-### 스터디 삭제
-DELETE {{baseUrl}}/api/studies/1
-Authorization: Bearer {{accessToken}}
-

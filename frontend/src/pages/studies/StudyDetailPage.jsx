@@ -193,7 +193,7 @@ export default function StudyDetailPage() {
             </div>
             <div className={styles.statBox}>
               <span className={styles.statLabel}>모집 마감일</span>
-              <span className={styles.statValue}>{study.recruitEnd}</span>
+              <span className={styles.statValue}>{study.recruitEnd ?? '상시 모집'}</span>
             </div>
           </div>
 

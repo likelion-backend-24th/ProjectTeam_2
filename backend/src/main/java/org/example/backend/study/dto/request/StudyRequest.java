@@ -19,26 +19,22 @@ public class StudyRequest {
     @Size(max = 2000, message = "설명은 2000자를 초과할 수 없습니다.")
     private String description;
 
-    @Schema(description = "모집 인원 (1명 이상)", example = "5")
+    @Schema(description = "모집 인원 (2명 이상)", example = "5")
     @NotNull(message = "모집 인원을 입력해주세요.")
-    @Positive(message = "모집 인원은 1명 이상이어야 합니다.")
+    @Min(value = 2, message = "모집 인원은 2명 이상이어야 합니다.")
     private Integer capacity;
 
-    @Schema(description = "모집 시작일", example = "2026-08-10")
-    @NotNull(message = "모집 시작일을 입력해주세요.")
-    private LocalDate recruitStart;
-
     @Schema(description = "모집 마감일", example = "2026-08-20")
-    @NotNull(message = "모집 마감일을 입력해주세요.")
     private LocalDate recruitEnd;
 
     @Schema(description = "스터디 카테고리", example = "IT_DEVELOPMENT")
     @NotNull(message = "카테고리를 선택해주세요.")
     private StudyCategory category;
 
-    @AssertTrue(message = "모집 마감일은 시작일보다 빠를 수 없습니다.")
-    public boolean isRecruitPeriodValid() {
-        if (recruitStart == null || recruitEnd == null) return true;
-        return !recruitEnd.isBefore(recruitStart);
+    @AssertTrue(message = "모집 마감일은 오늘보다 빠를 수 없습니다.")
+    public boolean isRecruitEndValid() {
+        if (recruitEnd == null) return true; // null이면 상시 모집으로 간주, 검증 통과
+        return !recruitEnd.isBefore(LocalDate.now());
     }
+
 }

@@ -1,5 +1,5 @@
 import { ArrowRight, ChevronLeft } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { studyApi } from '../../api'
 import SiteHeader from '../../components/common/SiteHeader'
@@ -31,11 +31,8 @@ export default function StudyFormPage() {
   const [description, setDescription] = useState('')
 
   const [capacity, setCapacity] = useState('')
+  // 모집 마감일은 선택 입력이다. 비워두면 상시 모집으로 처리한다(백엔드도 null을 허용).
   const [recruitEnd, setRecruitEnd] = useState('')
-  // 모집 시작일은 사용자에게 입력받지 않고 내부적으로만 들고 있는다.
-  // 개설 시엔 오늘 날짜로, 수정 시엔 기존 값을 그대로 유지해서 백엔드에 함께 보낸다
-  // (StudyRequest/StudyUpdateRequest가 recruitStart를 필수로 요구하기 때문).
-  const recruitStartRef = useRef(today())
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -57,8 +54,7 @@ export default function StudyFormPage() {
         setCategory(study.category)
         setDescription(study.description ?? '')
         setCapacity(String(study.capacity))
-        setRecruitEnd(study.recruitEnd)
-        recruitStartRef.current = study.recruitStart
+        setRecruitEnd(study.recruitEnd ?? '')
       })
       .catch(() => {
         if (!ignore) setLoadError('스터디 정보를 불러오지 못했습니다.')
@@ -98,12 +94,8 @@ export default function StudyFormPage() {
       setError('모집 인원을 입력해주세요.')
       return
     }
-    if (!recruitEnd) {
-      setError('모집 마감일을 입력해주세요.')
-      return
-    }
-    if (recruitEnd < recruitStartRef.current) {
-      setError('모집 마감일이 너무 이릅니다.')
+    if (recruitEnd && recruitEnd < today()) {
+      setError('모집 마감일은 오늘보다 빠를 수 없습니다.')
       return
     }
 
@@ -116,8 +108,7 @@ export default function StudyFormPage() {
       title,
       description,
       capacity: Number(capacity),
-      recruitStart: recruitStartRef.current,
-      recruitEnd,
+      recruitEnd: recruitEnd || null,
       category,
     }
 
@@ -247,7 +238,7 @@ export default function StudyFormPage() {
                 <div className={styles.field}>
                   <label className={styles.label} htmlFor="recruitEnd">
                     모집 마감일
-                    <span className={styles.required}>*</span>
+                    <span className={styles.optionalHint}>선택, 비워두면 상시 모집</span>
                   </label>
                   <input
                     id="recruitEnd"

@@ -14,6 +14,7 @@ import org.example.backend.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -37,6 +38,10 @@ public class StudyMemberService {
                 .ifPresent(member -> {
                     throw new BusinessException(StudyErrorCode.STUDY_ALREADY_JOINED);
                 });
+
+        if (study.getRecruitEnd() != null && study.getRecruitEnd().isBefore(LocalDate.now())) {
+            throw new BusinessException(StudyErrorCode.STUDY_RECRUIT_CLOSED);
+        }
 
         int currentCount = studyMemberRepository.countByStudyId(id);
         if (currentCount >= study.getCapacity()) {
