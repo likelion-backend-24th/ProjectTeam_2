@@ -1,4 +1,4 @@
-import { ChevronRight, Crown, Eye, LayoutGrid, Pencil, Settings, Trash2, User as UserIcon, Users } from 'lucide-react'
+import { ChevronRight, Crown, Eye, LayoutGrid, Pencil, Settings, Sparkles, Trash2, User as UserIcon, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { postApi, studyApi, userApi } from '../api'
@@ -14,6 +14,11 @@ const ROLE_META = {
   USER: { label: 'USER', color: '#c6ff3d' },
   EXPERT: { label: '전문가', color: '#60a5fa' },
   ADMIN: { label: '관리자', color: '#fb923c' },
+}
+
+const SUBSCRIPTION_META = {
+  true: { label: '구독중', className: 'subscriptionBadgePremium', Icon: Crown },
+  false: { label: '무료회원', className: 'subscriptionBadgeFree', Icon: Sparkles },
 }
 
 const TABS = [
@@ -66,6 +71,7 @@ export default function MyPage() {
   if (!user) return null
 
   const roleMeta = ROLE_META[user.role] ?? ROLE_META.USER
+  const subscriptionMeta = SUBSCRIPTION_META[String(user.subscribed)]
 
   return (
     <>
@@ -80,6 +86,10 @@ export default function MyPage() {
               <h1 className={styles.nickname}>{user.nickname}</h1>
               <span className={styles.roleBadge} style={{ color: roleMeta.color, borderColor: roleMeta.color }}>
                 {roleMeta.label}
+              </span>
+              <span className={`${styles.subscriptionBadge} ${styles[subscriptionMeta.className]}`}>
+                <subscriptionMeta.Icon size={12} />
+                {subscriptionMeta.label}
               </span>
             </div>
             <p className={styles.realName}>{user.name}</p>
@@ -580,10 +590,6 @@ function SettingsTab({ user, onNicknameChanged, onLogout }) {
 
       <h2 className={styles.sectionHeading}>계정</h2>
       <div className={styles.accountActions}>
-        <button type="button" className={styles.secondaryButton} onClick={onLogout}>
-          로그아웃
-        </button>
-
         <div className={styles.withdrawBox}>
           <input
             type="password"
