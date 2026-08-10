@@ -1,6 +1,7 @@
 # IDE 설정
 .vscode/
 .idea/
+.env
 
 # 빌드 결과물
 backend/build/

@@ -1,0 +1,54 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: prep2gether-db
+    environment:
+      MYSQL_DATABASE: prep2getherdb
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - prep2gether-net
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: prep2gether-backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/prep2getherdb?serverTimezone=Asia/Seoul
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8080:8080"
+    networks:
+      - prep2gether-net
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: prep2gether-frontend
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - prep2gether-net
+    restart: unless-stopped
+
+volumes:
+  db-data:
+
+networks:
+  prep2gether-net:
