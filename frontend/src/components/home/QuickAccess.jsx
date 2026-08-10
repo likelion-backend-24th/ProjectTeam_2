@@ -25,12 +25,12 @@ const ICON_COLORS = {
   red: { bg: 'rgba(248, 113, 113, 0.14)', fg: '#f87171' },
 }
 
-// TODO: 스터디/전문가/구독 플랜/마이페이지 페이지가 생기면 실제 경로(to) 연결
+// TODO: 전문가 상담/전문가 등록 페이지가 생기면 실제 경로(to) 연결 (아직 와이어프레임 없음, router.jsx 참고)
 const QUICK_LINKS = [
   { icon: FileText, color: 'blue', title: '게시글', subtitle: '커뮤니티 게시판', tag: '전체 공개', to: '/posts' },
   { icon: Edit3, color: 'lime', title: '글쓰기', subtitle: '새 게시글 작성', tag: '로그인 필요', to: '/posts/new' },
-  { icon: Search, color: 'purple', title: '스터디', subtitle: '그룹 찾기 · 신청', tag: '전체 공개', to: null },
-  { icon: Users, color: 'orange', title: '스터디 개설', subtitle: '방장 되기', tag: '로그인 필요', to: null },
+  { icon: Search, color: 'purple', title: '스터디', subtitle: '그룹 찾기 · 신청', tag: '전체 공개', to: '/studies' },
+  { icon: Users, color: 'orange', title: '스터디 개설', subtitle: '방장 되기', tag: '로그인 필요', to: '/studies/new' },
   {
     icon: Crown,
     color: 'gold',
@@ -38,7 +38,7 @@ const QUICK_LINKS = [
     subtitle: '프리미엄 멤버십',
     tag: '유료',
     badge: 'PRO',
-    to: null,
+    to: '/subscription',
   },
   {
     icon: MessageCircle,
@@ -50,7 +50,7 @@ const QUICK_LINKS = [
     to: null,
   },
   { icon: BookOpen, color: 'indigo', title: '전문가 등록', subtitle: '현직자 신청', tag: '신청 가능', to: null },
-  { icon: User, color: 'slate', title: '마이페이지', subtitle: '내 활동 관리', tag: '로그인 필요', to: null },
+  { icon: User, color: 'slate', title: '마이페이지', subtitle: '내 활동 관리', tag: '로그인 필요', to: '/mypage' },
 ]
 
 function QuickLinkCard({ icon: Icon, color, title, subtitle, tag, badge, to }) {

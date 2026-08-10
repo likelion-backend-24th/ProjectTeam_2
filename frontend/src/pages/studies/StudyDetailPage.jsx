@@ -6,7 +6,7 @@ import SiteHeader from '../../components/common/SiteHeader'
 import { getStudyCategoryMeta } from '../../constants/studyCategory'
 import { useAuth } from '../../context/AuthContext'
 import { getAvatarColor } from '../../utils/avatarColor'
-import { formatDate } from '../../utils/formatDate'
+import { formatDateTime } from '../../utils/formatDate'
 import { isOverFreeStudyLimit } from '../../utils/studyLimit'
 import styles from './StudyDetailPage.module.css'
 
@@ -330,7 +330,7 @@ export default function StudyDetailPage() {
                     <span className={styles.postMeta}>
                       <span>{post.authorNickname}</span>
                       <span>·</span>
-                      <span>{formatDate(post.createdAt)}</span>
+                      <span>{formatDateTime(post.createdAt)}</span>
                     </span>
                   </Link>
                 ))}

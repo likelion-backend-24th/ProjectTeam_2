@@ -2,7 +2,7 @@ import { ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { getPostCategoryMeta } from '../../constants/postCategory'
 import { getAvatarColor } from '../../utils/avatarColor'
-import { formatDate } from '../../utils/formatDate'
+import { formatDateTime } from '../../utils/formatDate'
 import styles from './PostListItem.module.css'
 
 export default function PostListItem({ post }) {
@@ -23,7 +23,7 @@ export default function PostListItem({ post }) {
           </span>
           <span>{post.authorNickname}</span>
           <span>·</span>
-          <span>{formatDate(post.createdAt)}</span>
+          <span>{formatDateTime(post.createdAt)}</span>
         </div>
       </div>
       <ChevronRight className={styles.chevron} size={18} />

@@ -7,7 +7,7 @@ import StudyPostCommentForm from '../../components/studies/StudyPostCommentForm'
 import StudyPostCommentItem from '../../components/studies/StudyPostCommentItem'
 import { useAuth } from '../../context/AuthContext'
 import { getAvatarColor } from '../../utils/avatarColor'
-import { formatDate } from '../../utils/formatDate'
+import { formatDateTime } from '../../utils/formatDate'
 import styles from './StudyPostDetailPage.module.css'
 
 export default function StudyPostDetailPage() {
@@ -107,7 +107,7 @@ export default function StudyPostDetailPage() {
               </span>
               <span className={styles.name}>{post.authorNickname}</span>
               <span>·</span>
-              <span>{formatDate(post.createdAt)}</span>
+              <span>{formatDateTime(post.createdAt)}</span>
 
               {isOwner && (
                 <span className={styles.ownerActions}>

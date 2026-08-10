@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { commentApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { getAvatarColor } from '../../utils/avatarColor'
-import { formatDate } from '../../utils/formatDate'
+import { formatDateTime } from '../../utils/formatDate'
 import styles from './CommentItem.module.css'
 
 export default function CommentItem({ postId, comment, onChanged }) {
@@ -64,7 +64,7 @@ export default function CommentItem({ postId, comment, onChanged }) {
       <div className={styles.body}>
         <div className={styles.meta}>
           <span className={styles.name}>{comment.authorNickname}</span>
-          <span className={styles.date}>{formatDate(comment.createdAt)}</span>
+          <span className={styles.date}>{formatDateTime(comment.createdAt)}</span>
 
           {isOwner && !isEditing && (
             <span className={styles.ownerActions}>

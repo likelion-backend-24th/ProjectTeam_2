@@ -7,7 +7,7 @@ import SiteHeader from '../components/common/SiteHeader'
 import { getPostCategoryMeta } from '../constants/postCategory'
 import { useAuth } from '../context/AuthContext'
 import { getAvatarColor } from '../utils/avatarColor'
-import { formatDate } from '../utils/formatDate'
+import { formatDateTime } from '../utils/formatDate'
 import styles from './MyPage.module.css'
 
 const ROLE_META = {
@@ -170,7 +170,7 @@ function ActivityTab({ recentPosts, onSeeAllPosts, recentStudies, onSeeAllStudie
             <Link key={post.id} to={`/posts/${post.id}`} className={styles.activityRow}>
               <span className={styles.activityTitle}>{post.title}</span>
               <span className={styles.activityMeta}>
-                <span>{formatDate(post.createdAt)}</span>
+                <span>{formatDateTime(post.createdAt)}</span>
                 <span className={styles.dot}>·</span>
                 <Eye size={13} />
                 <span>{post.viewCount}</span>
@@ -285,7 +285,7 @@ function PostsTab({ onPostsChanged }) {
                   )}
                   <p className={styles.postRowTitle}>{post.title}</p>
                   <span className={styles.activityMeta}>
-                    <span>{formatDate(post.createdAt)}</span>
+                    <span>{formatDateTime(post.createdAt)}</span>
                     <span className={styles.dot}>·</span>
                     <Eye size={13} />
                     <span>{post.viewCount}</span>
