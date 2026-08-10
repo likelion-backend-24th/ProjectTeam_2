@@ -54,7 +54,17 @@ export default function StudyListPage() {
     setPage(0)
   }, [category, keyword])
 
+  // 입력을 멈추고 300ms가 지나면 자동으로 검색어를 반영한다(디바운스).
+  // 검색창을 비우면 별도 조작 없이 곧바로 전체 목록으로 돌아간다.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setKeyword(searchInput.trim())
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchInput])
+
   function handleSearchSubmit(event) {
+    // 입력 중 Enter를 누르면 디바운스를 기다리지 않고 바로 검색한다.
     event.preventDefault()
     setKeyword(searchInput.trim())
   }
