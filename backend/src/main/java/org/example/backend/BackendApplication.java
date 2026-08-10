@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @SpringBootApplication
-@EnableJpaAuditing // createAt,updateAt 이런거 자동으로 가져와준다.
+@EnableJpaAuditing
 public class BackendApplication {
 
     public static void main(String[] args) {
