@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, Crown, Lock, PenLine } from 'lucide-react'
+import { Check, ChevronLeft, Crown, Lock, PenLine, UserX } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { studyApi, studyPostApi } from '../../api'
@@ -40,6 +40,9 @@ export default function StudyDetailPage() {
   const [isBoardLoading, setIsBoardLoading] = useState(false)
   const [boardError, setBoardError] = useState('')
   const [boardLoaded, setBoardLoaded] = useState(false)
+
+  // 멤버 강퇴/방장 위임 처리 중인 대상 멤버(userId). 처리 중엔 그 행의 버튼만 비활성화한다.
+  const [busyMemberId, setBusyMemberId] = useState(null)
 
   function refetchStudy() {
     return Promise.all([studyApi.getStudyById(studyId), studyApi.getStudyMembers(studyId)]).then(
@@ -127,10 +130,39 @@ export default function StudyDetailPage() {
     }
   }
 
+  async function handleKickMember(member) {
+    if (!window.confirm(`${member.nickname}님을 스터디에서 강퇴할까요?`)) return
+    setBusyMemberId(member.userId)
+    try {
+      await studyApi.removeStudyMember(studyId, member.userId)
+      await refetchStudy()
+    } catch (err) {
+      window.alert(err.response?.data?.message ?? '멤버 강퇴에 실패했습니다.')
+    } finally {
+      setBusyMemberId(null)
+    }
+  }
+
+  async function handleDelegateLeader(member) {
+    if (!window.confirm(`${member.nickname}님에게 방장을 위임할까요? 위임하면 방장 권한을 잃게 돼요.`)) return
+    setBusyMemberId(member.userId)
+    try {
+      await studyApi.delegateLeader(studyId, member.userId)
+      await refetchStudy()
+    } catch (err) {
+      window.alert(err.response?.data?.message ?? '방장 위임에 실패했습니다.')
+    } finally {
+      setBusyMemberId(null)
+    }
+  }
+
   async function handleDeleteStudy() {
+    // 방장의 "스터디 삭제"는 실제로는 탈퇴 API(leaveStudy)로 처리된다.
+    // 백엔드는 방장이 마지막 한 명(본인)일 때만 실제 삭제를 수행하고,
+    // 다른 멤버가 남아있으면 "방장은 위임 후에 탈퇴할 수 있습니다" 에러를 내려준다.
     if (!window.confirm('스터디를 삭제할까요? 게시글과 댓글이 모두 함께 삭제되고 되돌릴 수 없어요.')) return
     try {
-      await studyApi.deleteStudy(studyId)
+      await studyApi.leaveStudy(studyId)
       navigate('/studies')
     } catch (err) {
       window.alert(err.response?.data?.message ?? '스터디 삭제에 실패했습니다.')
@@ -312,18 +344,42 @@ export default function StudyDetailPage() {
             <div className={styles.memberList}>
               {members.map((member) => {
                 const isMemberLeader = member.userId === study.leaderId
+                const isBusy = busyMemberId === member.userId
                 return (
                   <div key={member.memberId} className={styles.memberRow}>
                     <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(member.nickname) }}>
                       {member.nickname?.[0]}
                     </span>
-                    <div>
+                    <div className={styles.memberInfo}>
                       <p className={styles.memberName}>
                         {isMemberLeader && <Crown size={12} />}
                         {member.nickname}
                       </p>
                       <p className={styles.memberTag}>{isMemberLeader ? '방장' : '멤버'}</p>
                     </div>
+
+                    {isLeader && !isMemberLeader && (
+                      <div className={styles.memberActions}>
+                        <button
+                          type="button"
+                          className={styles.memberActionButton}
+                          onClick={() => handleDelegateLeader(member)}
+                          disabled={isBusy}
+                        >
+                          <Crown size={13} />
+                          방장 위임
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.memberActionButtonDanger}
+                          onClick={() => handleKickMember(member)}
+                          disabled={isBusy}
+                        >
+                          <UserX size={13} />
+                          강퇴
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )
               })}

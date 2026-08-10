@@ -27,11 +27,6 @@ function updateStudy(id, payload) {
   return apiClient.put(`/api/studies/${id}`, payload)
 }
 
-// DELETE /api/studies/:id
-function deleteStudy(id) {
-  return apiClient.delete(`/api/studies/${id}`)
-}
-
 // ---- 스터디 멤버 ----
 
 // POST /api/studies/:id/members
@@ -65,7 +60,6 @@ export const studyApi = {
   getStudies,
   getStudyById,
   updateStudy,
-  deleteStudy,
   joinStudy,
   getStudyMembers,
   removeStudyMember,
