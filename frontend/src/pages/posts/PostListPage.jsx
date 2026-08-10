@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { postApi } from '../../api'
@@ -11,12 +11,14 @@ import styles from './PostListPage.module.css'
 export default function PostListPage() {
   const [category, setCategory] = useState(null)
   const [page, setPage] = useState(0)
+  const [searchInput, setSearchInput] = useState('')
+  const [keyword, setKeyword] = useState('')
   const [posts, setPosts] = useState([])
   const [totalPages, setTotalPages] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isFetching, setIsFetching] = useState(false)
   const [error, setError] = useState('')
-  // 처음 목록을 열 때만 "불러오는 중..." 문구를 보여준다. 카테고리 탭/페이지를 바꿀 때는
+  // 처음 목록을 열 때만 "불러오는 중..." 문구를 보여준다. 카테고리 탭/페이지/검색어를 바꿀 때는
   // 이미 그려진 목록을 유지한 채 살짝 흐리게만 표시해서, 목록이 통째로 사라졌다가 다시
   // 나타나는 깜빡임을 없앤다.
   const isFirstLoadRef = useRef(true)
@@ -29,6 +31,7 @@ export default function PostListPage() {
 
     const params = { page }
     if (category) params.category = category
+    if (keyword) params.keyword = keyword
 
     postApi
       .getPosts(params)
@@ -54,11 +57,30 @@ export default function PostListPage() {
     return () => {
       ignore = true
     }
-  }, [category, page])
+  }, [category, keyword, page])
+
+  // 입력을 멈추고 300ms가 지나면 자동으로 검색어를 반영한다(디바운스).
+  // 검색창을 비우면 별도 조작 없이 곧바로 전체 목록으로 돌아간다.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setKeyword(searchInput.trim())
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchInput])
+
+  // 카테고리나 검색어가 바뀌면 항상 1페이지부터 다시 보여준다.
+  useEffect(() => {
+    setPage(0)
+  }, [category, keyword])
 
   function handleCategoryChange(next) {
     setCategory(next)
-    setPage(0)
+  }
+
+  function handleSearchSubmit(event) {
+    // 입력 중 Enter를 누르면 디바운스를 기다리지 않고 바로 검색한다.
+    event.preventDefault()
+    setKeyword(searchInput.trim())
   }
 
   return (
@@ -76,11 +98,25 @@ export default function PostListPage() {
           </Link>
         </div>
 
+        <form className={styles.searchForm} onSubmit={handleSearchSubmit}>
+          <Search size={18} className={styles.searchIcon} />
+          <input
+            className={styles.searchInput}
+            placeholder="제목, 내용으로 검색하세요"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+          />
+        </form>
+
         <CategoryFilterTabs value={category} onChange={handleCategoryChange} />
 
         {isLoading && <p className={styles.state}>불러오는 중...</p>}
         {!isLoading && error && <p className={styles.errorState}>{error}</p>}
-        {!isLoading && !error && posts.length === 0 && <p className={styles.state}>등록된 게시글이 없어요.</p>}
+        {!isLoading && !error && posts.length === 0 && (
+          <p className={styles.state}>
+            {keyword ? `"${keyword}"에 대한 검색 결과가 없어요.` : '등록된 게시글이 없어요.'}
+          </p>
+        )}
 
         {!isLoading && !error && posts.length > 0 && (
           <div className={isFetching ? styles.listFetching : styles.list}>

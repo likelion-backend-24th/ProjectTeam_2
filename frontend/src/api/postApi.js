@@ -8,7 +8,7 @@ function createPost(payload) {
 
 // GET /api/posts (비로그인 접근 가능)
 function getPosts(params) {
-  // params: { category, page, size, sort }
+  // params: { category, keyword, page, size, sort }
   return apiClient.get('/api/posts', { params })
 }
 
