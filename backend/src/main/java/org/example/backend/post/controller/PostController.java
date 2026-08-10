@@ -46,9 +46,10 @@ public class PostController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<PostResponse>>> getPost(
             @RequestParam(required = false) PostCategory category,
+            @RequestParam(required = false) String keyword,
             @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        Page<PostResponse> posts = postService.getPosts(category, pageable);
+        Page<PostResponse> posts = postService.getPosts(category, keyword, pageable);
         return ResponseEntity.ok(ApiResponse.success("게시글 목록을 조회에 성공했습니다", posts));
     }
 

@@ -41,10 +41,8 @@ public class PostService {
         return PostDetailResponse.from(savedPost, Page.empty());
     }
 
-    public Page<PostResponse> getPosts(PostCategory category, Pageable pageable) {
-        Page<Post> posts = (category == null)
-                ? postRepository.findAll(pageable)
-                : postRepository.findByCategory(category, pageable);
+    public Page<PostResponse> getPosts(PostCategory category, String keyword, Pageable pageable) {
+        Page<Post> posts = postRepository.searchPosts(category, keyword, pageable);
         return posts.map(PostResponse::from);
     }
 

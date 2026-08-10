@@ -91,19 +91,17 @@ class PostServiceTest {
     }
 
     @Test
-    void 카테고리가_null이면_전체_게시글을_조회한다() {
+    void 카테고리와_키워드가_없으면_전체_게시글을_조회한다() {
         // given
         Pageable pageable = PageRequest.of(0, 10);
         Page<Post> emptyPage = new PageImpl<>(List.of());
-        when(postRepository.findAll(pageable)).thenReturn(emptyPage);
+        when(postRepository.searchPosts(null, null, pageable)).thenReturn(emptyPage);
 
         // when
-        postService.getPosts(null, pageable);
+        postService.getPosts(null, null, pageable);
 
-        // then: category가 null이면 findByCategory가 아니라 findAll이 호출되어야 한다
-        org.mockito.Mockito.verify(postRepository).findAll(pageable);
-        org.mockito.Mockito.verify(postRepository, org.mockito.Mockito.never())
-                .findByCategory(org.mockito.Mockito.any(), org.mockito.Mockito.any());
+        // then: category와 keyword가 둘 다 null이면 searchPosts(null, null, pageable)로 호출되어야 한다
+        org.mockito.Mockito.verify(postRepository).searchPosts(null, null, pageable);
     }
 
     @Test
@@ -111,13 +109,26 @@ class PostServiceTest {
         // given
         Pageable pageable = PageRequest.of(0, 10);
         Page<Post> emptyPage = new PageImpl<>(List.of());
-        when(postRepository.findByCategory(PostCategory.JOB_INFO, pageable)).thenReturn(emptyPage);
+        when(postRepository.searchPosts(PostCategory.JOB_INFO, null, pageable)).thenReturn(emptyPage);
 
         // when
-        postService.getPosts(PostCategory.JOB_INFO, pageable);
+        postService.getPosts(PostCategory.JOB_INFO, null, pageable);
 
-        // then: category가 있으면 findByCategory가 호출되어야 한다
-        org.mockito.Mockito.verify(postRepository).findByCategory(PostCategory.JOB_INFO, pageable);
-        org.mockito.Mockito.verify(postRepository, org.mockito.Mockito.never()).findAll(pageable);
+        // then: category가 있으면 searchPosts(JOB_INFO, null, pageable)로 호출되어야 한다
+        org.mockito.Mockito.verify(postRepository).searchPosts(PostCategory.JOB_INFO, null, pageable);
+    }
+
+    @Test
+    void 키워드가_있으면_제목_내용으로_검색한다() {
+        // given
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Post> emptyPage = new PageImpl<>(List.of());
+        when(postRepository.searchPosts(null, "스터디", pageable)).thenReturn(emptyPage);
+
+        // when
+        postService.getPosts(null, "스터디", pageable);
+
+        // then: keyword가 있으면 searchPosts(null, "스터디", pageable)로 호출되어야 한다
+        org.mockito.Mockito.verify(postRepository).searchPosts(null, "스터디", pageable);
     }
 }
