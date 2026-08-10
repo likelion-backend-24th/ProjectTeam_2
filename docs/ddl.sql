@@ -49,9 +49,10 @@ CREATE TABLE post
   title      VARCHAR(200) NOT NULL COMMENT '제목',
   content    TEXT         NOT NULL COMMENT '내용',
   category   VARCHAR(20)  NOT NULL COMMENT '카테고리',
+  view_count BIGINT       NOT NULL DEFAULT 0 COMMENT '조회수', -- 🆕 추가
   user_id    BIGINT       NOT NULL COMMENT '작성자',
   created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시간',
-  updated_at DATETIME     NULL     ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 시간',
+  updated_at DATETIME     NULL     ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 시간', -- ✏️ 조회수 증가 시에도 함께 갱신됨(기술부채, MVP1 범위에서 허용)
   PRIMARY KEY (id)
 ) COMMENT 'Q&A';
 
@@ -64,7 +65,10 @@ CREATE TABLE study
   recruit_start DATE         NULL     COMMENT '시작일',
   recruit_end   DATE         NULL     COMMENT '마감일',
   leader_id     BIGINT       NOT NULL COMMENT '방장 ID',
+  category      VARCHAR(20)  NOT NULL COMMENT '카테고리 (IT_DEVELOPMENT, LANGUAGE, CERTIFICATE, JOB_PREP, ETC)', -- 🆕 추가
+  deleted       BOOLEAN      NOT NULL DEFAULT FALSE COMMENT '삭제 여부 (Soft Delete)', -- 🆕 추가: @SoftDelete 적용
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시간',
+  updated_at    DATETIME     NULL     ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 시간', -- 🆕 추가
   PRIMARY KEY (id)
 ) COMMENT '스터디 모집';
 
@@ -136,18 +140,24 @@ CREATE TABLE feedback_message
 
 CREATE TABLE users
 (
-  id         BIGINT       NOT NULL AUTO_INCREMENT COMMENT '유저 ID',
-  username   VARCHAR(50)  NOT NULL COMMENT 'email',
-  password   VARCHAR(255) NULL     COMMENT 'pw (소셜 전용 가입자는 NULL)',
-  nickname   VARCHAR(50)  NOT NULL COMMENT '닉네임',
-  role       VARCHAR(20)  NOT NULL DEFAULT 'USER' COMMENT '권한 (USER, EXPERT, ADMIN)',
-  status     VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE' COMMENT '계정 상태 (ACTIVE, SUSPENDED, WITHDRAWN)',
-  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시간',
+  id            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '유저 ID',
+  name          VARCHAR(100) NOT NULL COMMENT '이름', -- 🆕 추가
+  username      VARCHAR(50)  NOT NULL COMMENT 'email',
+  password      VARCHAR(255) NULL     COMMENT 'pw (소셜 전용 가입자는 NULL)',
+  nickname      VARCHAR(50)  NOT NULL COMMENT '닉네임',
+  role          VARCHAR(20)  NOT NULL DEFAULT 'USER' COMMENT '권한 (USER, EXPERT, ADMIN)',
+  status        VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE' COMMENT '계정 상태 (ACTIVE, SUSPENDED, WITHDRAWN)',
+  is_subscribed BOOLEAN      NOT NULL DEFAULT FALSE COMMENT '구독 여부', -- 🆕 추가
+  withdrawn_at  DATETIME     NULL     COMMENT '탈퇴 시각', -- 🆕 추가
+  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시간',
   PRIMARY KEY (id)
 ) COMMENT '회원';
 
 ALTER TABLE users
   ADD CONSTRAINT UQ_username UNIQUE (username);
+
+ALTER TABLE users
+  ADD CONSTRAINT UQ_nickname UNIQUE (nickname); -- 🆕 추가: User 엔티티 nickname unique=true 반영
 
 CREATE TABLE oauth_account
 (
