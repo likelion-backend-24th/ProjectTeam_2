@@ -29,14 +29,14 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/moneylog-backend:latest
+          tags: ghcr.io/${{ github.repository_owner }}/prep2gether-backend:latest
 
       - name: Build & Push frontend image
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/moneylog-frontend:latest
+          tags: ghcr.io/${{ github.repository_owner }}/prep2gether-frontend:latest
           build-args: |
             VITE_API_BASE_URL=http://15.164.211.170:8080  
 
@@ -51,7 +51,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/moneylog
+            cd ~/prep2gether
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose pull
             docker compose up -d
