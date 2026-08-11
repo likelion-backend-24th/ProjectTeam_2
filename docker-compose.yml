@@ -1,54 +1,49 @@
 services:
-  db:
+  mysql:
     image: mysql:8.0
-    container_name: prep2gether-db
+    container_name: p2g-mysql
+    restart: always
     environment:
-      MYSQL_DATABASE: prep2getherdb
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: prep2getherdb
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3306:3306"
     volumes:
-      - db-data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD}"]
-      interval: 10s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
       timeout: 5s
-      retries: 5
-    networks:
-      - prep2gether-net
-    restart: unless-stopped
+      retries: 10
 
   backend:
     build: ./backend
-    container_name: prep2gether-backend
+    image: ghcr.io/milk0621/prep2gether-backend:latest
+    container_name: p2g-backend
+    restart: always
     depends_on:
-      db:
+      mysql:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/prep2getherdb?serverTimezone=Asia/Seoul
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/prep2getherdb
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8080:8080"
-    networks:
-      - prep2gether-net
-    restart: unless-stopped
 
   frontend:
     build: ./frontend
-    container_name: prep2gether-frontend
+    image: ghcr.io/milk0621/prep2gether-frontend:latest
+    container_name: p2g-frontend
+    restart: always
     depends_on:
       - backend
     ports:
       - "80:80"
-    networks:
-      - prep2gether-net
-    restart: unless-stopped
 
 volumes:
-  db-data:
-
-networks:
-  prep2gether-net:
+  mysql_data:
