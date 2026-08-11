@@ -1,7 +1,7 @@
 import styles from './SignupProgress.module.css'
 
 const BENEFITS = ['커뮤니티 게시글 작성 · 댓글', '스터디 신청 · 참여 (최대 2개)', '전문가 상담 (구독 후)']
-
+// .
 // AuthShowcase 하단에 들어가는 가입 진행률 + 혜택 안내 (회원가입 페이지에서 사용).
 // steps: [{ label, done }] 형태로 폼 입력 상태에 맞춰 실시간으로 채워진다.
 export default function SignupProgress({ steps }) {
