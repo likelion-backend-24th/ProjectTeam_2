@@ -1,21 +1,21 @@
-FROM gradle:8.14-jdk21 AS builder
+# 1단계: 빌드 스테이지
+FROM eclipse-temurin:21-jdk AS builder
 WORKDIR /app
 
+COPY gradlew .
+COPY gradle gradle
 COPY build.gradle settings.gradle ./
-COPY gradle ./gradle
-RUN gradle dependencies --no-daemon || true
+RUN chmod +x gradlew
+RUN ./gradlew dependencies --no-daemon || true
 
-COPY src ./src
-RUN gradle bootJar --no-daemon
+COPY src src
+RUN ./gradlew bootJar --no-daemon
 
-FROM eclipse-temurin:21-jre-jammy
+# 2단계: 실행 스테이지
+FROM eclipse-temurin:21-jre AS runtime
 WORKDIR /app
-
-RUN useradd -r -u 1001 appuser
-User appuser
 
 COPY --from=builder /app/build/libs/*.jar app.jar
 
 EXPOSE 8080
-
-ENTRYPOINT ["java", "-jar", "-Dspring.profiles.active=prod", "/app/app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
