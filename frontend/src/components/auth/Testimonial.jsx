@@ -1,6 +1,6 @@
 import styles from './Testimonial.module.css'
 
-// AuthShowcase 하단에 들어가는 후기 카드 (로그인 페이지에서 사용)
+// AuthShowcase 하단에 들어가는 후기 카드 (로그인 페이지에서 사용!!)
 export default function Testimonial({ quote, avatarInitial, name }) {
   return (
     <div className={styles.testimonial}>
