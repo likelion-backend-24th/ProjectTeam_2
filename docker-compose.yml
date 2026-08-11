@@ -18,7 +18,7 @@ services:
 
   backend:
     build: ./backend
-    image: ghcr.io/milk0621/prep2gether-backend:latest
+    image: ghcr.io/likelion-backend-24th/prep2gether-backend:latest
     container_name: p2g-backend
     restart: always
     depends_on:
@@ -35,7 +35,7 @@ services:
 
   frontend:
     build: ./frontend
-    image: ghcr.io/milk0621/prep2gether-frontend:latest
+    image: ghcr.io/likelion-backend-24th/prep2gether-frontend:latest
     container_name: p2g-frontend
     restart: always
     depends_on:
