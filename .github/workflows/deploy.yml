@@ -27,13 +27,13 @@ jobs:
       - name: Create frontend .env.production
         run: |
           cat << 'EOF' > frontend/.env.production
-          VITE_API_BASE_URL=http://15.164.211.170:8080
+          VITE_API_BASE_URL=http://prep2gether.duckdns.org:8080
           VITE_KAKAO_JS_KEY=${{ secrets.VITE_KAKAO_JS_KEY }}
           VITE_KAKAO_REST_API_KEY=${{ secrets.VITE_KAKAO_REST_API_KEY }}
-          VITE_KAKAO_REDIRECT_URI=http://15.164.211.170/oauth/callback
+          VITE_KAKAO_REDIRECT_URI=http://prep2gether.duckdns.org/oauth/callback
           VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_NAVER_CLIENT_ID=${{ secrets.VITE_NAVER_CLIENT_ID }}
-          VITE_NAVER_REDIRECT_URI=http://15.164.211.170/oauth/naver/callback
+          VITE_NAVER_REDIRECT_URI=http://prep2gether.duckdns.org/oauth/naver/callback
           EOF
 
       - name: Build & Push backend image
@@ -50,7 +50,7 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/prep2gether-frontend:latest
           build-args: |
-            VITE_API_BASE_URL=http://15.164.211.170:8080  
+            VITE_API_BASE_URL=http://prep2gether.duckdns.org:8080  
 
   deploy:
     needs: build-and-push
