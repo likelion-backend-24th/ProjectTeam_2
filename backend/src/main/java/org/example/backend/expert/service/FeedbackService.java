@@ -81,6 +81,9 @@ public class FeedbackService {
         if (!isRequester && !isExpertAnswering) {
             throw new BusinessException(ExpertErrorCode.FEEDBACK_ACCESS_DENIED);
         }
+        if (feedback.isClosed()) {
+            throw new BusinessException(ExpertErrorCode.FEEDBACK_CLOSED);
+        }
 
         FeedbackMessage message = feedbackMessageRepository.save(
                 FeedbackMessage.builder()
@@ -97,6 +100,13 @@ public class FeedbackService {
 
         return FeedbackMessageResponse.from(message);
     }
+
+    @Transactional
+    public void closeThreadsByExpertProfile(ExpertProfile expertProfile) {
+        List<Feedback> openThreads = feedbackRepository.findByExpertProfileIdAndClosedAtIsNull(expertProfile.getId());
+        openThreads.forEach(Feedback::close);
+    }
+
 
     public List<FeedbackMessageResponse> getMessages(Long callerId, Long feedbackId) {
         Feedback feedback = getFeedbackOrThrow(feedbackId);
@@ -136,4 +146,6 @@ public class FeedbackService {
             throw new BusinessException(ExpertErrorCode.FEEDBACK_ACCESS_DENIED);
         }
     }
+
+
 }

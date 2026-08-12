@@ -32,6 +32,9 @@ public class FeedbackResponse {
     @Schema(description = "문의 답변일시", example = "2026-08-05T12:00:00")
     private LocalDateTime answeredAt;
 
+    @Schema(description = "스레드 종료일시 (담당 전문가 자격 박탈 시 설정, null이면 대화 가능)", example = "null")
+    private LocalDateTime closedAt;
+
     public static FeedbackResponse from(Feedback feedback) {
         return FeedbackResponse.builder()
                 .id(feedback.getId())
@@ -41,6 +44,7 @@ public class FeedbackResponse {
                 .status(feedback.getStatus())
                 .createdAt(feedback.getCreatedAt())
                 .answeredAt(feedback.getAnsweredAt())
+                .closedAt(feedback.getClosedAt())
                 .build();
     }
 }
