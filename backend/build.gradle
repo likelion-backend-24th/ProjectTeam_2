@@ -19,6 +19,10 @@ repositories {
 }
 
 dependencies {
+
+    // 이메일 인증 의존성
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+
     // AWS SDK v2
     implementation platform('software.amazon.awssdk:bom:2.25.11')
     implementation 'software.amazon.awssdk:s3'
