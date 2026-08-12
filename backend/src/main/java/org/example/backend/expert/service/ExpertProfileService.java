@@ -2,12 +2,8 @@ package org.example.backend.expert.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.backend.common.exception.BusinessException;
-import org.example.backend.expert.dto.response.ExpertProfileResponse;
+import org.example.backend.expert.dto.response.*;
 import org.example.backend.expert.dto.request.ExpertSignupRequest;
-import org.example.backend.expert.dto.response.ExpertListResponse;
-import org.example.backend.expert.dto.response.ExpertSignupResponse;
-import org.example.backend.expert.dto.response.PublicExpertListResponse;
-import org.example.backend.expert.dto.response.PublicExpertResponse;
 import org.example.backend.expert.entity.ExpertProfile;
 import org.example.backend.expert.entity.ExpertStatus;
 import org.example.backend.expert.exception.ExpertErrorCode;
@@ -93,6 +89,28 @@ public class ExpertProfileService {
                 .map(profile -> PublicExpertResponse.from(profile))
                 .toList();
         return PublicExpertListResponse.from(responses);
+    }
+
+    public ExpertProfileDetailResponse getDetail(Long expertProfileId) {
+        ExpertProfile profile = expertProfileRepository.findById(expertProfileId)
+                .filter(ExpertProfile::isApproved)
+                .orElseThrow(() -> new BusinessException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND));
+        return ExpertProfileDetailResponse.from(profile);
+    }
+
+    public ExpertApplicationStatusResponse getMyStatus(Long userId) {
+        ExpertProfile profile = expertProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new BusinessException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND));
+        return ExpertApplicationStatusResponse.from(profile);
+    }
+
+    @Transactional
+    public ExpertSignupResponse updateApplication(Long userId, ExpertSignupRequest request) {
+        ExpertProfile profile = expertProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new BusinessException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND));
+        profile.updateApplication(request.getIntroduction());
+        applyCareersAndCertifications(profile, request);
+        return ExpertSignupResponse.from(profile);
     }
 
     private ExpertProfile getProfileOrThrow(Long id) {
