@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 import org.example.backend.expert.entity.Feedback;
+import org.example.backend.expert.entity.FeedbackCloseReason;
 import org.example.backend.expert.entity.FeedbackStatus;
 
 import java.time.LocalDateTime;
@@ -32,6 +33,9 @@ public class FeedbackResponse {
     @Schema(description = "문의 답변일시", example = "2026-08-05T12:00:00")
     private LocalDateTime answeredAt;
 
+    @Schema(description = "종료 사유 (REQUESTER_CLOSED: 요청자 종료, EXPERT_REVOKED: 전문가 자격 박탈, null이면 진행중)", example = "null")
+    private FeedbackCloseReason closedBy;
+
     @Schema(description = "스레드 종료일시 (담당 전문가 자격 박탈 시 설정, null이면 대화 가능)", example = "null")
     private LocalDateTime closedAt;
 
@@ -44,6 +48,7 @@ public class FeedbackResponse {
                 .status(feedback.getStatus())
                 .createdAt(feedback.getCreatedAt())
                 .answeredAt(feedback.getAnsweredAt())
+                .closedBy(feedback.getClosedBy())
                 .closedAt(feedback.getClosedAt())
                 .build();
     }

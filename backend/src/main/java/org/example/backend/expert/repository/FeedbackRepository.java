@@ -10,5 +10,6 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
     List<Feedback> findByExpertProfileId(Long expertProfileId);
     List<Feedback> findByRequesterId(Long requesterId);
     List<Feedback> findByExpertProfileIdAndClosedAtIsNull(Long expertProfileId);
-
+    boolean existsByRequesterIdAndExpertProfileIdAndClosedAtIsNull(Long requesterId, Long expertProfileId);
+    long countByRequesterIdAndClosedAtIsNull(Long requesterId);
 }

@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.example.backend.expert.entity.FeedbackCloseReason;
 
 @ExtendWith(MockitoExtension.class)
 class FeedbackServiceTest {
@@ -230,5 +231,87 @@ class FeedbackServiceTest {
         assertThat(response.getFeedbacks().get(0).getExpertNickname()).isEqualTo("김전문");
         assertThat(response.getFeedbacks().get(0).getTopic()).isEqualTo("포트폴리오 피드백 요청");
         assertThat(response.getFeedbacks().get(0).getStatus()).isEqualTo(FeedbackStatus.PENDING);
+    }
+
+    @Test
+    void createFeedback_같은전문가와_열린스레드가있으면_예외() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+        when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
+        when(feedbackRepository.existsByRequesterIdAndExpertProfileIdAndClosedAtIsNull(1L, 99L)).thenReturn(true);
+
+        FeedbackCreateRequest request = new FeedbackCreateRequest();
+        request.setExpertProfileId(99L);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.createFeedback(1L, request));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_ALREADY_OPEN);
+
+        verify(feedbackRepository, never()).save(any());
+    }
+
+    @Test
+    void createFeedback_열린스레드가5개면_예외() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+        when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
+        when(feedbackRepository.countByRequesterIdAndClosedAtIsNull(1L)).thenReturn(5L);
+
+        FeedbackCreateRequest request = new FeedbackCreateRequest();
+        request.setExpertProfileId(99L);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.createFeedback(1L, request));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_OPEN_LIMIT_EXCEEDED);
+
+        verify(feedbackRepository, never()).save(any());
+    }
+
+    @Test
+    void closeThread_요청자본인이면_성공() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).topic("포트폴리오 피드백 요청").build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+
+        FeedbackResponse response = feedbackService.closeThread(requester.getId(), 1L);
+
+        assertThat(feedback.isClosed()).isTrue();
+        assertThat(feedback.getClosedBy()).isEqualTo(FeedbackCloseReason.REQUESTER_CLOSED);
+        assertThat(response.getClosedBy()).isEqualTo(FeedbackCloseReason.REQUESTER_CLOSED);
+    }
+
+    @Test
+    void closeThread_요청자가아니면_예외() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.closeThread(expertUser.getId(), 1L));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_ACCESS_DENIED);
+        assertThat(feedback.isClosed()).isFalse();
+    }
+
+    @Test
+    void closeThread_이미닫힌스레드면_예외() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        feedback.close(FeedbackCloseReason.REQUESTER_CLOSED);
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.closeThread(requester.getId(), 1L));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_CLOSED);
+    }
+
+    @Test
+    void closeThreadsByExpertProfile_전문가박탈시_열린스레드모두닫힘() {
+        Feedback openThread = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findByExpertProfileIdAndClosedAtIsNull(any()))
+                .thenReturn(List.of(openThread));
+
+        feedbackService.closeThreadsByExpertProfile(approvedExpertProfile);
+
+        assertThat(openThread.isClosed()).isTrue();
+        assertThat(openThread.getClosedBy()).isEqualTo(FeedbackCloseReason.EXPERT_REVOKED);
     }
 }

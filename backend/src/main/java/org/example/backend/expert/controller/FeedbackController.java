@@ -86,4 +86,14 @@ public class FeedbackController {
         List<FeedbackResponse> response = feedbackService.getMyExpertFeedbacks(userDetails.getUser().getId());
         return ResponseEntity.ok(ApiResponse.success("받은 문의 목록 조회 성공", response));
     }
+
+    @Operation(summary = "피드백 스레드 종료", description = "요청자 본인이 진행 중인 문의 스레드를 종료합니다. 종료해도 스레드는 삭제되지 않으며, 같은 전문가와 새 스레드를 열려면 기존 스레드를 먼저 종료해야 합니다.")
+    @PatchMapping("/api/feedbacks/{id}/close")
+    public ResponseEntity<ApiResponse<FeedbackResponse>> closeFeedback(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long id
+    ) {
+        FeedbackResponse response = feedbackService.closeThread(userDetails.getUser().getId(), id);
+        return ResponseEntity.ok(ApiResponse.success("문의 스레드가 종료되었습니다.", response));
+    }
 }
