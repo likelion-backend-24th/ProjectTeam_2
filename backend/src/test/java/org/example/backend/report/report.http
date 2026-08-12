@@ -1,0 +1,167 @@
+### 변수 설정
+@baseUrl = http://localhost:8080
+@contentType = application/json
+
+### 0-1. 회원가입 (신고자 계정, 최초 1회만 필요)
+POST {{baseUrl}}/api/auth/signup
+Content-Type: {{contentType}}
+
+{
+  "username": "reporttest@test.com",
+  "password": "test1234!",
+  "name": "신고테스트",
+  "nickname": "신고테스터"
+}
+
+### 0-2. 로그인 (신고자, accessToken 발급)
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "reporttest@test.com",
+  "password": "test1234!"
+}
+
+> {%
+    client.global.set("accessToken", response.body.data.accessToken);
+%}
+
+### 0-3. 신고 대상용 게시글 미리 등록
+# @name createPost
+POST {{baseUrl}}/api/posts
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "title": "신고 테스트용 게시글",
+  "content": "이 게시글에 댓글을 달고 그 댓글을 신고해볼 거예요",
+  "category": "FREE"
+}
+
+> {%
+    client.global.set("targetPostId", response.body.data.id);
+%}
+
+### 0-4. 신고 대상용 댓글 미리 등록
+# @name createComment
+POST {{baseUrl}}/api/posts/{{targetPostId}}/comments
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "content": "동일한 광고 댓글을 여러 게시글에 반복해서 올렸습니다."
+}
+
+> {%
+    client.global.set("targetCommentId", response.body.data.id);
+%}
+
+### =========================
+### F-40. 신고 등록
+### =========================
+
+### 1. 신고 등록 성공 (201 기대)
+POST {{baseUrl}}/api/reports
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "targetType": "COMMENT",
+  "targetId": {{targetCommentId}},
+  "reason": "SPAM",
+  "detail": "동일한 광고 댓글을 여러 게시글에 반복해서 올렸습니다."
+}
+
+### 2. 신고 등록 실패 - 존재하지 않는 대상 (404 + REPORT_TARGET_NOT_FOUND 기대)
+POST {{baseUrl}}/api/reports
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "targetType": "COMMENT",
+  "targetId": 999999,
+  "reason": "SPAM",
+  "detail": "없는 댓글 신고 시도"
+}
+
+### 3. 신고 등록 실패 - 중복 신고 (409 + REPORT_ALREADY_EXISTS 기대, 1번과 동일한 대상)
+POST {{baseUrl}}/api/reports
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "targetType": "COMMENT",
+  "targetId": {{targetCommentId}},
+  "reason": "SPAM",
+  "detail": "같은 댓글 또 신고 시도"
+}
+
+### 4. 신고 등록 실패 - 인증 없이 시도 (401/403 기대)
+POST {{baseUrl}}/api/reports
+Content-Type: {{contentType}}
+
+{
+  "targetType": "COMMENT",
+  "targetId": {{targetCommentId}},
+  "reason": "SPAM",
+  "detail": "토큰 없이 신고 시도"
+}
+
+### 5. 신고 등록 실패 - 필수값 누락 (400 기대, targetType 없음)
+POST {{baseUrl}}/api/reports
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "targetId": {{targetCommentId}},
+  "reason": "SPAM"
+}
+
+### =========================
+### 관리자 - 신고 목록 조회 / 처리
+### 아래는 로그인 계정이 ADMIN이어야 합니다. 각자 로컬에서 수동으로 쿼리문 작성해서
+### admin 설정하고 로그인 해서 테스트해주시면 됩니다. (admin.http와 동일한 방식)
+### =========================
+
+### 6. 관리자 로그인 (accessToken을 adminAccessToken으로 별도 저장)
+# @name adminLogin
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "test@naver.com",
+  "password": "test1234"
+}
+
+> {%
+    client.global.set("adminAccessToken", response.body.data.accessToken);
+%}
+
+### 7. 신고 목록 조회 - 성공 (ADMIN, 200 기대)
+GET {{baseUrl}}/api/admin/reports?page=0&size=10
+Authorization: Bearer {{adminAccessToken}}
+
+### 8. 신고 목록 조회 - status 필터링 (PENDING만, 200 기대)
+GET {{baseUrl}}/api/admin/reports?status=PENDING&page=0&size=10
+Authorization: Bearer {{adminAccessToken}}
+
+### 9. 신고 목록 조회 실패 - ADMIN 아님 (403 기대, 신고자 계정으로 시도)
+GET {{baseUrl}}/api/admin/reports?page=0&size=10
+Authorization: Bearer {{accessToken}}
+
+### 10. 신고 처리 성공 (ADMIN, 200 기대 - id는 1번 요청에서 실제 생성된 신고 id로 바꿔서 실행)
+PATCH {{baseUrl}}/api/admin/reports/1/resolve
+Authorization: Bearer {{adminAccessToken}}
+
+### 11. 신고 처리 실패 - 없는 신고 (404 + REPORT_NOT_FOUND 기대)
+PATCH {{baseUrl}}/api/admin/reports/999999/resolve
+Authorization: Bearer {{adminAccessToken}}
+
+### 12. 신고 처리 실패 - ADMIN 아님 (403 기대)
+PATCH {{baseUrl}}/api/admin/reports/1/resolve
+Authorization: Bearer {{accessToken}}
+
+### 13. 신고 목록 재조회 - status가 RESOLVED로 바뀌었는지 확인
+GET {{baseUrl}}/api/admin/reports?page=0&size=10
+Authorization: Bearer {{adminAccessToken}}

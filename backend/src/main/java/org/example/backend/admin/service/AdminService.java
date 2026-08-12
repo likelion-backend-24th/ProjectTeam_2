@@ -8,6 +8,9 @@ import org.example.backend.comment.repository.CommentRepository;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.post.entity.Post;
 import org.example.backend.post.repository.PostRepository;
+import org.example.backend.report.dto.ReportResponse;
+import org.example.backend.report.entity.ReportStatus;
+import org.example.backend.report.service.ReportService;
 import org.example.backend.study.entity.Study;
 import org.example.backend.study.entity.StudyPost;
 import org.example.backend.study.entity.StudyPostComment;
@@ -36,6 +39,7 @@ public class AdminService {
     private final StudyPostRepository studyPostRepository;
     private final StudyPostCommentRepository studyPostCommentRepository;
     private final StudyMemberRepository studyMemberRepository;
+    private final ReportService reportService;
 
     //유저 목록 조회
     public Page<AdminUserResponse> getUsers(Pageable pageable){
@@ -113,4 +117,16 @@ public class AdminService {
 
         studyPostCommentRepository.delete(comment);
     }
+
+    //신고 목록 조회 (status로 필터링, status가 null이면 전체 조회)
+    public Page<ReportResponse> getReports(ReportStatus status, Pageable pageable){
+        return reportService.getReports(status, pageable);
+    }
+
+    //신고 처리 (PENDING → RESOLVED)
+    @Transactional
+    public void resolveReport(Long reportId){
+        reportService.resolveReport(reportId);
+    }
+
 }

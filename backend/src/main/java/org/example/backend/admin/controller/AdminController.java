@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.backend.report.dto.ReportResponse;
+import org.example.backend.report.entity.ReportStatus;
 import org.example.backend.admin.dto.AdminUserResponse;
 import org.example.backend.admin.dto.UserStatusUpdateRequest;
 import org.example.backend.admin.service.AdminService;
@@ -87,4 +89,24 @@ public class AdminController {
         adminService.deleteStudyPostComment(id);
         return ResponseEntity.ok(ApiResponse.success("스터디 게시글 댓글이 강제 삭제되었습니다.", null));
     }
+
+    //신고 목록 조회
+    @Operation(summary = "신고 목록 조회", description = "신고 목록을 페이징하여 조회합니다. status로 필터링 가능합니다.")
+    @GetMapping("/reports")
+    public ResponseEntity<ApiResponse<List<ReportResponse>>> getReports(
+            @RequestParam(required = false) ReportStatus status,
+            @PageableDefault(size = 10) Pageable pageable) {
+        Page<ReportResponse> page = adminService.getReports(status, pageable);
+        Meta meta = Meta.builder().pagination(PageMeta.from(page)).build();
+        return ResponseEntity.ok(ApiResponse.success("신고 목록 조회 성공", page.getContent(), meta));
+    }
+
+    //신고 처리
+    @Operation(summary = "신고 처리", description = "관리자 권한으로 특정 신고를 처리 완료 상태로 변경합니다.")
+    @PatchMapping("/reports/{id}/resolve")
+    public ResponseEntity<ApiResponse<Void>> resolveReport(@PathVariable Long id) {
+        adminService.resolveReport(id);
+        return ResponseEntity.ok(ApiResponse.success("신고가 처리되었습니다.", null));
+    }
+
 }
