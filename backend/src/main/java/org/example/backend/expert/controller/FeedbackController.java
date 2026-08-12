@@ -78,7 +78,7 @@ public class FeedbackController {
         return ResponseEntity.ok(ApiResponse.success("내 문의 목록 조회 성공", response));
     }
 
-    @Operation(summary = "받은 문의 목록 조회 (전문가용, 명세서 미확정)", description = "전문가로서 받은 문의 스레드 목록.")
+    @Operation(summary = "받은 문의 목록 조회 (전문가용)", description = "전문가로서 받은 문의 스레드 목록.")
     @GetMapping("/api/feedbacks/expert")
     public ResponseEntity<ApiResponse<List<FeedbackResponse>>> getMyExpertFeedbacks(
             @AuthenticationPrincipal CustomUserDetails userDetails
