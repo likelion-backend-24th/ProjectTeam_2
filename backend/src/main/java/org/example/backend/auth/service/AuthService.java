@@ -37,6 +37,7 @@ public class AuthService {
     private final OauthAccountRepository oauthAccountRepository;
     private final GoogleApiClient googleApiClient;
     private final NaverApiClient naverApiClient;
+    private final EmailVerificationService emailVerificationService;
 
     //회원가입
     @Transactional
@@ -47,6 +48,9 @@ public class AuthService {
         if (userRepository.existsByNickname(signupRequest.getNickname())) {
             throw new BusinessException(AuthErrorCode.DUPLICATE_NICKNAME);
         }
+        // 이메일 인증이 되어있는지
+        emailVerificationService.checkVerified(signupRequest.getUsername());
+
         User user = new User();
         user.setName(signupRequest.getName());
         user.setUsername(signupRequest.getUsername());
