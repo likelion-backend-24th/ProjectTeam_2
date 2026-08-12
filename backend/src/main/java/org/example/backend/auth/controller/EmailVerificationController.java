@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class EmailVerificationController {
     private final EmailVerificationService emailVerificationService;
 
-    //인증 코드 발송
+    //인증코드 발송
     @Operation(summary = "인증코드 발송", description = "입력한 이메일로 6자리 인증코드를 발송합니다.")
     @PostMapping("/send")
     public ResponseEntity<ApiResponse<Void>> sendCode(
