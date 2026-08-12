@@ -6,12 +6,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.common.dto.ApiResponse;
-import org.example.backend.expert.dto.response.ExpertListResponse;
-import org.example.backend.expert.dto.response.ExpertProfileResponse;
+import org.example.backend.expert.dto.response.*;
 import org.example.backend.expert.dto.request.ExpertRejectRequest;
 import org.example.backend.expert.dto.request.ExpertSignupRequest;
-import org.example.backend.expert.dto.response.ExpertSignupResponse;
-import org.example.backend.expert.dto.response.PublicExpertListResponse;
 import org.example.backend.expert.entity.ExpertStatus;
 import org.example.backend.expert.service.ExpertProfileService;
 import org.springframework.http.HttpStatus;
@@ -47,6 +44,33 @@ public class ExpertProfileController {
         PublicExpertListResponse response = expertProfileService.getPublicList();
         return ResponseEntity.ok(ApiResponse.success("전문가 목록 조회 성공", response));
     }
+
+    @Operation(summary = "전문가 프로필 상세 조회", description = "승인된 전문가의 닉네임, 경력 전체, 자격증, 소개글을 비로그인 포함 전체 공개합니다.")
+    @GetMapping("/api/experts/{id}")
+    public ResponseEntity<ApiResponse<ExpertProfileDetailResponse>> getDetail(@PathVariable Long id) {
+        ExpertProfileDetailResponse response = expertProfileService.getDetail(id);
+        return ResponseEntity.ok(ApiResponse.success("전문가 프로필 조회 성공", response));
+    }
+
+    @Operation(summary = "전문가 신청 현황 조회", description = "본인의 전문가 신청 상태 및 반려 사유를 조회합니다.")
+    @GetMapping("/api/experts/me")
+    public ResponseEntity<ApiResponse<ExpertApplicationStatusResponse>> getMyStatus(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        ExpertApplicationStatusResponse response = expertProfileService.getMyStatus(userDetails.getUser().getId());
+        return ResponseEntity.ok(ApiResponse.success("신청 현황 조회 성공", response));
+    }
+
+    @Operation(summary = "전문가 신청서 수정", description = "PENDING 상태의 신청 내용을 수정합니다.")
+    @PatchMapping("/api/experts/me")
+    public ResponseEntity<ApiResponse<ExpertSignupResponse>> updateApplication(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody @Valid ExpertSignupRequest request
+    ) {
+        ExpertSignupResponse response = expertProfileService.updateApplication(userDetails.getUser().getId(), request);
+        return ResponseEntity.ok(ApiResponse.success("전문가 신청서가 수정되었습니다.", response));
+    }
+
 
     @Operation(summary = "ADMIN 전문가 목록 조회", description = "status 파라미터로 필터링, 없으면 전체 조회.")
     @GetMapping("/api/admin/experts")
