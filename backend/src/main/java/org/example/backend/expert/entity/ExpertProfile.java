@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "expert_profile")
@@ -43,6 +44,10 @@ public class ExpertProfile {
     @Column(name = "reject_reason", length = 255)
     private String rejectReason;
 
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+
     @Builder
     public ExpertProfile(User user, String introduction) {
         this.user = user;
@@ -73,6 +78,7 @@ public class ExpertProfile {
         }
         this.status = ExpertStatus.APPROVED;
         this.rejectReason = null;
+        this.approvedAt = LocalDateTime.now();
     }
 
     public void reject(String reason) {
@@ -81,6 +87,7 @@ public class ExpertProfile {
         }
         this.status = ExpertStatus.REJECTED;
         this.rejectReason = reason;
+        this.approvedAt = null;
     }
 
     public void revoke(String reason) {
