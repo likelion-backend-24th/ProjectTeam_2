@@ -35,6 +35,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ExpertProfileServiceTest {
 
+
+    @Mock
+    private FeedbackService feedbackService;
     @Mock
     private ExpertProfileRepository expertProfileRepository;
     @Mock
