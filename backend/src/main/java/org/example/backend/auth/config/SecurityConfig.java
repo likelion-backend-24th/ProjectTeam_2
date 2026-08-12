@@ -41,6 +41,7 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/error").permitAll() // 예외 발생 시 /error로 forward되는데, 막혀있으면 원래 에러(4xx/5xx) 대신 403으로 가려짐
                         .requestMatchers("/api/auth/logout").authenticated() //로그아웃 인증!!
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/studies").permitAll() //비회원
