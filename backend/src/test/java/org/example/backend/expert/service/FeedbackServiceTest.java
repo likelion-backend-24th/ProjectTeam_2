@@ -314,4 +314,22 @@ class FeedbackServiceTest {
         assertThat(openThread.isClosed()).isTrue();
         assertThat(openThread.getClosedBy()).isEqualTo(FeedbackCloseReason.EXPERT_REVOKED);
     }
+
+    @Test
+    void addMessage_요청자구독만료시_예외() {
+        requester.setSubscribed(false);
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+
+        FeedbackMessageRequest request = new FeedbackMessageRequest();
+        request.setContent("구독 만료 후 메시지 시도");
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.addMessage(1L, 1L, request));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_SUBSCRIPTION_EXPIRED);
+
+        verify(feedbackMessageRepository, never()).save(any());
+    }
 }

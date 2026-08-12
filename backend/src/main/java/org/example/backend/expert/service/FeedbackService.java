@@ -91,6 +91,9 @@ public class FeedbackService {
         if (feedback.isClosed()) {
             throw new BusinessException(ExpertErrorCode.FEEDBACK_CLOSED);
         }
+        if (!feedback.getRequester().isSubscribed()) {
+            throw new BusinessException(ExpertErrorCode.FEEDBACK_SUBSCRIPTION_EXPIRED);
+        }
 
         FeedbackMessage message = feedbackMessageRepository.save(
                 FeedbackMessage.builder()
