@@ -15,7 +15,7 @@ public class AdminUserResponse {
     @Schema(description = "대상 유저 고유 ID", example = "1")
     private Long id;
     @Schema(description = "대상 유저 이메일", example = "kjs@naver.com")
-    private String usernmae;
+    private String username;
     @Schema(description = "대상 유저 이름", example = "김지선")
     private String name;
     @Schema(description = "대상 유저 닉네임", example = "전주족발집알바생")
@@ -34,7 +34,7 @@ public class AdminUserResponse {
     public static AdminUserResponse from(User user){
         return AdminUserResponse.builder()
                 .id(user.getId())
-                .usernmae(user.getUsername())
+                .username(user.getUsername())
                 .name(user.getName())
                 .nickname(user.getNickname())
                 .role(user.getRole())
