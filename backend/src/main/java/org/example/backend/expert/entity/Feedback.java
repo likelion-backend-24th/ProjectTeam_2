@@ -43,6 +43,10 @@ public class Feedback {
     @Column(name = "answered_at")
     private LocalDateTime answeredAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "closed_by", length = 20)
+    private FeedbackCloseReason closedBy;
+
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
@@ -61,9 +65,11 @@ public class Feedback {
         }
     }
 
-    public void close() {
+    public void close(FeedbackCloseReason reason) {
         if (this.closedAt == null) {
             this.closedAt = LocalDateTime.now();
+            this.closedBy = reason;
+
         }
     }
 

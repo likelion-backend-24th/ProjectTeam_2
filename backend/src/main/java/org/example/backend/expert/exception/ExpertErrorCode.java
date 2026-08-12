@@ -20,6 +20,8 @@ public enum ExpertErrorCode implements ErrorCode {
     SUBSCRIPTION_REQUIRED(HttpStatus.FORBIDDEN, "구독자만 이용할 수 있습니다."),
     FEEDBACK_EXPERT_NOT_APPROVED(HttpStatus.FORBIDDEN, "승인된 전문가가 아닙니다."),
     FEEDBACK_CLOSED(HttpStatus.CONFLICT, "전문가의 권한 문제로 인해 더 이상 대화가 불가능합니다."),
+    FEEDBACK_ALREADY_OPEN(HttpStatus.CONFLICT, "해당 전문가와 진행 중인 문의가 이미 있습니다. 기존 문의를 종료한 후 다시 시도해주세요."),
+    FEEDBACK_OPEN_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "진행 중인 문의는 최대 5개까지 가능합니다."),
     FEEDBACK_ACCESS_DENIED(HttpStatus.FORBIDDEN, "이 문의의 요청자 또는 담당 전문가만 메시지를 남길 수 있습니다.");
 
 

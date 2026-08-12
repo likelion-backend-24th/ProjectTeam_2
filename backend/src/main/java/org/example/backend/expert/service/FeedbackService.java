@@ -10,6 +10,7 @@ import org.example.backend.expert.dto.response.MyFeedbackListResponse;
 import org.example.backend.expert.dto.response.MyFeedbackSummaryResponse;
 import org.example.backend.expert.entity.ExpertProfile;
 import org.example.backend.expert.entity.Feedback;
+import org.example.backend.expert.entity.FeedbackCloseReason;
 import org.example.backend.expert.entity.FeedbackMessage;
 import org.example.backend.expert.exception.ExpertErrorCode;
 import org.example.backend.expert.repository.ExpertProfileRepository;
@@ -44,13 +45,19 @@ public class FeedbackService {
         if (!expertProfile.isApproved()) {
             throw new BusinessException(ExpertErrorCode.FEEDBACK_EXPERT_NOT_APPROVED);
         }
+        if (feedbackRepository.existsByRequesterIdAndExpertProfileIdAndClosedAtIsNull(requesterId, request.getExpertProfileId())) {
+            throw new BusinessException(ExpertErrorCode.FEEDBACK_ALREADY_OPEN);
+        }
+        if (feedbackRepository.countByRequesterIdAndClosedAtIsNull(requesterId) >= 5) {
+            throw new BusinessException(ExpertErrorCode.FEEDBACK_OPEN_LIMIT_EXCEEDED);
+        }
+
 
         Feedback feedback = Feedback.builder()
                 .requester(requester)
                 .expertProfile(expertProfile)
                 .topic(request.getTopic())
                 .build();
-
         feedbackRepository.save(feedback);
 
         feedbackMessageRepository.save(
@@ -104,7 +111,20 @@ public class FeedbackService {
     @Transactional
     public void closeThreadsByExpertProfile(ExpertProfile expertProfile) {
         List<Feedback> openThreads = feedbackRepository.findByExpertProfileIdAndClosedAtIsNull(expertProfile.getId());
-        openThreads.forEach(Feedback::close);
+        openThreads.forEach(feedback -> feedback.close(FeedbackCloseReason.EXPERT_REVOKED));
+    }
+
+    @Transactional
+    public FeedbackResponse closeThread(Long requesterId, Long feedbackId) {
+        Feedback feedback = getFeedbackOrThrow(feedbackId);
+        if (!feedback.getRequester().getId().equals(requesterId)) {
+            throw new BusinessException(ExpertErrorCode.FEEDBACK_ACCESS_DENIED);
+        }
+        if (feedback.isClosed()) {
+            throw new BusinessException(ExpertErrorCode.FEEDBACK_CLOSED);
+        }
+        feedback.close(FeedbackCloseReason.REQUESTER_CLOSED);
+        return FeedbackResponse.from(feedback);
     }
 
 
