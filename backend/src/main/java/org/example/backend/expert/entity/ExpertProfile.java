@@ -96,6 +96,8 @@ public class ExpertProfile {
         }
         this.status = ExpertStatus.REJECTED;
         this.rejectReason = reason;
+        this.approvedAt = null;
+
     }
 
     public void reapply() {
