@@ -95,6 +95,7 @@ Content-Type: application/json
   "password": "test5555"
 }
 
+
 ### 로그아웃 - 성공 (200)
 POST http://localhost:8080/api/auth/logout
 Authorization: Bearer {{accessToken}}
