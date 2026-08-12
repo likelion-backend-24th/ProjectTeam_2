@@ -21,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -34,9 +35,12 @@ public class StudyController {
 
     @Operation(summary = "스터디 개설", description = "로그인한 사용자가 새 스터디를 개설합니다. 개설자는 자동으로 방장이자 첫 멤버로 등록됩니다.")
     @PostMapping
-    public ResponseEntity<ApiResponse<StudyResponse>> createStudy(@AuthenticationPrincipal CustomUserDetails user, @Valid @RequestBody StudyRequest request){
+    public ResponseEntity<ApiResponse<StudyResponse>> createStudy(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @Valid @RequestPart("data") StudyRequest request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images){
         Long userId = user.getUser().getId();
-        StudyResponse response = studyService.createStudy(userId, request);
+        StudyResponse response = studyService.createStudy(userId, request, images);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("스터디 생성", response));
     }
 

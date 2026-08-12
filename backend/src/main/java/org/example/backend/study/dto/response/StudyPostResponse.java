@@ -6,6 +6,7 @@ import lombok.Getter;
 import org.example.backend.study.entity.StudyPost;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Builder
@@ -28,13 +29,16 @@ public class StudyPostResponse {
     @Schema(description = "작성자 닉네임", example = "안양개발자")
     private String authorNickname;
 
-    @Schema(description = "게실글 작성일시", example = "2026-08-05T10:00:00")
+    @Schema(description = "게시글 작성일시", example = "2026-08-05T10:00:00")
     private LocalDateTime createdAt;
 
-    @Schema(description = "게시글 수정일시", example = "2026-08-05T10:00:00")
+    @Schema(description = "게시글 수정일시", example = "2026-08-06T13:00:00")
     private LocalDateTime updatedAt;
 
-    public static StudyPostResponse from(StudyPost studyPost) {
+    @Schema(description = "게시글 첨부 이미지 URL 목록")
+    private List<String> imageUrls;
+
+    public static StudyPostResponse from(StudyPost studyPost, List<String> imageUrls) {
         return StudyPostResponse.builder()
                 .id(studyPost.getId())
                 .studyId(studyPost.getStudy().getId())
@@ -44,6 +48,7 @@ public class StudyPostResponse {
                 .authorNickname(studyPost.getUser().getNickname())
                 .createdAt(studyPost.getCreatedAt())
                 .updatedAt(studyPost.getUpdatedAt())
+                .imageUrls(imageUrls)
                 .build();
     }
 }

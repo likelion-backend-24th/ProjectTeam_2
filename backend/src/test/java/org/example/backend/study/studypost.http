@@ -1,7 +1,8 @@
 ### 변수 설정
-@host = http://localhost:8080
-@studyId = 3
-@postId = 2
+@host = http://localhost:8081
+@studyId = 1
+@postId = 1
+@boundary = WebAppBoundary
 
 ### 로그인 (JWT 토큰 발급 - 실제 로그인 엔드포인트 경로/요청 바디는 프로젝트에 맞게 수정 필요)
 # @name login
@@ -9,7 +10,7 @@ POST {{host}}/api/auth/login
 Content-Type: application/json
 
 {
-  "username": "test4@naver.com",
+  "username": "test@naver.com",
   "password": "test1234"
 }
 
@@ -17,32 +18,62 @@ Content-Type: application/json
     client.global.set("accessToken", response.body.data.accessToken);
 %}
 
-### 1. 스터디 게시글 등록
+### 1. 스터디 게시글 등록 (이미지 없이)
 POST {{host}}/api/studies/{{studyId}}/posts
-Content-Type: application/json
+Content-Type: multipart/form-data; boundary={{boundary}}
 Authorization: Bearer {{accessToken}}
+
+--{{boundary}}
+Content-Disposition: form-data; name="data"
+Content-Type: application/json
 
 {
   "title": "테스트 게시글 제목",
   "content": "테스트 게시글 내용입니다."
 }
+--{{boundary}}--
+
+### 1-A. 스터디 게시글 등록 (이미지 포함)
+POST {{host}}/api/studies/{{studyId}}/posts
+Content-Type: multipart/form-data; boundary={{boundary}}
+Authorization: Bearer {{accessToken}}
+
+--{{boundary}}
+Content-Disposition: form-data; name="data"
+Content-Type: application/json
+
+{
+  "title": "이미지 첨부 테스트 게시글",
+  "content": "이미지가 잘 붙는지 확인합니다."
+}
+--{{boundary}}
+Content-Disposition: form-data; name="images"; filename="test-image.jpg"
+Content-Type: image/jpeg
+
+< ./test-files/test-image.jpg
+--{{boundary}}--
 
 ### 1-1. 스터디 게시글 등록 - 존재하지 않는 스터디 (404 예상)
 POST {{host}}/api/studies/99999/posts
-Content-Type: application/json
+Content-Type: multipart/form-data; boundary={{boundary}}
 Authorization: Bearer {{accessToken}}
+
+--{{boundary}}
+Content-Disposition: form-data; name="data"
+Content-Type: application/json
 
 {
   "title": "존재하지 않는 스터디 테스트",
   "content": "실패 케이스"
 }
+--{{boundary}}--
 
 
-### 2. 스터디 게시글 목록 조회
+### 2. 스터디 게시글 목록 조회 (imageUrls 포함 확인)
 GET {{host}}/api/studies/{{studyId}}/posts
 Authorization: Bearer {{accessToken}}
 
-### 3. 스터디 게시글 상세 조회
+### 3. 스터디 게시글 상세 조회 (imageUrls 포함 확인)
 GET {{host}}/api/studies/{{studyId}}/posts/{{postId}}
 Authorization: Bearer {{accessToken}}
 

@@ -48,7 +48,10 @@ public class StudyDetailResponse {
     @Schema(description = "스터디 개설일시", example = "2026-08-05T10:00:00")
     private LocalDateTime createdAt;
 
-    public static StudyDetailResponse from(Study study, int memberCount) {
+    @Schema(description = "스터디 이미지 URL 목록")
+    private List<String> imageUrls;
+
+    public static StudyDetailResponse from(Study study, int memberCount, List<String> imageUrls) {
         return StudyDetailResponse.builder()
                 .id(study.getId())
                 .title(study.getTitle())
@@ -62,6 +65,7 @@ public class StudyDetailResponse {
                 .category(study.getCategory().name())
                 .categoryLabel(study.getCategory().getLabel())
                 .createdAt(study.getCreatedAt())
+                .imageUrls(imageUrls)
                 .build();
     }
 }
