@@ -1,0 +1,21 @@
+### 이미지 업로드 테스트 (정상 케이스)
+POST http://localhost:8081/api/test/upload
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="test-image.jpg"
+Content-Type: image/jpeg
+
+< ./test-files/test-image.jpg
+--WebAppBoundary--
+
+### 잘못된 확장자 테스트 (실패 케이스)
+POST http://localhost:8081/api/test/upload
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="test-file.txt"
+Content-Type: text/plain
+
+< ./test-files/test-file.txt
+--WebAppBoundary--
