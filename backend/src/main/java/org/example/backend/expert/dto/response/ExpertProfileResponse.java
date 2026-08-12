@@ -7,6 +7,7 @@ import org.example.backend.expert.entity.ExpertProfile;
 import org.example.backend.expert.entity.ExpertStatus;
 
 import java.util.List;
+import java.time.LocalDateTime;
 
 @Getter
 @Builder
@@ -33,6 +34,9 @@ public class ExpertProfileResponse {
     @Schema(description = "거절 또는 자격 박탈 사유", example = "아쉽게도 제출한 경력 정보가 확인되지 않습니다. ")
     private String rejectReason;
 
+    @Schema(description = "승인일시 (APPROVED 상태일 때만 값 존재)", example = "2026-08-12T10:00:00")
+    private LocalDateTime approvedAt;
+
     public static ExpertProfileResponse from(ExpertProfile profile) {
         return ExpertProfileResponse.builder()
                 .id(profile.getId())
@@ -44,6 +48,7 @@ public class ExpertProfileResponse {
                         .toList())
                 .status(profile.getStatus())
                 .rejectReason(profile.getRejectReason())
+                .approvedAt(profile.getApprovedAt())
                 .build();
     }
 }
