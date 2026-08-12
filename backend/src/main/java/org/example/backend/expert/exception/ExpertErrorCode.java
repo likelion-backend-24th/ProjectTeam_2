@@ -15,6 +15,7 @@ public enum ExpertErrorCode implements ErrorCode {
     EXPERT_REJECT_INVALID_STATUS(HttpStatus.CONFLICT, "PENDING 상태의 신청만 거절할 수 있습니다."),
     EXPERT_REVOKE_INVALID_STATUS(HttpStatus.CONFLICT, "APPROVED 상태의 전문가만 자격 박탈할 수 있습니다."),
     EXPERT_REAPPLY_INVALID_STATUS(HttpStatus.CONFLICT, "거절된 신청만 재신청할 수 있습니다."),
+    EXPERT_UPDATE_INVALID_STATUS(HttpStatus.CONFLICT, "PENDING 상태의 신청만 수정할 수 있습니다."),
     FEEDBACK_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 문의입니다."),
     SUBSCRIPTION_REQUIRED(HttpStatus.FORBIDDEN, "구독자만 이용할 수 있습니다."),
     FEEDBACK_EXPERT_NOT_APPROVED(HttpStatus.FORBIDDEN, "승인된 전문가가 아닙니다."),
