@@ -39,6 +39,9 @@ public class FeedbackResponse {
     @Schema(description = "스레드 종료일시 (담당 전문가 자격 박탈 시 설정, null이면 대화 가능)", example = "null")
     private LocalDateTime closedAt;
 
+    @Schema(description = "요청자의 현재 구독 여부 (false면 대화 불가)", example = "true")
+    private boolean requesterSubscribed;
+
     public static FeedbackResponse from(Feedback feedback) {
         return FeedbackResponse.builder()
                 .id(feedback.getId())
@@ -50,6 +53,7 @@ public class FeedbackResponse {
                 .answeredAt(feedback.getAnsweredAt())
                 .closedBy(feedback.getClosedBy())
                 .closedAt(feedback.getClosedAt())
+                .requesterSubscribed(feedback.getRequester().isSubscribed())
                 .build();
     }
 }

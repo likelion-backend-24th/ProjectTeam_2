@@ -22,18 +22,10 @@ public enum ExpertErrorCode implements ErrorCode {
     FEEDBACK_CLOSED(HttpStatus.CONFLICT, "전문가의 권한 문제로 인해 더 이상 대화가 불가능합니다."),
     FEEDBACK_ALREADY_OPEN(HttpStatus.CONFLICT, "해당 전문가와 진행 중인 문의가 이미 있습니다. 기존 문의를 종료한 후 다시 시도해주세요."),
     FEEDBACK_OPEN_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "진행 중인 문의는 최대 5개까지 가능합니다."),
+    FEEDBACK_SUBSCRIPTION_EXPIRED(HttpStatus.CONFLICT, "요청자의 구독이 만료되어 더 이상 대화할 수 없습니다."),
     FEEDBACK_ACCESS_DENIED(HttpStatus.FORBIDDEN, "이 문의의 요청자 또는 담당 전문가만 메시지를 남길 수 있습니다.");
 
 
     private final HttpStatus httpStatus;
     private final String message;
 }
-
-/**
- * 발생할 수 있는 모든 비즈니스 예외 상황을 미리 정의
- * Point : 상태 코드 + 메시지
- *
- * HttpStatus.NOT_FOUND → 404
- * HttpStatus.CONFLICT → 409
- * HttpStatus.FORBIDDEN → 403
- */
