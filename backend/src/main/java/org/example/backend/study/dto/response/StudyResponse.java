@@ -7,6 +7,7 @@ import org.example.backend.study.entity.Study;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Builder
@@ -47,7 +48,10 @@ public class StudyResponse {
     @Schema(description = "스터디 개설일시", example = "2026-08-05T10:00:00")
     private LocalDateTime createdAt;
 
-    public static StudyResponse from(Study study, int memberCount) {
+    @Schema(description = "스터디 대표 이미지 URL 목록")
+    private List<String> imageUrls;
+
+    public static StudyResponse from(Study study, int memberCount, List<String> imageUrls) {
         return StudyResponse.builder()
                 .id(study.getId())
                 .title(study.getTitle())
@@ -61,6 +65,7 @@ public class StudyResponse {
                 .category(study.getCategory().name())
                 .categoryLabel(study.getCategory().getLabel())
                 .createdAt(study.getCreatedAt())
+                .imageUrls(imageUrls)
                 .build();
     }
 }

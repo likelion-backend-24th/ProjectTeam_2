@@ -39,7 +39,10 @@ public class StudyPostDetailResponse {
     @Schema(description = "게시글에 달린 댓글 목록")
     private List<StudyPostCommentResponse> comments;
 
-    public static StudyPostDetailResponse from(StudyPost post, List<StudyPostCommentResponse> comments) {
+    @Schema(description = "게시글 첨부 이미지 URL 목록")
+    private List<String> imageUrls;
+
+    public static StudyPostDetailResponse from(StudyPost post, List<StudyPostCommentResponse> comments, List<String> imageUrls) {
         return StudyPostDetailResponse.builder()
                 .id(post.getId())
                 .studyId(post.getStudy().getId())
@@ -50,6 +53,7 @@ public class StudyPostDetailResponse {
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
                 .comments(comments)
+                .imageUrls(imageUrls)
                 .build();
     }
 }

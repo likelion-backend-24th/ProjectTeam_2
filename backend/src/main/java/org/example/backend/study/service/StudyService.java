@@ -4,14 +4,17 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.exception.AuthErrorCode;
 import org.example.backend.common.exception.BusinessException;
+import org.example.backend.common.file.FileStorageService;
+import org.example.backend.common.file.ImageValidator;
 import org.example.backend.study.dto.request.StudyRequest;
 import org.example.backend.study.dto.request.StudyUpdateRequest;
 import org.example.backend.study.dto.response.StudyDetailResponse;
-import org.example.backend.study.dto.response.StudyMemberResponse;
 import org.example.backend.study.dto.response.StudyResponse;
 import org.example.backend.study.entity.Study;
+import org.example.backend.study.entity.StudyImage;
 import org.example.backend.study.entity.StudyMember;
 import org.example.backend.study.exception.*;
+import org.example.backend.study.repository.StudyImageRepository;
 import org.example.backend.study.repository.StudyMemberRepository;
 import org.example.backend.study.repository.StudyRepository;
 import org.example.backend.user.entity.User;
@@ -20,6 +23,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -32,9 +36,12 @@ public class StudyService {
     private final StudyRepository studyRepository;
     private final StudyMemberRepository studyMemberRepository;
     private final UserRepository userRepository;
+    private final StudyImageRepository studyImageRepository;
+    private final FileStorageService fileStorageService;
+    private final ImageValidator imageValidator;
 
     @Transactional
-    public StudyResponse createStudy(Long userId, StudyRequest request){
+    public StudyResponse createStudy(Long userId, StudyRequest request, List<MultipartFile> images) {
         User user = getUserOrThrow(userId);
         validateFreeTierLimit(user);
 
@@ -43,7 +50,9 @@ public class StudyService {
         Study saved = studyRepository.save(study);
         studyMemberRepository.save(new StudyMember(saved, user));
 
-        return StudyResponse.from(saved, 1);
+        List<String> imageUrls = saveStudyImages(saved, images);
+
+        return StudyResponse.from(saved, 1, imageUrls);
     }
 
     public Page<StudyResponse> getStudies(String keyword, Pageable pageable) {
@@ -55,15 +64,17 @@ public class StudyService {
 
         return page.map(study -> {
             int memberCount = memberCountMap.getOrDefault(study.getId(), 0);
-            return StudyResponse.from(study, memberCount);
+            List<String> imageUrls = getImageUrls(study.getId());
+            return StudyResponse.from(study, memberCount, imageUrls);
         });
     }
 
     public StudyDetailResponse getStudyById(Long id) {
         Study study = getStudyOrThrow(id);
         int memberCount = studyMemberRepository.countByStudyId(id);
+        List<String> imageUrls = getImageUrls(id);
 
-        return StudyDetailResponse.from(study, memberCount);
+        return StudyDetailResponse.from(study, memberCount, imageUrls);
     }
 
     @Transactional
@@ -82,7 +93,9 @@ public class StudyService {
         study.setRecruitEnd(request.getRecruitEnd());
         study.setCategory(request.getCategory());
 
-        return StudyResponse.from(study, memberCount);
+        List<String> imageUrls = getImageUrls(id);
+
+        return StudyResponse.from(study, memberCount, imageUrls);
     }
 
     @Transactional
@@ -90,6 +103,7 @@ public class StudyService {
         Study study = getStudyOrThrow(id);
         validateStudyLeader(study, userId);
 
+        studyImageRepository.deleteAllByStudyId(id);
         studyRepository.delete(study);
     }
 
@@ -104,8 +118,31 @@ public class StudyService {
         return members.map(member -> {
             Study study = member.getStudy();
             int memberCount = memberCountMap.getOrDefault(study.getId(), 0);
-            return StudyResponse.from(study, memberCount);
+            List<String> imageUrls = getImageUrls(study.getId());
+            return StudyResponse.from(study, memberCount, imageUrls);
         });
+    }
+
+    private List<String> saveStudyImages(Study study, List<MultipartFile> images) {
+        if (images == null || images.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> imageUrls = new java.util.ArrayList<>();
+        for (int i = 0; i < images.size(); i++) {
+            MultipartFile file = images.get(i);
+            imageValidator.validate(file);
+            String url = fileStorageService.upload(file, "study");
+            studyImageRepository.save(new StudyImage(study, url, file.getOriginalFilename(), i));
+            imageUrls.add(url);
+        }
+        return imageUrls;
+    }
+
+    private List<String> getImageUrls(Long studyId) {
+        return studyImageRepository.findAllByStudyIdOrderByImageOrder(studyId).stream()
+                .map(StudyImage::getImageUrl)
+                .toList();
     }
 
     private Map<Long, Integer> getMemberCountMap(List<Study> studies) {
@@ -144,5 +181,4 @@ public class StudyService {
             }
         }
     }
-
 }
