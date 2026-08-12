@@ -19,7 +19,9 @@ public enum ExpertErrorCode implements ErrorCode {
     FEEDBACK_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 문의입니다."),
     SUBSCRIPTION_REQUIRED(HttpStatus.FORBIDDEN, "구독자만 이용할 수 있습니다."),
     FEEDBACK_EXPERT_NOT_APPROVED(HttpStatus.FORBIDDEN, "승인된 전문가가 아닙니다."),
+    FEEDBACK_CLOSED(HttpStatus.CONFLICT, "전문가의 권한 문제로 인해 더 이상 대화가 불가능합니다."),
     FEEDBACK_ACCESS_DENIED(HttpStatus.FORBIDDEN, "이 문의의 요청자 또는 담당 전문가만 메시지를 남길 수 있습니다.");
+
 
     private final HttpStatus httpStatus;
     private final String message;

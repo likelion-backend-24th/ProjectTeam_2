@@ -7,10 +7,10 @@ POST {{baseUrl}}/api/auth/signup
 Content-Type: {{contentType}}
 
 {
-  "username": "songha7177@naver.com",
+  "username": "jun7177@naver.com",
   "password": "test1234!",
   "name": "송하테스트",
-  "nickname": "송하테스터"
+  "nickname": "준엽테스터"
 }
 
 ### 0-2. 로그인 (accessToken 발급 - 아래 요청들에서 자동으로 사용됨)
@@ -19,7 +19,7 @@ POST {{baseUrl}}/api/auth/login
 Content-Type: {{contentType}}
 
 {
-  "username": "songha7177@naver.com",
+  "username": "jun7177@naver.com",
   "password": "test1234!"
 }
 
@@ -39,14 +39,14 @@ Authorization: Bearer {{accessToken}}
 {
   "careers": [
     {
-      "companyName": "디자인x",
+      "companyName": "디자인xyz",
       "position": "디자인 개발자",
-      "years": 3,
+      "years": 30,
       "jobField": "IT_DEVELOPMENT"
     }
   ],
   "certifications": [],
-  "introduction": "15년차 디자인입니다."
+  "introduction": "30년차 디자인입니다."
 }
 
 ### 2. 전문가 신청 실패 - 경력 없이 시도 (400 기대, careers @NotEmpty)
@@ -102,13 +102,13 @@ Content-Type: {{contentType}}
 GET {{baseUrl}}/api/experts
 
 ### 6. 전문가 프로필 상세 조회 (F-35, 비로그인 가능, id는 승인된 프로필 번호로 교체)
-GET {{baseUrl}}/api/experts/5
+GET {{baseUrl}}/api/experts/4
 
 ### 7. 전문가 프로필 상세 조회 실패 - 없는 id (404 + EXPERT_PROFILE_NOT_FOUND 기대)
 GET {{baseUrl}}/api/experts/99999
 
 ### 7-1. 전문가 프로필 상세 조회 실패 - 미승인(PENDING/REJECTED) 프로필 id (404 기대, 존재 여부 비공개 확인용)
-GET {{baseUrl}}/api/experts/2
+GET {{baseUrl}}/api/experts/3
 
 ### =========================
 ### ADMIN 전문가 관리
@@ -154,7 +154,7 @@ PATCH {{baseUrl}}/api/admin/experts/99999/approve
 Authorization: Bearer {{adminAccessToken}}
 
 ### 15. ADMIN 전문가 거절 (사유 포함, 200 기대 - PENDING 상태인 다른 프로필 id로 실행)
-PATCH {{baseUrl}}/api/admin/experts/66/reject
+PATCH {{baseUrl}}/api/admin/experts/5/reject
 Content-Type: {{contentType}}
 Authorization: Bearer {{adminAccessToken}}
 

@@ -25,6 +25,7 @@ public class ExpertProfileService {
 
     private final ExpertProfileRepository expertProfileRepository;
     private final UserRepository userRepository;
+    private final FeedbackService feedbackService;
 
     @Transactional
     public ExpertSignupResponse signup(Long userId, ExpertSignupRequest request) {
@@ -80,6 +81,7 @@ public class ExpertProfileService {
         ExpertProfile profile = getProfileOrThrow(expertProfileId);
         profile.revoke(reason);
         profile.getUser().setRole(Role.USER);
+        feedbackService.closeThreadsByExpertProfile(profile);
         return ExpertProfileResponse.from(profile);
     }
 

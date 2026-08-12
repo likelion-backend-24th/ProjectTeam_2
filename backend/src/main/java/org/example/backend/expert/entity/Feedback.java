@@ -43,6 +43,9 @@ public class Feedback {
     @Column(name = "answered_at")
     private LocalDateTime answeredAt;
 
+    @Column(name = "closed_at")
+    private LocalDateTime closedAt;
+
     @Builder
     public Feedback(User requester, ExpertProfile expertProfile, String topic) {
         this.requester = requester;
@@ -56,5 +59,15 @@ public class Feedback {
             this.status = FeedbackStatus.ANSWERED;
             this.answeredAt = LocalDateTime.now();
         }
+    }
+
+    public void close() {
+        if (this.closedAt == null) {
+            this.closedAt = LocalDateTime.now();
+        }
+    }
+
+    public boolean isClosed() {
+        return this.closedAt != null;
     }
 }
