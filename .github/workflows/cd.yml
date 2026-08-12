@@ -2,11 +2,13 @@
 name: CD - Deploy to EC2
 
 on:
-  workflow_run:
-    workflows: ["Backend CI", "Frontend CI"]
-    types:
-      - completed
-    branches: [ "main" ]
+  workflow_dispatch:
+  # 자동 배포 재개 시 아래 주석 해제
+  # workflow_run:
+  #   workflows: ["Backend CI", "Frontend CI"]
+  #   types:
+  #     - completed
+  #   branches: [ "main" ]
 
 jobs:
   build-and-push:
