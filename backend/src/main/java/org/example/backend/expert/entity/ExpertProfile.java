@@ -102,4 +102,12 @@ public class ExpertProfile {
     public boolean isApproved() {
         return this.status == ExpertStatus.APPROVED;
     }
+
+    public void updateApplication(String introduction) {
+        if (this.status != ExpertStatus.PENDING) {
+            throw new BusinessException(ExpertErrorCode.EXPERT_UPDATE_INVALID_STATUS);
+        }
+        this.introduction = introduction;
+    }
+
 }

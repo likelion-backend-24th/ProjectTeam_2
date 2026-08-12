@@ -90,6 +90,7 @@ public class FeedbackService {
                         .build()
         );
 
+        // 전문가가 지금 답변하고 있다면 → 답변완료 처리한다.
         if (isExpertAnswering) {
             feedback.markAnswered();
         }
@@ -101,20 +102,22 @@ public class FeedbackService {
         Feedback feedback = getFeedbackOrThrow(feedbackId);
         validateFeedbackAccess(feedback, callerId);
         return feedbackMessageRepository.findByFeedbackIdOrderByCreatedAtAsc(feedbackId)
-                .stream().map(FeedbackMessageResponse::from).toList();
+                .stream().map(message -> FeedbackMessageResponse.from(message)).toList();
     }
 
     public MyFeedbackListResponse getMyFeedbacks(Long requesterId) {
         List<MyFeedbackSummaryResponse> summaries = feedbackRepository.findByRequesterId(requesterId)
-                .stream().map(MyFeedbackSummaryResponse::from).toList();
+                .stream().map(feedback -> MyFeedbackSummaryResponse.from(feedback)).toList();
         return MyFeedbackListResponse.from(summaries);
     }
-
+// 특정 전문가 1명에게 들어온 문의 스레드 리턴
+//    전문가 프로필 id를 지정해서, 그 전문가에게 들어온 문의 스레드를 전부 조회하는 기능
     public List<FeedbackResponse> getExpertFeedbacks(Long expertProfileId) {
         return feedbackRepository.findByExpertProfileId(expertProfileId)
-                .stream().map(FeedbackResponse::from).toList();
+                .stream().map(feedback -> FeedbackResponse.from(feedback)).toList();
     }
-
+// 전문가 본인이 받은 문의 목록
+//    로그인한 전문가 본인이 "내가 받은 문의함" 화면을 열었을 때 쓰는 기능
     public List<FeedbackResponse> getMyExpertFeedbacks(Long expertUserId) {
         ExpertProfile expertProfile = expertProfileRepository.findByUserId(expertUserId)
                 .orElseThrow(() -> new BusinessException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND));
