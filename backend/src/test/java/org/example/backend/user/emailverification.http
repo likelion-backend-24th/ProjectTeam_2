@@ -1,9 +1,9 @@
-### 인증코드 발송 - 성공
+### 인증코드 발송 - 성공 (이메일 구글,네이버 등 다 사용가능)
 POST http://localhost:8080/api/auth/email/send
 Content-Type: application/json
 
 {
-  "email": "이메일 인증 받을 이메일"
+  "email": "이메일_인증_받을_이메일"
 }
 
 ### 인증코드 발송 - 실패 (빈 이메일)
@@ -27,7 +27,7 @@ POST http://localhost:8080/api/auth/email/verify
 Content-Type: application/json
 
 {
-  "email": "인증 코드 발송한 자신의 이메일",
+  "email": "인증_코드_발송한_자신의_이메일",
   "code": "028162"
 }
 
@@ -36,7 +36,7 @@ POST http://localhost:8080/api/auth/email/verify
 Content-Type: application/json
 
 {
-  "email": "인증 코드 발송한 자신의 이메일",
+  "email": "인증_코드_발송한_자신의_이메일",
   "code": "000000"
 }
 
@@ -54,7 +54,7 @@ POST http://localhost:8080/api/auth/email/verify
 Content-Type: application/json
 
 {
-  "email": "인증 코드 발송한 자신의 이메일",
+  "email": "인증_코드_발송한_자신의_이메일",
   "code": ""
 }
 
@@ -72,6 +72,6 @@ POST http://localhost:8080/api/auth/email/verify
 Content-Type: application/json
 
 {
-  "email": "인증 코드 발송한 자신의 이메일",
+  "email": "인증_코드_발송한_자신의_이메일",
   "code": "5분전받은코드로교체"
 }
