@@ -71,7 +71,7 @@ public class AuthController {
     }
 
     // Google 로그인 Post
-    @Operation(summary = "구글 로그인",description = "카카오 엑세스 토큰으로 로그인, 최초 로그인 시 자동 회원가입됩니다.")
+    @Operation(summary = "구글 로그인",description = "구글 엑세스 토큰으로 로그인, 최초 로그인 시 자동 회원가입됩니다.")
     @PostMapping("/google")
     public ResponseEntity<ApiResponse<TokenResponse>> googleLogin(@Valid @RequestBody GoogleLoginRequest googleLoginRequest){
         TokenResponse response = authService.googleLogin(googleLoginRequest.getGoogleAccessToken());
@@ -79,7 +79,7 @@ public class AuthController {
     }
 
     // NAVER 로그인 Post
-    @Operation(summary = "네이버 로그인",description = "카카오 엑세스 토큰으로 로그인, 최초 로그인 시 자동 회원가입됩니다.")
+    @Operation(summary = "네이버 로그인",description = "네이버 엑세스 토큰으로 로그인, 최초 로그인 시 자동 회원가입됩니다.")
     @PostMapping("/naver")
     public ResponseEntity<ApiResponse<TokenResponse>> naverLogin(@Valid @RequestBody NaverLoginRequest naverLoginRequest){
         TokenResponse response = authService.naverLogin(naverLoginRequest.getNaverAccessToken());
