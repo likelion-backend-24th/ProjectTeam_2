@@ -49,7 +49,16 @@ public class EmailVerificationService {
         }
         emailVerification.setVerified(true);
         emailVerificationRepository.save(emailVerification);
+    }
 
+    //이메일 인증 완료되었는지 확인 메서드
+    public void checkVerified(String email){
+        EmailVerification emailVerification = emailVerificationRepository.findTopByEmailOrderByCreatedAtDesc(email)
+                .orElseThrow(() -> new BusinessException(EmailVerificationErrorCode.EMAIL_NOT_VERIFIED));
+
+        if(!emailVerification.isVerified()){
+            throw new BusinessException(EmailVerificationErrorCode.EMAIL_NOT_VERIFIED);
+        }
     }
 
 
