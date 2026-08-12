@@ -57,7 +57,7 @@ public class AdminController {
     }
 
     //댓글 강제 삭제
-    @Operation(summary = "댓글 강제 삭제", description = "관리자 권한으로 특정 게시글을 강제 삭제합니다.")
+    @Operation(summary = "댓글 강제 삭제", description = "관리자 권한으로 특정 댓글을 강제 삭제합니다.")
     @DeleteMapping("/comments/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteComment(@PathVariable Long id){
         adminService.deleteComment(id);
