@@ -1,0 +1,77 @@
+### 인증코드 발송 - 성공
+POST http://localhost:8080/api/auth/email/send
+Content-Type: application/json
+
+{
+  "email": "이메일 인증 받을 이메일"
+}
+
+### 인증코드 발송 - 실패 (빈 이메일)
+POST http://localhost:8080/api/auth/email/send
+Content-Type: application/json
+
+{
+  "email": ""
+}
+
+### 인증코드 발송 - 실패 (이메일 형식 오류)
+POST http://localhost:8080/api/auth/email/send
+Content-Type: application/json
+
+{
+  "email": "asdf"
+}
+
+### 인증코드 검증 - 성공 (실제 메일함에서 받은 코드로 교체해서 사용)
+POST http://localhost:8080/api/auth/email/verify
+Content-Type: application/json
+
+{
+  "email": "인증 코드 발송한 자신의 이메일",
+  "code": "028162"
+}
+
+### 인증코드 검증 - 실패 (코드 틀림)
+POST http://localhost:8080/api/auth/email/verify
+Content-Type: application/json
+
+{
+  "email": "인증 코드 발송한 자신의 이메일",
+  "code": "000000"
+}
+
+### 인증코드 검증 - 실패 (발송 요청한 적 없는 이메일)
+POST http://localhost:8080/api/auth/email/verify
+Content-Type: application/json
+
+{
+  "email": "neverSent@naver.com",
+  "code": "123456"
+}
+
+### 인증코드 검증 - 실패 (빈 code 값)
+POST http://localhost:8080/api/auth/email/verify
+Content-Type: application/json
+
+{
+  "email": "인증 코드 발송한 자신의 이메일",
+  "code": ""
+}
+
+### 인증코드 검증 - 실패 (빈 email 값)
+POST http://localhost:8080/api/auth/email/verify
+Content-Type: application/json
+
+{
+  "email": "",
+  "code": "123456"
+}
+
+### 인증코드 검증 - 실패 (만료된 코드, 5분 이상 기다린 후 테스트)
+POST http://localhost:8080/api/auth/email/verify
+Content-Type: application/json
+
+{
+  "email": "인증 코드 발송한 자신의 이메일",
+  "code": "5분전받은코드로교체"
+}
