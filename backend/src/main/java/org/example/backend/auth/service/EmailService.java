@@ -11,7 +11,9 @@ import java.util.Random;
 @RequiredArgsConstructor
 public class EmailService {
 
+    // JavaMailSender 객체를 자바가 자동으로 등록
     private final JavaMailSender javaMailSender;
+
     // 이게 실제 메일 발송
     public void sendVerificationCode(String toEmail, String code) {
         SimpleMailMessage message = new SimpleMailMessage();
