@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import org.example.backend.user.entity.AccountStatus;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +38,9 @@ public class FeedbackService {
     public FeedbackResponse createFeedback(Long requesterId, FeedbackCreateRequest request) {
         User requester = userRepository.findById(requesterId)
                 .orElseThrow(() -> new BusinessException(ExpertErrorCode.USER_NOT_FOUND));
+        if (requester.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessException(ExpertErrorCode.FEEDBACK_USER_INACTIVE);
+        }
         if (!requester.isSubscribed()) {
             throw new BusinessException(ExpertErrorCode.SUBSCRIPTION_REQUIRED);
         }
@@ -44,6 +48,9 @@ public class FeedbackService {
                 .orElseThrow(() -> new BusinessException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND));
         if (!expertProfile.isApproved()) {
             throw new BusinessException(ExpertErrorCode.FEEDBACK_EXPERT_NOT_APPROVED);
+        }
+        if (expertProfile.getUser().getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessException(ExpertErrorCode.FEEDBACK_USER_INACTIVE);
         }
         if (feedbackRepository.existsByRequesterIdAndExpertProfileIdAndClosedAtIsNull(requesterId, request.getExpertProfileId())) {
             throw new BusinessException(ExpertErrorCode.FEEDBACK_ALREADY_OPEN);
@@ -90,6 +97,10 @@ public class FeedbackService {
         }
         if (feedback.isClosed()) {
             throw new BusinessException(ExpertErrorCode.FEEDBACK_CLOSED);
+        }
+        if (feedback.getRequester().getStatus() != AccountStatus.ACTIVE
+                || feedback.getExpertProfile().getUser().getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessException(ExpertErrorCode.FEEDBACK_USER_INACTIVE);
         }
         if (!feedback.getRequester().isSubscribed()) {
             throw new BusinessException(ExpertErrorCode.FEEDBACK_SUBSCRIPTION_EXPIRED);

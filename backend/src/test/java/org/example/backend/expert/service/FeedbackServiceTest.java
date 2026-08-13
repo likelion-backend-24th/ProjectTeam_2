@@ -33,6 +33,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.example.backend.expert.entity.FeedbackCloseReason;
+import org.example.backend.user.entity.AccountStatus;
 
 @ExtendWith(MockitoExtension.class)
 class FeedbackServiceTest {
@@ -59,10 +60,12 @@ class FeedbackServiceTest {
         requester.setId(1L);
         requester.setRole(Role.USER);
         requester.setSubscribed(true);
+        requester.setStatus(AccountStatus.ACTIVE);
 
         expertUser = new User();
         expertUser.setId(2L);
         expertUser.setRole(Role.EXPERT);
+        expertUser.setStatus(AccountStatus.ACTIVE);
 
         approvedExpertProfile = ExpertProfile.builder()
                 .user(expertUser).introduction("5년차 백엔드 개발자").build();
@@ -332,4 +335,54 @@ class FeedbackServiceTest {
 
         verify(feedbackMessageRepository, never()).save(any());
     }
+
+    @Test
+    void createFeedback_요청자탈퇴시_예외() {
+        requester.setStatus(AccountStatus.WITHDRAWN);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+
+        FeedbackCreateRequest request = new FeedbackCreateRequest();
+        request.setExpertProfileId(99L);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.createFeedback(1L, request));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_USER_INACTIVE);
+
+        verify(expertProfileRepository, never()).findById(any());
+    }
+
+    @Test
+    void createFeedback_전문가탈퇴시_예외() {
+        expertUser.setStatus(AccountStatus.WITHDRAWN);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+        when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
+
+        FeedbackCreateRequest request = new FeedbackCreateRequest();
+        request.setExpertProfileId(99L);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.createFeedback(1L, request));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_USER_INACTIVE);
+
+        verify(feedbackRepository, never()).save(any());
+    }
+
+    @Test
+    void addMessage_상대방탈퇴시_예외() {
+        expertUser.setStatus(AccountStatus.WITHDRAWN);
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+
+        FeedbackMessageRequest request = new FeedbackMessageRequest();
+        request.setContent("상대방 탈퇴 후 메시지 시도");
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.addMessage(1L, 1L, request));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_USER_INACTIVE);
+
+        verify(feedbackMessageRepository, never()).save(any());
+    }
 }
+

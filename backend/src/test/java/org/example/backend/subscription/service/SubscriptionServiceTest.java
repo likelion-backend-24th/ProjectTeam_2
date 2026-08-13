@@ -21,7 +21,9 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
+
+import org.example.backend.user.entity.AccountStatus;
 
 @ExtendWith(MockitoExtension.class)
 class SubscriptionServiceTest {
@@ -44,6 +46,7 @@ class SubscriptionServiceTest {
         user.setNickname("구독테스터");
         user.setRole(Role.USER);
         user.setSubscribed(false);
+        user.setStatus(AccountStatus.ACTIVE);
     }
 
     @Test
@@ -124,5 +127,17 @@ class SubscriptionServiceTest {
         BusinessException e = assertThrows(BusinessException.class,
                 () -> subscriptionService.getMy(1L));
         assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND);
+    }
+
+    @Test
+    void subscribe_탈퇴회원이면_예외() {
+        user.setStatus(AccountStatus.WITHDRAWN);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> subscriptionService.subscribe(1L));
+        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.USER_INACTIVE);
+
+        verify(subscriptionRepository, never()).findByUserIdAndStatus(any(), any());
     }
 }
