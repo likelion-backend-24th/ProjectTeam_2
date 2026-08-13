@@ -7,6 +7,7 @@ import org.example.backend.subscription.entity.Subscription;
 import org.example.backend.subscription.entity.SubscriptionStatus;
 import org.example.backend.subscription.exception.SubscriptionErrorCode;
 import org.example.backend.subscription.repository.SubscriptionRepository;
+import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.User;
 import org.example.backend.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,10 @@ public class SubscriptionService {
     public SubscriptionResponse subscribe(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.USER_NOT_FOUND));
+
+        if (user.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessException(SubscriptionErrorCode.USER_INACTIVE);
+        }
 
         subscriptionRepository.findByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
                 .ifPresent(s -> { throw new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_ALREADY_ACTIVE); });
