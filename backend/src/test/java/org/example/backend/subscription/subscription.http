@@ -1,0 +1,122 @@
+### 변수 설정
+@baseUrl = http://localhost:8080
+@contentType = application/json
+
+### 0-1. 구독 테스트 전용 계정 회원가입 (최초 1회만)
+POST {{baseUrl}}/api/auth/signup
+Content-Type: {{contentType}}
+
+{
+  "username": "sunwo04@naver.com",
+  "password": "test1234!",
+  "name": "구독테스트",
+  "nickname": "구독테스터"
+}
+
+### 0-2. 구독 테스트 계정 로그인 (accessToken 발급 - 아래 요청들에서 자동으로 사용됨)
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "sunwo04@naver.com",
+  "password": "test1234"
+}
+
+> {%
+    client.global.set("accessToken", response.body.data.accessToken);
+%}
+
+### =========================
+### 구독 신청 (F-28)
+### =========================
+
+### 1. 구독 신청 성공 (201 기대, status ACTIVE / startedAt / expiredAt(1개월 후) 확인)
+POST {{baseUrl}}/api/subscriptions
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+### 2. 이미 구독중인 상태에서 재신청 시도 (기대: 409 SUBSCRIPTION_ALREADY_ACTIVE)
+POST {{baseUrl}}/api/subscriptions
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+### 3. 인증 없이 구독 신청 시도 (401 기대)
+POST {{baseUrl}}/api/subscriptions
+Content-Type: {{contentType}}
+
+### =========================
+### 내 구독 조회 (F-28)
+### =========================
+
+### 4. 내 구독 조회 성공 (200 기대, status ACTIVE 확인)
+GET {{baseUrl}}/api/subscriptions/me
+Authorization: Bearer {{accessToken}}
+
+### 5. 인증 없이 내 구독 조회 시도 (401 기대)
+GET {{baseUrl}}/api/subscriptions/me
+
+### =========================
+### 구독 취소 (F-28)
+### =========================
+
+### 6. 구독 취소 성공 (200 기대, status CANCELLED 확인)
+DELETE {{baseUrl}}/api/subscriptions
+Authorization: Bearer {{accessToken}}
+
+### 7. 취소 후 내 구독 조회 (기대: 404 SUBSCRIPTION_NOT_FOUND, F-36/F-38 선례와 동일하게 활성 구독 없으면 404)
+GET {{baseUrl}}/api/subscriptions/me
+Authorization: Bearer {{accessToken}}
+
+### 8. 이미 취소된 상태에서 재취소 시도 (기대: 404 SUBSCRIPTION_NOT_FOUND)
+DELETE {{baseUrl}}/api/subscriptions
+Authorization: Bearer {{accessToken}}
+
+### 9. 인증 없이 구독 취소 시도 (401 기대)
+DELETE {{baseUrl}}/api/subscriptions
+
+### =========================
+### 재구독 - 이력(History) 검증
+### =========================
+
+### 10. 취소 후 재구독 시도 (201 기대, 새로운 subscription row 생성 - 기존 row는 CANCELLED로 남아있어야 함)
+POST {{baseUrl}}/api/subscriptions
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+### 11. 재구독 후 내 구독 조회 (200 기대, 새 startedAt/expiredAt으로 갱신됐는지 확인)
+GET {{baseUrl}}/api/subscriptions/me
+Authorization: Bearer {{accessToken}}
+
+### 12. (DB에서 직접 확인) SELECT * FROM subscription WHERE user_id = (구독테스트 user id) ORDER BY id;
+### 기대: row가 2개(ACTIVE→CANCELLED, 새 ACTIVE) 남아있어야 함 - users.is_subscribed 와도 동기화 확인
+### SELECT is_subscribed FROM users WHERE id = (구독테스트 user id); -> 1 이어야 함
+
+### =========================
+### users.is_subscribed 동기화 확인 (expert/feedback 도메인과의 연동)
+### =========================
+
+### 13. 재구독 상태에서 이 계정으로 전문가에게 피드백 요청 등록 시도 (201 기대, expertProfileId는 승인된 전문가 프로필 id로 교체)
+### feedback.http의 F-41 시나리오(52~58번)와 반대 방향 검증: is_subscribed=1이면 정상 동작해야 함
+POST {{baseUrl}}/api/feedbacks
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "expertProfileId": 1,
+  "topic": "구독 API 연동 확인용 문의",
+  "content": "subscription API로 구독한 계정이 정상적으로 피드백 요청을 보낼 수 있는지 확인"
+}
+
+### 14. 다시 구독 취소 후, 방금 만든 스레드에 메시지 시도 (기대: 409 FEEDBACK_SUBSCRIPTION_EXPIRED, id는 13번 응답의 feedback id로 교체)
+DELETE {{baseUrl}}/api/subscriptions
+Authorization: Bearer {{accessToken}}
+
+###
+POST {{baseUrl}}/api/feedbacks/{id}/messages
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "content": "취소 직후 메시지 시도 - 실패해야 함"
+}
