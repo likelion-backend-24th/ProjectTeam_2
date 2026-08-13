@@ -4,7 +4,7 @@ Content-Type: application/json
 
 {
   "name": "최승환",
-  "username": "subtest@test.com",
+  "username": "이메일_인증_받을_이메일",
   "password": "test1234!",
   "nickname": "안양개발자"
 }
@@ -14,7 +14,7 @@ POST http://localhost:8080/api/auth/email/send
 Content-Type: application/json
 
 {
-  "email": "sunwo04@naver.com"
+  "email": "이메일_인증_받을_이메일"
 }
 
 ### 이메일 인증코드 검증 (메일함에서 받은 코드로 교체)
