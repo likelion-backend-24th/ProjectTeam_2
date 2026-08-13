@@ -22,8 +22,8 @@ POST http://localhost:8080/api/auth/email/verify
 Content-Type: application/json
 
 {
-  "email": "sunwo04@naver.com",
-  "code": "068003"
+  "email": "이메일_인증_받을_이메일",
+  "code": "715852"
 }
 
 ### 회원가입 - 성공 (인증 완료 후 재시도)
@@ -132,3 +132,50 @@ Authorization: Bearer {{accessToken}}
 ### 재발급 성공 (200) / 재발급 - 실패: 쿠키 없음 (400)-(로그아웃하고 실행)
 POST http://localhost:8080/api/auth/reissue
 
+
+### 비밀번호 재설정 테스트
+
+
+### 비밀번호 재설정 - 실패 (이메일 인증 안 한 상태)
+POST http://localhost:8080/api/auth/reset-password
+Content-Type: application/json
+
+{
+  "username": "csh980930@naver.com",
+  "newPassword": "newpw1234"
+}
+
+### 이메일 인증코드 발송
+POST http://localhost:8080/api/auth/email/send
+Content-Type: application/json
+
+{
+  "email": "csh980930@naver.com"
+}
+
+### 이메일 인증코드 검증 (메일함에서 받은 코드로 교체)
+POST http://localhost:8080/api/auth/email/verify
+Content-Type: application/json
+
+{
+  "email": "csh980930@naver.com",
+  "code": "511318"
+}
+
+### 비밀번호 재설정 - 성공 (인증 완료 후)
+POST http://localhost:8080/api/auth/resetpassword
+Content-Type: application/json
+
+{
+  "username": "csh980930@naver.com",
+  "newPassword": "newpw1234"
+}
+
+### 비밀번호 재설정 - 실패 (방금 그 인증기록으로 또 재설정 시도, 소비됐는지 확인!)
+POST http://localhost:8080/api/auth/resetpassword
+Content-Type: application/json
+
+{
+  "username": "csh980930@naver.com",
+  "newPassword": "anotherpw1234"
+}

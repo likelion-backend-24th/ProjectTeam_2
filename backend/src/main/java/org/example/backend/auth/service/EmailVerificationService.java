@@ -52,6 +52,7 @@ public class EmailVerificationService {
     }
 
     //이메일 인증 완료되었는지 확인 메서드
+    @Transactional
     public void checkVerified(String email){
         EmailVerification emailVerification = emailVerificationRepository.findTopByEmailOrderByCreatedAtDesc(email)
                 .orElseThrow(() -> new BusinessException(EmailVerificationErrorCode.EMAIL_NOT_VERIFIED));
@@ -59,6 +60,8 @@ public class EmailVerificationService {
         if(!emailVerification.isVerified()){
             throw new BusinessException(EmailVerificationErrorCode.EMAIL_NOT_VERIFIED);
         }
+        // 회원가입때 인증받으면 한번의 인증으로 계속 인증이 필요없어짐 비밀번호 재설정하기위하여 삭제해서 재인증을 유도
+        emailVerificationRepository.delete(emailVerification);
     }
 
 

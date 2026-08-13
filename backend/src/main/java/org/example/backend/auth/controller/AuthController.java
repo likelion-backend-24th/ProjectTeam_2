@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.backend.auth.dto.emailverification.ResetPasswordRequest;
 import org.example.backend.auth.dto.jwt.LoginRequest;
 import org.example.backend.auth.dto.jwt.SignupRequest;
 import org.example.backend.auth.dto.jwt.TokenResponse;
@@ -52,6 +53,14 @@ public class AuthController {
             @CookieValue(name = "refreshToken") String refreshToken){
         TokenResponse response = authService.reissue(refreshToken);
         return authCookieResponseBuilder.buildWithCookie(response,"토큰 재발급 성공");
+    }
+
+    //비밀번호 재설정
+    @PostMapping("/resetpassword")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request){
+        authService.resetPassword(request.getUsername(),request.getNewPassword());
+        return ResponseEntity.ok(ApiResponse.success("비밀번호가 재설정되었습니다.",null));
     }
 
     //로그아웃 Post
