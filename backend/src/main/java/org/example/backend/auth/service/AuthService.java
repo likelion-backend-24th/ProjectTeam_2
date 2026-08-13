@@ -16,6 +16,7 @@ import org.example.backend.common.exception.BusinessException;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
 import org.example.backend.auth.repository.RefreshTokenRepository;
+import org.example.backend.user.exception.UserErrorCode;
 import org.example.backend.user.repository.UserRepository;
 import org.example.backend.auth.security.JwtTokenProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -113,6 +114,25 @@ public class AuthService {
         return new TokenResponse(newAccessToken, newRefreshToken);
     }
 
+    //비밀번호 재설정(찾기) (이메일 인증 완료 후, 로그인 없이 새 빌밀번호 설정)
+    @Transactional
+    public void resetPassword(String username,String newPassword){
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
+
+        if(user.getPassword() == null){
+            throw new BusinessException(UserErrorCode.SOCIAL_USER_CANNOT_CHANGE_PASSWORD);
+        }
+
+        emailVerificationService.checkVerified(username);
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+    }
+
+
+
 
     //로그아웃
     @Transactional
@@ -179,7 +199,6 @@ public class AuthService {
         refreshTokenRepository.save(refreshToken);
 
         return new TokenResponse(accessToken, refreshTokenValue);
-
     }
 
     // Google 최초 로그인 시 회원가입 처리
