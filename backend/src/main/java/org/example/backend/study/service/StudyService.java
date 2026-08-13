@@ -56,9 +56,8 @@ public class StudyService {
     }
 
     public Page<StudyResponse> getStudies(String keyword, Pageable pageable) {
-        Page<Study> page = (keyword == null || keyword.isBlank())
-                ? studyRepository.findAll(pageable)
-                : studyRepository.findByTitleContaining(keyword, pageable);
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword;
+        Page<Study> page = studyRepository.findAllOrderBySubscribedLeader(normalizedKeyword, pageable);
 
         Map<Long, Integer> memberCountMap = getMemberCountMap(page.getContent());
 
