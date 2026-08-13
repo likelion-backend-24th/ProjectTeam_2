@@ -4,8 +4,8 @@ Content-Type: application/json
 
 {
   "name": "최승환",
-  "username": "이메일_인증_받을_이메일",
-  "password": "test1234",
+  "username": "subtest@test.com",
+  "password": "test1234!",
   "nickname": "안양개발자"
 }
 
@@ -14,7 +14,7 @@ POST http://localhost:8080/api/auth/email/send
 Content-Type: application/json
 
 {
-  "email": "이메일_인증_받을_이메일"
+  "email": "sunwo04@naver.com"
 }
 
 ### 이메일 인증코드 검증 (메일함에서 받은 코드로 교체)
@@ -22,8 +22,8 @@ POST http://localhost:8080/api/auth/email/verify
 Content-Type: application/json
 
 {
-  "email": "이메일_인증_받을_이메일",
-  "code": "인증코드_6자리"
+  "email": "sunwo04@naver.com",
+  "code": "068003"
 }
 
 ### 회원가입 - 성공 (인증 완료 후 재시도)
@@ -31,9 +31,9 @@ POST http://localhost:8080/api/auth/signup
 Content-Type: application/json
 
 {
-  "name": "최승환",
-  "username": "csh980930@naver.com",
-  "nickname": "안양개발자",
+  "name": "정선우",
+  "username": "sunwo04@naver.com",
+  "nickname": "광주개발자",
   "password": "test1234"
 }
 

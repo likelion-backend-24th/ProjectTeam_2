@@ -1,4 +1,4 @@
-package org.example.backend.domain;
+package org.example.backend.subscription.entity;
 
 public enum SubscriptionStatus {
     ACTIVE,
