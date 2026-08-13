@@ -86,3 +86,74 @@ Authorization: Bearer {{accessToken}}
   "category": "JOB_PREP"
 }
 
+### 1. 구독 테스트 계정 로그인 (구독자 방장 역할)
+# @name loginSubscriber
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "sunwo04@naver.com",
+  "password": "test1234!"
+}
+
+> {%
+    client.global.set("subscriberToken", response.body.data.accessToken);
+%}
+
+### 2. 구독 신청
+POST {{baseUrl}}/api/subscriptions
+Content-Type: {{contentType}}
+Authorization: Bearer {{subscriberToken}}
+
+### 3. 구독자 계정으로 스터디 개설
+POST {{baseUrl}}/api/studies
+Content-Type: multipart/form-data; boundary={{boundary}}
+Authorization: Bearer {{subscriberToken}}
+
+--{{boundary}}
+Content-Disposition: form-data; name="data"
+Content-Type: {{contentType}}
+
+{
+  "title": "[구독자] 알고리즘 스터디",
+  "description": "구독자 상단고정 확인용",
+  "capacity": 5,
+  "recruitEnd": "2026-09-20",
+  "category": "IT_DEVELOPMENT"
+}
+--{{boundary}}
+
+### 4. 일반 계정 로그인 (일반 방장 역할)
+# @name loginNormal
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "test@naver.com",
+  "password": "test1234"
+}
+
+> {%
+    client.global.set("normalToken", response.body.data.accessToken);
+%}
+
+### 5. 일반 계정으로 스터디 개설
+POST {{baseUrl}}/api/studies
+Content-Type: multipart/form-data; boundary={{boundary}}
+Authorization: Bearer {{normalToken}}
+
+--{{boundary}}
+Content-Disposition: form-data; name="data"
+Content-Type: {{contentType}}
+
+{
+  "title": "[일반] CS 스터디",
+  "description": "구독자 상단고정 확인용",
+  "capacity": 5,
+  "recruitEnd": "2026-09-20",
+  "category": "IT_DEVELOPMENT"
+}
+--{{boundary}}
+
+### 6. 목록 조회 ("[구독자] 알고리즘 스터디"가 맨 위로)
+GET {{baseUrl}}/api/studies?page=0&size=10
