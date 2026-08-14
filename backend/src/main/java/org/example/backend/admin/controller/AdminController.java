@@ -50,44 +50,44 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("유저 상태가 변경되었습니다.", null));
     }
 
-    //게시글 강제 삭제
-    @Operation(summary = "게시글 강제 삭제", description = "관리자 권한으로 특정 게시글을 강제 삭제합니다.")
+    //게시글 소프트 딜리트 삭제
+    @Operation(summary = "게시글 소프트 딜리트 삭제", description = "관리자 권한으로 특정 게시글을 숨김처리합니다.")
     @DeleteMapping("/posts/{id}")
     public ResponseEntity<ApiResponse<Void>> deletePost(@PathVariable Long id){
         adminService.deletePost(id);
-        return ResponseEntity.ok(ApiResponse.success("게시글이 강제 삭제되었습니다.", null));
+        return ResponseEntity.ok(ApiResponse.success("게시글이 숨김처리되었습니다.", null));
     }
 
-    //댓글 강제 삭제
-    @Operation(summary = "댓글 강제 삭제", description = "관리자 권한으로 특정 댓글을 강제 삭제합니다.")
+    //댓글 소프트 딜리트 삭제
+    @Operation(summary = "댓글 소프트 딜리트 삭제", description = "관리자 권한으로 특정 댓글을  숨김처리합니다.")
     @DeleteMapping("/comments/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteComment(@PathVariable Long id){
         adminService.deleteComment(id);
-        return ResponseEntity.ok(ApiResponse.success("댓글이 강제 삭제되었습니다.", null));
+        return ResponseEntity.ok(ApiResponse.success("댓글이 숨김처리되었습니다.", null));
     }
 
-    //스터디 강제 삭제
-    @Operation(summary = "스터디 강제 삭제", description = "관리자 권한으로 특정 스터디를 강제 삭제합니다.")
+    //스터디 소프트 딜리트 삭제 (연관된 게시글, 댓글,멤버 전부 숨김처리)
+    @Operation(summary = "스터디 소프트 딜리트 삭제", description = "관리자 권한으로 특정 스터디를 숨김처리합니다.")
     @DeleteMapping("/studies/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteStudy(@PathVariable Long id){
         adminService.deleteStudy(id);
-        return ResponseEntity.ok(ApiResponse.success("스터디가 강제 삭제되었습니다.", null));
+        return ResponseEntity.ok(ApiResponse.success("스터디가 숨김처리되었습니다.", null));
     }
 
-    //스터디 게시글 강제 삭제
-    @Operation(summary = "스터디 게시글 강제 삭제", description = "관리자 권한으로 특정 스터디 게시글을 강제 삭제합니다.")
+    //스터디 게시글 소프트 딜리트 삭제(연관된거 숨김처리)
+    @Operation(summary = "스터디 게시글 소프트 딜리트 삭제", description = "관리자 권한으로 특정 스터디 게시글을 숨김처리합니다.")
     @DeleteMapping("/study-posts/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteStudyPost(@PathVariable Long id){
         adminService.deleteStudyPost(id);
-        return ResponseEntity.ok(ApiResponse.success("스터디 게시글이 강제 삭제되었습니다.", null));
+        return ResponseEntity.ok(ApiResponse.success("스터디 게시글이 숨김처리되었습니다.", null));
     }
 
-    //스터디 게시글 댓글 강제 삭제
-    @Operation(summary = "스터디 게시글 댓글 강제 삭제", description = "관리자 권한으로 특정 스터디 게시글 댓글을 강제 삭제합니다.")
+    //스터디 게시글 댓글 소프트 딜리트 삭제
+    @Operation(summary = "스터디 게시글 댓글 소프트 딜리트 삭제", description = "관리자 권한으로 특정 스터디 게시글 댓글을 숨김처리합니다.")
     @DeleteMapping("/study-post-comments/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteStudyPostComment(@PathVariable Long id){
         adminService.deleteStudyPostComment(id);
-        return ResponseEntity.ok(ApiResponse.success("스터디 게시글 댓글이 강제 삭제되었습니다.", null));
+        return ResponseEntity.ok(ApiResponse.success("스터디 게시글 댓글이 숨김처리되었습니다.", null));
     }
 
     //신고 목록 조회
