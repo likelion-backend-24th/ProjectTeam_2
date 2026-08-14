@@ -1,10 +1,18 @@
 import { createBrowserRouter, Outlet, ScrollRestoration } from 'react-router-dom'
+import RequireAdmin from './components/common/RequireAdmin'
 import RequireAuth from './components/common/RequireAuth'
+import AdminPanelPage from './pages/admin/AdminPanelPage'
 import HomePage from './pages/HomePage'
 import MyPage from './pages/MyPage'
 import FindPasswordPage from './pages/auth/FindPasswordPage'
 import LoginPage from './pages/auth/LoginPage'
 import SignupPage from './pages/auth/SignupPage'
+import PrivacyPage from './pages/legal/PrivacyPage'
+import TermsPage from './pages/legal/TermsPage'
+import ExpertApplicationStatusPage from './pages/experts/ExpertApplicationStatusPage'
+import ExpertApplyFormPage from './pages/experts/ExpertApplyFormPage'
+import ExpertConsultPage from './pages/experts/ExpertConsultPage'
+import FeedbackThreadPage from './pages/experts/FeedbackThreadPage'
 import PostDetailPage from './pages/posts/PostDetailPage'
 import PostFormPage from './pages/posts/PostFormPage'
 import PostListPage from './pages/posts/PostListPage'
@@ -27,7 +35,6 @@ function RootLayout() {
   )
 }
 
-// 아직 와이어프레임이 없는 페이지(전문가 상담 등)는 추가하지 않고,
 // 확정된 페이지만 라우트로 연결한다.
 export const router = createBrowserRouter([
   {
@@ -37,6 +44,8 @@ export const router = createBrowserRouter([
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
       { path: '/find-password', element: <FindPasswordPage /> },
+      { path: '/terms', element: <TermsPage /> },
+      { path: '/privacy', element: <PrivacyPage /> },
       { path: '/oauth/callback', element: <KakaoCallbackPage /> },
       { path: '/oauth/naver/callback', element: <NaverCallbackPage /> },
       {
@@ -48,6 +57,39 @@ export const router = createBrowserRouter([
         ),
       },
       { path: '/subscription', element: <SubscriptionPage /> },
+      {
+        path: '/admin',
+        element: (
+          <RequireAdmin>
+            <AdminPanelPage />
+          </RequireAdmin>
+        ),
+      },
+      { path: '/experts', element: <ExpertConsultPage /> },
+      {
+        path: '/experts/apply',
+        element: (
+          <RequireAuth>
+            <ExpertApplyFormPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: '/experts/apply/status',
+        element: (
+          <RequireAuth>
+            <ExpertApplicationStatusPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: '/experts/consult/:feedbackId',
+        element: (
+          <RequireAuth>
+            <FeedbackThreadPage />
+          </RequireAuth>
+        ),
+      },
       { path: '/posts', element: <PostListPage /> },
       {
         path: '/posts/new',

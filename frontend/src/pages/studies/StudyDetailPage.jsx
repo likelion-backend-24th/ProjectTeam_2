@@ -2,6 +2,7 @@ import { Check, ChevronLeft, Crown, Lock, PenLine, UserX } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { studyApi, studyPostApi } from '../../api'
+import ImageGallery from '../../components/common/ImageGallery'
 import SiteHeader from '../../components/common/SiteHeader'
 import { getStudyCategoryMeta } from '../../constants/studyCategory'
 import { useAuth } from '../../context/AuthContext'
@@ -296,6 +297,7 @@ export default function StudyDetailPage() {
 
         {activeTab === 'intro' && (
           <section className={styles.panel}>
+            <ImageGallery imageUrls={study.imageUrls} />
             <p className={styles.description}>{study.description}</p>
           </section>
         )}

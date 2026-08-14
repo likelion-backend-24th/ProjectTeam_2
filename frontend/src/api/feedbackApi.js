@@ -32,6 +32,11 @@ function getMyExpertFeedbacks() {
   return apiClient.get('/api/feedbacks/expert')
 }
 
+// PATCH /api/feedbacks/:id/close (요청자 본인만 종료 가능)
+function closeFeedback(id) {
+  return apiClient.patch(`/api/feedbacks/${id}/close`)
+}
+
 export const feedbackApi = {
   createFeedback,
   getFeedback,
@@ -39,4 +44,5 @@ export const feedbackApi = {
   getMessages,
   getMyFeedbacks,
   getMyExpertFeedbacks,
+  closeFeedback,
 }

@@ -11,6 +11,21 @@ function getPublicExperts() {
   return apiClient.get('/api/experts')
 }
 
+// GET /api/experts/:id (비로그인 접근 가능, 승인된 전문가만)
+function getExpertDetail(id) {
+  return apiClient.get(`/api/experts/${id}`)
+}
+
+// GET /api/experts/me (본인 신청 상태 + 반려사유만 내려줌, 신청 내용 자체는 조회 불가)
+function getMyApplicationStatus() {
+  return apiClient.get('/api/experts/me')
+}
+
+// PATCH /api/experts/me (PENDING 상태일 때만 수정 가능)
+function updateMyApplication(payload) {
+  return apiClient.patch('/api/experts/me', payload)
+}
+
 // ---- 관리자 전용 ----
 
 // GET /api/admin/experts?status=
@@ -36,6 +51,9 @@ function revokeExpert(id, reason) {
 export const expertApi = {
   signupExpert,
   getPublicExperts,
+  getExpertDetail,
+  getMyApplicationStatus,
+  updateMyApplication,
   getExperts,
   approveExpert,
   rejectExpert,

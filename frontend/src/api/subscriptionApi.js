@@ -1,0 +1,22 @@
+import apiClient from './client'
+
+// POST /api/subscriptions — 프론트에서 결제 성공 처리 후 호출. 실제 PG 연동 없이 서버 상태만 ACTIVE로 반영(Mock).
+function subscribe() {
+  return apiClient.post('/api/subscriptions')
+}
+
+// DELETE /api/subscriptions
+function cancel() {
+  return apiClient.delete('/api/subscriptions')
+}
+
+// GET /api/subscriptions/me — 구독 내역이 없으면 404(SUBSCRIPTION_NOT_FOUND)
+function getMy() {
+  return apiClient.get('/api/subscriptions/me')
+}
+
+export const subscriptionApi = {
+  subscribe,
+  cancel,
+  getMy,
+}

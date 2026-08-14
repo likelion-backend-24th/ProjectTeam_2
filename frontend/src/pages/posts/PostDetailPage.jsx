@@ -2,6 +2,7 @@ import { ChevronLeft, Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { postApi } from '../../api'
+import ReportButton from '../../components/common/ReportButton'
 import SiteHeader from '../../components/common/SiteHeader'
 import CommentForm from '../../components/posts/CommentForm'
 import CommentItem from '../../components/posts/CommentItem'
@@ -154,6 +155,12 @@ export default function PostDetailPage() {
                     <Trash2 size={14} />
                     삭제
                   </button>
+                </span>
+              )}
+
+              {Boolean(user) && !isOwner && (
+                <span className={styles.ownerActions}>
+                  <ReportButton targetType="POST" targetId={post.id} />
                 </span>
               )}
             </div>

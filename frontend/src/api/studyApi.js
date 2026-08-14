@@ -1,9 +1,12 @@
 import apiClient from './client'
 
-// POST /api/studies
-function createStudy(payload) {
+// POST /api/studies (멀티파트: 백엔드가 @RequestPart("data")+images로 받음)
+function createStudy(payload, images = []) {
   // payload: { title, description, capacity, recruitEnd, category } — recruitEnd는 선택(null이면 상시 모집)
-  return apiClient.post('/api/studies', payload)
+  const formData = new FormData()
+  formData.append('data', new Blob([JSON.stringify(payload)], { type: 'application/json' }))
+  images.forEach((file) => formData.append('images', file))
+  return apiClient.post('/api/studies', formData)
 }
 
 // GET /api/studies/my

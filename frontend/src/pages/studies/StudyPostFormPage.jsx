@@ -2,6 +2,7 @@ import { ChevronLeft } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { studyPostApi } from '../../api'
+import ImagePicker from '../../components/common/ImagePicker'
 import SiteHeader from '../../components/common/SiteHeader'
 import styles from './StudyPostFormPage.module.css'
 
@@ -15,6 +16,8 @@ export default function StudyPostFormPage() {
 
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  // 이미지는 작성 시에만 첨부 가능(수정 시 이미지 변경은 범위 밖 — 백엔드 수정 API도 JSON만 받음).
+  const [images, setImages] = useState([])
   const [isLoading, setIsLoading] = useState(isEditMode)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -61,7 +64,7 @@ export default function StudyPostFormPage() {
         await studyPostApi.updateStudyPost(studyId, postId, { title, content })
         navigate(`/studies/${studyId}/posts/${postId}`)
       } else {
-        const { data } = await studyPostApi.createStudyPost(studyId, { title, content })
+        const { data } = await studyPostApi.createStudyPost(studyId, { title, content }, images)
         navigate(`/studies/${studyId}/posts/${data.data.id}`)
       }
     } catch (err) {
@@ -123,6 +126,16 @@ export default function StudyPostFormPage() {
                 {content.length}/{CONTENT_MAX_LENGTH}
               </p>
             </div>
+
+            {!isEditMode && (
+              <div className={styles.field}>
+                <label className={styles.label}>
+                  이미지 첨부
+                  <span className={styles.optionalHint}>선택</span>
+                </label>
+                <ImagePicker images={images} onChange={setImages} />
+              </div>
+            )}
 
             {error && <p className={styles.error}>{error}</p>}
 

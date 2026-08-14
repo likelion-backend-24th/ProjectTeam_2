@@ -11,6 +11,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import styles from './QuickAccess.module.css'
 
 const ICON_COLORS = {
@@ -73,6 +74,8 @@ function QuickLinkCard({ icon: Icon, color, title, subtitle, tag, badge, to }) {
 }
 
 export default function QuickAccess() {
+  const { user, isAuthenticated } = useAuth()
+  const isAdmin = isAuthenticated && user.role === 'ADMIN'
   const { bg: adminBg, fg: adminFg } = ICON_COLORS.red
 
   return (
@@ -92,17 +95,19 @@ export default function QuickAccess() {
           ))}
         </div>
 
-        <a href="#" className={styles.adminRow}>
-          <span className={styles.iconBox} style={{ backgroundColor: adminBg, color: adminFg }}>
-            <Zap size={20} />
-          </span>
-          <span className={styles.adminText}>
-            <p className={styles.cardTitle}>어드민 패널</p>
-            <p className={styles.cardSubtitle}>게시글 · 스터디 관리, 유저 상태 변경, 전문가 승인</p>
-          </span>
-          <span className={styles.adminBadge}>ADMIN ONLY</span>
-          <ChevronRight size={18} />
-        </a>
+        {isAdmin && (
+          <Link to="/admin" className={styles.adminRow}>
+            <span className={styles.iconBox} style={{ backgroundColor: adminBg, color: adminFg }}>
+              <Zap size={20} />
+            </span>
+            <span className={styles.adminText}>
+              <p className={styles.cardTitle}>어드민 패널</p>
+              <p className={styles.cardSubtitle}>게시글 · 스터디 관리, 유저 상태 변경, 전문가 승인</p>
+            </span>
+            <span className={styles.adminBadge}>ADMIN ONLY</span>
+            <ChevronRight size={18} />
+          </Link>
+        )}
       </div>
     </section>
   )

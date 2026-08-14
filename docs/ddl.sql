@@ -1,296 +1,437 @@
-CREATE TABLE `comment`
-(
-  id         BIGINT   NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  content    TEXT     NOT NULL COMMENT '댓글 내용',
-  post_id    BIGINT   NOT NULL COMMENT '글 번호',
-  user_id    BIGINT   NOT NULL COMMENT '댓글 작성자',
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시간',
-  updated_at DATETIME NULL     ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 시간',
-  PRIMARY KEY (id)
-) COMMENT '댓글';
+-- MySQL Workbench Forward Engineering
 
-CREATE TABLE expert_profile
-(
-    id            BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
-    user_id       BIGINT       NOT NULL COMMENT '유저 ID',
-    introduction  VARCHAR(500) NULL     COMMENT '소개글',
-    status        VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT '심사 상태 (PENDING, APPROVED, REJECTED)',
-    reject_reason VARCHAR(255) NULL     COMMENT '거절 이유',
-    PRIMARY KEY (id)
-) COMMENT '전문가';
+SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
+SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
+SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 
-ALTER TABLE expert_profile
-    ADD CONSTRAINT UQ_expert_profile_user_id UNIQUE (user_id);
+-- -----------------------------------------------------
+-- Schema mydb
+-- -----------------------------------------------------
+-- -----------------------------------------------------
+-- Schema prep2getherdb
+-- -----------------------------------------------------
 
-CREATE TABLE career
-(
-    id                BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
-    expert_profile_id BIGINT       NOT NULL COMMENT '전문가 프로필 ID',
-    company_name      VARCHAR(100) NOT NULL COMMENT '회사명',
-    position          VARCHAR(100) NOT NULL COMMENT '직함',
-    years             INT          NOT NULL COMMENT '경력 연차',
-    job_field         VARCHAR(30)  NOT NULL COMMENT '직무 분야',
-    PRIMARY KEY (id)
-) COMMENT '전문가 경력';
+-- -----------------------------------------------------
+-- Schema prep2getherdb
+-- -----------------------------------------------------
+CREATE SCHEMA IF NOT EXISTS `prep2getherdb` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci ;
+USE `prep2getherdb` ;
 
-CREATE TABLE certification
-(
-    id                BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
-    expert_profile_id BIGINT       NOT NULL COMMENT '전문가 프로필 ID',
-    name              VARCHAR(100) NOT NULL COMMENT '자격증명',
-    issuer            VARCHAR(100) NOT NULL COMMENT '발급 기관',
-    acquired_year     INT          NOT NULL COMMENT '취득 연도',
-    PRIMARY KEY (id)
-) COMMENT '전문가 자격증';
-
-CREATE TABLE post
-(
-  id         BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  title      VARCHAR(200) NOT NULL COMMENT '제목',
-  content    TEXT         NOT NULL COMMENT '내용',
-  category   VARCHAR(20)  NOT NULL COMMENT '카테고리',
-  view_count BIGINT       NOT NULL DEFAULT 0 COMMENT '조회수', -- 🆕 추가
-  user_id    BIGINT       NOT NULL COMMENT '작성자',
-  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시간',
-  updated_at DATETIME     NULL     ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 시간', -- ✏️ 조회수 증가 시에도 함께 갱신됨(기술부채, MVP1 범위에서 허용)
-  PRIMARY KEY (id)
-) COMMENT 'Q&A';
-
-CREATE TABLE study
-(
-  id            BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  title         VARCHAR(200) NOT NULL COMMENT '제목',
-  description   TEXT         NULL     COMMENT '소개',
-  capacity      INT          NOT NULL COMMENT '모집 인원',
-  recruit_start DATE         NULL     COMMENT '시작일',
-  recruit_end   DATE         NULL     COMMENT '마감일',
-  leader_id     BIGINT       NOT NULL COMMENT '방장 ID',
-  category      VARCHAR(20)  NOT NULL COMMENT '카테고리 (IT_DEVELOPMENT, LANGUAGE, CERTIFICATE, JOB_PREP, ETC)', -- 🆕 추가
-  deleted       BOOLEAN      NOT NULL DEFAULT FALSE COMMENT '삭제 여부 (Soft Delete)', -- 🆕 추가: @SoftDelete 적용
-  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시간',
-  updated_at    DATETIME     NULL     ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 시간', -- 🆕 추가
-  PRIMARY KEY (id)
-) COMMENT '스터디 모집';
-
-CREATE TABLE study_post
-(
-  id         BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  study_id   BIGINT       NOT NULL COMMENT '스터디 ID',
-  user_id    BIGINT       NOT NULL COMMENT '작성자',
-  title      VARCHAR(200) NOT NULL COMMENT '제목',
-  content    TEXT         NOT NULL COMMENT '내용',
-  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시간',
-  updated_at DATETIME     NULL     ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 시간',
-  PRIMARY KEY (id)
-) COMMENT '스터디 내 게시글';
-
-CREATE TABLE study_post_comment
-(
-  id            BIGINT   NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  content       TEXT     NOT NULL COMMENT '댓글 내용',
-  study_post_id BIGINT   NOT NULL COMMENT '스터디 게시글 ID',
-  user_id       BIGINT   NOT NULL COMMENT '댓글 작성자',
-  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시간',
-  updated_at    DATETIME NULL     ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 시간',
-  PRIMARY KEY (id)
-) COMMENT '스터디 게시글 댓글';
-
-CREATE TABLE study_member
-(
-  id        BIGINT   NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  study_id  BIGINT   NOT NULL COMMENT '스터디 ID',
-  user_id   BIGINT   NOT NULL COMMENT '멤버 ID',
-  joined_at DATETIME NOT NULL COMMENT '가입 시간',
-  PRIMARY KEY (id)
-) COMMENT '스터디 멤버';
-
-ALTER TABLE study_member
-  ADD CONSTRAINT UQ_study_member_study_user UNIQUE (study_id, user_id);
-
-CREATE TABLE subscription
-(
-  id         BIGINT      NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  user_id    BIGINT      NOT NULL COMMENT '유저 ID',
-  status     VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT '구독 상태 (ACTIVE, CANCELLED)',
-  started_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '시작일',
-  expired_at DATETIME    NULL     COMMENT '만료일',
-  PRIMARY KEY (id)
-) COMMENT '구독';
-
-CREATE TABLE feedback
-(
-  id                BIGINT      NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  requester_id      BIGINT      NOT NULL COMMENT '질문자(구독자) ID',
-  expert_profile_id BIGINT      NOT NULL COMMENT '담당 전문가 ID',
-  status            VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '스레드 상태 (PENDING: 답변 대기, ANSWERED: 답변 완료)',
-  created_at        DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시간',
-  answered_at       DATETIME    NULL     COMMENT '전문가 최초 답변 시간',
-  PRIMARY KEY (id)
-) COMMENT '전문가 문의 스레드';
-
-CREATE TABLE feedback_message
-(
-  id          BIGINT   NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  feedback_id BIGINT   NOT NULL COMMENT '문의 스레드 ID',
-  sender_id   BIGINT   NOT NULL COMMENT '작성자 (질문자 또는 전문가)',
-  content     TEXT     NOT NULL COMMENT '메시지 내용',
-  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시간',
-  PRIMARY KEY (id)
-) COMMENT '전문가 문의 메시지';
-
-CREATE TABLE users
-(
-  id            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '유저 ID',
-  name          VARCHAR(100) NOT NULL COMMENT '이름', -- 🆕 추가
-  username      VARCHAR(50)  NOT NULL COMMENT 'email',
-  password      VARCHAR(255) NULL     COMMENT 'pw (소셜 전용 가입자는 NULL)',
-  nickname      VARCHAR(50)  NOT NULL COMMENT '닉네임',
-  role          VARCHAR(20)  NOT NULL DEFAULT 'USER' COMMENT '권한 (USER, EXPERT, ADMIN)',
-  status        VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE' COMMENT '계정 상태 (ACTIVE, SUSPENDED, WITHDRAWN)',
-  is_subscribed BOOLEAN      NOT NULL DEFAULT FALSE COMMENT '구독 여부', -- 🆕 추가
-  withdrawn_at  DATETIME     NULL     COMMENT '탈퇴 시각', -- 🆕 추가
-  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시간',
-  PRIMARY KEY (id)
-) COMMENT '회원';
-
-ALTER TABLE users
-  ADD CONSTRAINT UQ_username UNIQUE (username);
-
-ALTER TABLE users
-  ADD CONSTRAINT UQ_nickname UNIQUE (nickname); -- 🆕 추가: User 엔티티 nickname unique=true 반영
-
-CREATE TABLE oauth_account
-(
-  id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  user_id     BIGINT       NOT NULL COMMENT '유저 ID',
-  provider    VARCHAR(20)  NOT NULL COMMENT '제공자 (KAKAO, GOOGLE)',
-  provider_id VARCHAR(100) NOT NULL COMMENT '제공자 측 고유 회원 ID',
-  linked_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '연동 시각',
-  PRIMARY KEY (id)
-) COMMENT '소셜 로그인 연동';
-
-CREATE TABLE refresh_token
-(
-  id         BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'ID',
-  user_id    BIGINT       NOT NULL COMMENT '유저 ID',
-  token      VARCHAR(500) NOT NULL COMMENT '리프레시 토큰 값',
-  expires_at DATETIME     NOT NULL COMMENT '만료 시간',
-  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '발급 시간',
-  PRIMARY KEY (id)
-) COMMENT '리프레시 토큰';
-
-ALTER TABLE refresh_token
-  ADD CONSTRAINT UQ_refresh_token_user_id UNIQUE (user_id);
-
-ALTER TABLE oauth_account
-  ADD CONSTRAINT UQ_oauth_account_provider UNIQUE (provider, provider_id);
-
-ALTER TABLE post
-  ADD CONSTRAINT FK_users_TO_post
-    FOREIGN KEY (user_id)
-    REFERENCES users (id);
-
-ALTER TABLE comment
-  ADD CONSTRAINT FK_post_TO_comment
-    FOREIGN KEY (post_id)
-    REFERENCES post (id)
-    ON DELETE CASCADE;
-
-ALTER TABLE comment
-  ADD CONSTRAINT FK_users_TO_comment
-    FOREIGN KEY (user_id)
-    REFERENCES users (id);
-
-ALTER TABLE study
-  ADD CONSTRAINT FK_users_TO_study
-    FOREIGN KEY (leader_id)
-    REFERENCES users (id);
-
-ALTER TABLE study_member
-  ADD CONSTRAINT FK_study_TO_study_member
-    FOREIGN KEY (study_id)
-    REFERENCES study (id)
-    ON DELETE CASCADE;
-
-ALTER TABLE study_member
-  ADD CONSTRAINT FK_users_TO_study_member
-    FOREIGN KEY (user_id)
-    REFERENCES users (id);
-
-ALTER TABLE study_post
-  ADD CONSTRAINT FK_study_TO_study_post
-    FOREIGN KEY (study_id)
-    REFERENCES study (id)
-    ON DELETE CASCADE;
-
-ALTER TABLE study_post
-  ADD CONSTRAINT FK_users_TO_study_post
-    FOREIGN KEY (user_id)
-    REFERENCES users (id);
-
-ALTER TABLE study_post_comment
-  ADD CONSTRAINT FK_study_post_TO_study_post_comment
-    FOREIGN KEY (study_post_id)
-    REFERENCES study_post (id)
-    ON DELETE CASCADE;
-
-ALTER TABLE study_post_comment
-  ADD CONSTRAINT FK_users_TO_study_post_comment
-    FOREIGN KEY (user_id)
-    REFERENCES users (id);
-
-ALTER TABLE expert_profile
-  ADD CONSTRAINT FK_users_TO_expert_profile
-    FOREIGN KEY (user_id)
-    REFERENCES users (id);
-
-ALTER TABLE career
-    ADD CONSTRAINT FK_expert_profile_TO_career
-        FOREIGN KEY (expert_profile_id)
-            REFERENCES expert_profile (id)
-            ON DELETE CASCADE;
-
-ALTER TABLE certification
-    ADD CONSTRAINT FK_expert_profile_TO_certification
-        FOREIGN KEY (expert_profile_id)
-            REFERENCES expert_profile (id)
-            ON DELETE CASCADE;
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`users`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`users` (
+  `is_subscribed` BIT(1) NOT NULL DEFAULT b'0',
+  `created_at` DATETIME(6) NOT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `withdrawn_at` DATETIME(6) NULL DEFAULT NULL,
+  `nickname` VARCHAR(50) NOT NULL,
+  `username` VARCHAR(50) NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `password` VARCHAR(255) NULL DEFAULT NULL,
+  `role` ENUM('ADMIN', 'EXPERT', 'USER') NOT NULL DEFAULT 'USER',
+  `status` ENUM('ACTIVE', 'SUSPENDED', 'WITHDRAWN') NOT NULL DEFAULT 'ACTIVE',
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `UK2ty1xmrrgtn89xt7kyxx6ta7h` (`nickname` ASC) VISIBLE,
+  UNIQUE INDEX `UKr43af9ap4edm43mmtq01oddj6` (`username` ASC) VISIBLE)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
 
 
-ALTER TABLE subscription
-  ADD CONSTRAINT FK_users_TO_subscription
-    FOREIGN KEY (user_id)
-    REFERENCES users (id);
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`expert_profile`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`expert_profile` (
+  `approved_at` DATETIME(6) NULL DEFAULT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `introduction` VARCHAR(500) NULL DEFAULT NULL,
+  `reject_reason` VARCHAR(255) NULL DEFAULT NULL,
+  `status` ENUM('APPROVED', 'PENDING', 'REJECTED') NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `UK6oirtpi7rp4545alfp5gxlv8l` (`user_id` ASC) VISIBLE,
+  CONSTRAINT `FKb958nvcyhwo1armmgy157doqx`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `prep2getherdb`.`users` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
 
-ALTER TABLE oauth_account
-  ADD CONSTRAINT FK_users_TO_oauth_account
-    FOREIGN KEY (user_id)
-    REFERENCES users (id)
-    ON DELETE CASCADE;
 
-ALTER TABLE feedback
-  ADD CONSTRAINT FK_users_TO_feedback
-    FOREIGN KEY (requester_id)
-    REFERENCES users (id);
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`career`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`career` (
+  `years` INT NOT NULL,
+  `expert_profile_id` BIGINT NOT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `company_name` VARCHAR(100) NOT NULL,
+  `position` VARCHAR(100) NOT NULL,
+  `job_field` ENUM('DESIGN_UX', 'ETC', 'FINANCE_ACCOUNTING', 'IT_DEVELOPMENT', 'MANAGEMENT_STRATEGY', 'MARKETING', 'SALES_CS') NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FKmhb8r0ki8aexds53mxdhyl41r` (`expert_profile_id` ASC) VISIBLE,
+  CONSTRAINT `FKmhb8r0ki8aexds53mxdhyl41r`
+    FOREIGN KEY (`expert_profile_id`)
+    REFERENCES `prep2getherdb`.`expert_profile` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
 
-ALTER TABLE feedback
-  ADD CONSTRAINT FK_expert_profile_TO_feedback
-    FOREIGN KEY (expert_profile_id)
-    REFERENCES expert_profile (id);
 
-ALTER TABLE feedback_message
-  ADD CONSTRAINT FK_feedback_TO_feedback_message
-    FOREIGN KEY (feedback_id)
-    REFERENCES feedback (id)
-    ON DELETE CASCADE;
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`certification`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`certification` (
+  `acquired_year` INT NOT NULL,
+  `expert_profile_id` BIGINT NOT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `issuer` VARCHAR(100) NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FK8d83y2e6c8lefh9afs06mk642` (`expert_profile_id` ASC) VISIBLE,
+  CONSTRAINT `FK8d83y2e6c8lefh9afs06mk642`
+    FOREIGN KEY (`expert_profile_id`)
+    REFERENCES `prep2getherdb`.`expert_profile` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
 
-ALTER TABLE feedback_message
-  ADD CONSTRAINT FK_users_TO_feedback_message
-    FOREIGN KEY (sender_id)
-    REFERENCES users (id);
 
-ALTER TABLE refresh_token
-  ADD CONSTRAINT FK_users_TO_refresh_token
-    FOREIGN KEY (user_id)
-    REFERENCES users (id)
-    ON DELETE CASCADE;
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`post`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`post` (
+  `deleted` BIT(1) NOT NULL COMMENT 'Soft-delete indicator',
+  `created_at` DATETIME(6) NOT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `updated_at` DATETIME(6) NULL DEFAULT NULL,
+  `user_id` BIGINT NOT NULL,
+  `view_count` BIGINT NOT NULL,
+  `title` VARCHAR(200) NOT NULL,
+  `content` TEXT NOT NULL,
+  `category` ENUM('FREE', 'INTERVIEW_REVIEW', 'JOB_INFO', 'RESUME') NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FK7ky67sgi7k0ayf22652f7763r` (`user_id` ASC) VISIBLE,
+  CONSTRAINT `FK7ky67sgi7k0ayf22652f7763r`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `prep2getherdb`.`users` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`comment`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`comment` (
+  `deleted` BIT(1) NOT NULL COMMENT 'Soft-delete indicator',
+  `created_at` DATETIME(6) NOT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `post_id` BIGINT NOT NULL,
+  `updated_at` DATETIME(6) NULL DEFAULT NULL,
+  `user_id` BIGINT NOT NULL,
+  `content` TEXT NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FKs1slvnkuemjsq2kj4h3vhx7i1` (`post_id` ASC) VISIBLE,
+  INDEX `FKqm52p1v3o13hy268he0wcngr5` (`user_id` ASC) VISIBLE,
+  CONSTRAINT `FKqm52p1v3o13hy268he0wcngr5`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `prep2getherdb`.`users` (`id`),
+  CONSTRAINT `FKs1slvnkuemjsq2kj4h3vhx7i1`
+    FOREIGN KEY (`post_id`)
+    REFERENCES `prep2getherdb`.`post` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`email_verification`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`email_verification` (
+  `verified` BIT(1) NOT NULL,
+  `code` VARCHAR(6) NOT NULL,
+  `created_at` DATETIME(6) NOT NULL,
+  `expires_at` DATETIME(6) NOT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `email` VARCHAR(50) NOT NULL,
+  PRIMARY KEY (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`feedback`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`feedback` (
+  `answered_at` DATETIME(6) NULL DEFAULT NULL,
+  `closed_at` DATETIME(6) NULL DEFAULT NULL,
+  `created_at` DATETIME(6) NOT NULL,
+  `expert_profile_id` BIGINT NOT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `requester_id` BIGINT NOT NULL,
+  `topic` VARCHAR(100) NOT NULL,
+  `closed_by` ENUM('EXPERT_REVOKED', 'REQUESTER_CLOSED') NULL DEFAULT NULL,
+  `status` ENUM('ANSWERED', 'PENDING') NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FK3s834qthb3dh584ab8k1w9txj` (`expert_profile_id` ASC) VISIBLE,
+  INDEX `FK1prd2nl8lgco4wjkkfiohyfb9` (`requester_id` ASC) VISIBLE,
+  CONSTRAINT `FK1prd2nl8lgco4wjkkfiohyfb9`
+    FOREIGN KEY (`requester_id`)
+    REFERENCES `prep2getherdb`.`users` (`id`),
+  CONSTRAINT `FK3s834qthb3dh584ab8k1w9txj`
+    FOREIGN KEY (`expert_profile_id`)
+    REFERENCES `prep2getherdb`.`expert_profile` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`feedback_message`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`feedback_message` (
+  `created_at` DATETIME(6) NOT NULL,
+  `feedback_id` BIGINT NOT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `sender_id` BIGINT NOT NULL,
+  `content` TEXT NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FKnodylbe3bxj139i2fc2kbu4su` (`feedback_id` ASC) VISIBLE,
+  INDEX `FKnxe5udnc3akw0n4wcsuogmj2j` (`sender_id` ASC) VISIBLE,
+  CONSTRAINT `FKnodylbe3bxj139i2fc2kbu4su`
+    FOREIGN KEY (`feedback_id`)
+    REFERENCES `prep2getherdb`.`feedback` (`id`),
+  CONSTRAINT `FKnxe5udnc3akw0n4wcsuogmj2j`
+    FOREIGN KEY (`sender_id`)
+    REFERENCES `prep2getherdb`.`users` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`oauth_account`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`oauth_account` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `linked_at` DATETIME(6) NOT NULL,
+  `user_id` BIGINT NOT NULL,
+  `provider` VARCHAR(20) NOT NULL,
+  `provider_id` VARCHAR(100) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `UKmx2mn80mbibsar6xiwx4pqyho` (`provider` ASC, `provider_id` ASC) VISIBLE,
+  INDEX `FKfo0bd94g5i95ufayqbge39p2f` (`user_id` ASC) VISIBLE,
+  CONSTRAINT `FKfo0bd94g5i95ufayqbge39p2f`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `prep2getherdb`.`users` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`refresh_token`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`refresh_token` (
+  `created_at` DATETIME(6) NOT NULL,
+  `expires_at` DATETIME(6) NOT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `token` VARCHAR(500) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `UKf95ixxe7pa48ryn1awmh2evt7` (`user_id` ASC) VISIBLE,
+  UNIQUE INDEX `UKr4k4edos30bx9neoq81mdvwph` (`token` ASC) VISIBLE,
+  CONSTRAINT `FKjtx87i0jvq2svedphegvdwcuy`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `prep2getherdb`.`users` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`report`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`report` (
+  `created_at` DATETIME(6) NOT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `reporter_id` BIGINT NOT NULL,
+  `resolved_at` DATETIME(6) NULL DEFAULT NULL,
+  `target_id` BIGINT NOT NULL,
+  `detail` TEXT NULL DEFAULT NULL,
+  `reason` ENUM('ABUSE', 'ETC', 'INAPPROPRIATE', 'SPAM') NOT NULL,
+  `status` ENUM('PENDING', 'RESOLVED') NOT NULL,
+  `target_type` ENUM('COMMENT', 'POST', 'STUDY_POST', 'STUDY_POST_COMMENT') NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FKqbhdxqd3ly7fkhly5nrl2j93k` (`reporter_id` ASC) VISIBLE,
+  CONSTRAINT `FKqbhdxqd3ly7fkhly5nrl2j93k`
+    FOREIGN KEY (`reporter_id`)
+    REFERENCES `prep2getherdb`.`users` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`study`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`study` (
+  `capacity` INT NOT NULL,
+  `deleted` BIT(1) NOT NULL COMMENT 'Soft-delete indicator',
+  `recruit_end` DATE NULL DEFAULT NULL,
+  `recruit_start` DATE NULL DEFAULT NULL,
+  `created_at` DATETIME(6) NOT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `leader_id` BIGINT NOT NULL,
+  `updated_at` DATETIME(6) NULL DEFAULT NULL,
+  `title` VARCHAR(200) NOT NULL,
+  `description` TEXT NULL DEFAULT NULL,
+  `category` ENUM('CERTIFICATE', 'ETC', 'IT_DEVELOPMENT', 'JOB_PREP', 'LANGUAGE') NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FKl13b57a8t61n6scmw4lhgud7y` (`leader_id` ASC) VISIBLE,
+  CONSTRAINT `FKl13b57a8t61n6scmw4lhgud7y`
+    FOREIGN KEY (`leader_id`)
+    REFERENCES `prep2getherdb`.`users` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`study_image`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`study_image` (
+  `image_order` INT NOT NULL,
+  `created_at` DATETIME(6) NOT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `study_id` BIGINT NOT NULL,
+  `image_url` VARCHAR(500) NOT NULL,
+  `original_file_name` VARCHAR(255) NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FKdxr654qi6t6ws45n0xsxfnt1t` (`study_id` ASC) VISIBLE,
+  CONSTRAINT `FKdxr654qi6t6ws45n0xsxfnt1t`
+    FOREIGN KEY (`study_id`)
+    REFERENCES `prep2getherdb`.`study` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`study_member`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`study_member` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `joined_at` DATETIME(6) NOT NULL,
+  `study_id` BIGINT NOT NULL,
+  `user_id` BIGINT NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FKxu4jds4ab0mfyrvdxsu60iut` (`study_id` ASC) VISIBLE,
+  INDEX `FKa3rdclacg05je5c2fviwed6i8` (`user_id` ASC) VISIBLE,
+  CONSTRAINT `FKa3rdclacg05je5c2fviwed6i8`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `prep2getherdb`.`users` (`id`),
+  CONSTRAINT `FKxu4jds4ab0mfyrvdxsu60iut`
+    FOREIGN KEY (`study_id`)
+    REFERENCES `prep2getherdb`.`study` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`study_post`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`study_post` (
+  `deleted` BIT(1) NOT NULL COMMENT 'Soft-delete indicator',
+  `created_at` DATETIME(6) NOT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `study_id` BIGINT NOT NULL,
+  `updated_at` DATETIME(6) NOT NULL,
+  `user_id` BIGINT NOT NULL,
+  `title` VARCHAR(200) NOT NULL,
+  `content` TEXT NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FK1pc0o2m9yw1ety3l0y7koemhq` (`study_id` ASC) VISIBLE,
+  INDEX `FKh7fhcw9bg70nd9wlocrgteolj` (`user_id` ASC) VISIBLE,
+  CONSTRAINT `FK1pc0o2m9yw1ety3l0y7koemhq`
+    FOREIGN KEY (`study_id`)
+    REFERENCES `prep2getherdb`.`study` (`id`),
+  CONSTRAINT `FKh7fhcw9bg70nd9wlocrgteolj`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `prep2getherdb`.`users` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`study_post_comment`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`study_post_comment` (
+  `deleted` BIT(1) NOT NULL COMMENT 'Soft-delete indicator',
+  `created_at` DATETIME(6) NOT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `study_post_id` BIGINT NOT NULL,
+  `updated_at` DATETIME(6) NOT NULL,
+  `user_id` BIGINT NOT NULL,
+  `content` TEXT NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FKric9o4jhwvr940uc40uw5t77e` (`study_post_id` ASC) VISIBLE,
+  INDEX `FKlyvep84812ch946ujec3pg8q6` (`user_id` ASC) VISIBLE,
+  CONSTRAINT `FKlyvep84812ch946ujec3pg8q6`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `prep2getherdb`.`users` (`id`),
+  CONSTRAINT `FKric9o4jhwvr940uc40uw5t77e`
+    FOREIGN KEY (`study_post_id`)
+    REFERENCES `prep2getherdb`.`study_post` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`study_post_image`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`study_post_image` (
+  `image_order` INT NOT NULL,
+  `created_at` DATETIME(6) NOT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `study_post_id` BIGINT NOT NULL,
+  `image_url` VARCHAR(500) NOT NULL,
+  `original_file_name` VARCHAR(255) NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FKlvnenwxeulxdyspk6pv1uxcfi` (`study_post_id` ASC) VISIBLE,
+  CONSTRAINT `FKlvnenwxeulxdyspk6pv1uxcfi`
+    FOREIGN KEY (`study_post_id`)
+    REFERENCES `prep2getherdb`.`study_post` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `prep2getherdb`.`subscription`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `prep2getherdb`.`subscription` (
+  `expired_at` DATETIME(6) NULL DEFAULT NULL,
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `started_at` DATETIME(6) NOT NULL,
+  `user_id` BIGINT NOT NULL,
+  `status` ENUM('ACTIVE', 'CANCELLED') NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `FKqwd9pkhbsmapx9poug5wnnpkc` (`user_id` ASC) VISIBLE,
+  CONSTRAINT `FKqwd9pkhbsmapx9poug5wnnpkc`
+    FOREIGN KEY (`user_id`)
+    REFERENCES `prep2getherdb`.`users` (`id`))
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+SET SQL_MODE=@OLD_SQL_MODE;
+SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
+SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;

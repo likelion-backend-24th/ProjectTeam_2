@@ -1,3 +1,38 @@
+.inlineRow {
+  display: flex;
+  gap: 8px;
+}
+
+.emailInput,
+.codeInput {
+  flex: 1;
+}
+
+.secondaryButton {
+  flex-shrink: 0;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: transparent;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.secondaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.success {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-accent);
+}
+
 .termsRow {
   display: flex;
   align-items: flex-start;

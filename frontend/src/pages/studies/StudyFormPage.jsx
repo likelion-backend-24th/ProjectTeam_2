@@ -2,6 +2,7 @@ import { ArrowRight, ChevronLeft } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { studyApi } from '../../api'
+import ImagePicker from '../../components/common/ImagePicker'
 import SiteHeader from '../../components/common/SiteHeader'
 import CategoryPicker from '../../components/posts/CategoryPicker'
 import { STUDY_CATEGORIES } from '../../constants/studyCategory'
@@ -33,6 +34,8 @@ export default function StudyFormPage() {
   const [capacity, setCapacity] = useState('')
   // 모집 마감일은 선택 입력이다. 비워두면 상시 모집으로 처리한다(백엔드도 null을 허용).
   const [recruitEnd, setRecruitEnd] = useState('')
+  // 이미지는 개설 시에만 첨부 가능(수정 시 이미지 변경은 범위 밖 — 백엔드 수정 API도 JSON만 받음).
+  const [images, setImages] = useState([])
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -119,7 +122,7 @@ export default function StudyFormPage() {
         await studyApi.updateStudy(studyId, payload)
         navigate(`/studies/${studyId}`)
       } else {
-        const { data } = await studyApi.createStudy(payload)
+        const { data } = await studyApi.createStudy(payload, images)
         navigate(`/studies/${data.data.id}`)
       }
     } catch (err) {
@@ -248,6 +251,16 @@ export default function StudyFormPage() {
                     onChange={(event) => setRecruitEnd(event.target.value)}
                   />
                 </div>
+
+                {!isEditMode && (
+                  <div className={styles.field}>
+                    <label className={styles.label}>
+                      대표 이미지
+                      <span className={styles.optionalHint}>선택</span>
+                    </label>
+                    <ImagePicker images={images} onChange={setImages} />
+                  </div>
+                )}
 
                 {error && <p className={styles.error}>{error}</p>}
 
