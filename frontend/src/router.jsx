@@ -2,6 +2,7 @@ import { createBrowserRouter, Outlet, ScrollRestoration } from 'react-router-dom
 import RequireAuth from './components/common/RequireAuth'
 import HomePage from './pages/HomePage'
 import MyPage from './pages/MyPage'
+import FindPasswordPage from './pages/auth/FindPasswordPage'
 import LoginPage from './pages/auth/LoginPage'
 import SignupPage from './pages/auth/SignupPage'
 import PostDetailPage from './pages/posts/PostDetailPage'
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
       { path: '/', element: <HomePage /> },
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
+      { path: '/find-password', element: <FindPasswordPage /> },
       { path: '/oauth/callback', element: <KakaoCallbackPage /> },
       { path: '/oauth/naver/callback', element: <NaverCallbackPage /> },
       {

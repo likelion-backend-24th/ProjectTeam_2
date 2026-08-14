@@ -103,9 +103,9 @@ export default function LoginForm() {
 
       <p className={styles.footerText}>
         비밀번호를 잊으셨나요?{' '}
-        <a href="#" className={styles.linkUnderline}>
+        <Link to="/find-password" className={styles.linkUnderline}>
           비밀번호 재설정
-        </a>
+        </Link>
       </p>
     </div>
   )
