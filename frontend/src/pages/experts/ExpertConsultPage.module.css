@@ -32,51 +32,66 @@
   color: var(--color-text-secondary);
 }
 
-.modeToggle {
+/* 전문가 신청 현황 배너 */
+.applyStatusBanner {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-radius: var(--radius-full);
+  gap: 14px;
+  width: 100%;
+  padding: 16px 20px;
+  margin-bottom: 32px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
-  background: none;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--color-text-secondary);
+  background-color: var(--color-bg-elevated);
+  text-align: left;
+}
+
+.applyStatusBanner:hover {
+  border-color: var(--color-border-strong);
+}
+
+.applyStatusIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
-.modeToggleActive {
-  border-color: #f87171;
+.applyStatusBannerPending .applyStatusIcon {
+  background-color: rgba(251, 191, 36, 0.14);
+  color: #fbbf24;
+}
+
+.applyStatusBannerRejected .applyStatusIcon {
+  background-color: rgba(248, 113, 113, 0.14);
   color: #f87171;
 }
 
-.switchTrack {
-  position: relative;
-  width: 34px;
-  height: 18px;
-  border-radius: var(--radius-full);
-  background-color: var(--color-border-strong);
-  transition: background-color 0.15s;
+.applyStatusBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.switchTrackActive {
-  background-color: #f87171;
+.applyStatusTitle {
+  font-size: 14px;
+  font-weight: 700;
 }
 
-.switchThumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background-color: #fff;
-  transition: transform 0.15s;
+.applyStatusSubtitle {
+  font-size: 12px;
+  color: var(--color-text-secondary);
 }
 
-.switchThumbActive {
-  transform: translateX(16px);
+.applyStatusLink {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent);
+  flex-shrink: 0;
 }
 
 /* 잠금 티저 (비구독/비로그인) */
