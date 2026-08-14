@@ -61,16 +61,19 @@ public class AdminService {
         userRepository.save(user);
     }
 
-    // 게시글 강제 삭제
+    // 게시글 소프트 딜리트 (게시물에 딸린 댓글도 소프트 딜리트)
     @Transactional
     public void deletePost(Long postId){
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(AdminErrorCode.POST_NOT_FOUND));
 
+        List<Comment> comments = commentRepository.findAllByPostId(postId);
+        commentRepository.deleteAll(comments);
+
         postRepository.delete(post);
     }
 
-    //댓글 강제 삭제
+    //댓글 소프트 딜리트
     @Transactional
     public void deleteComment(Long commentId){
         Comment comment = commentRepository.findById(commentId)
@@ -79,7 +82,7 @@ public class AdminService {
         commentRepository.delete(comment);
     }
 
-    //스터디 강제 삭제 (연관된 게시글, 댓글, 멤버까지 함께 삭제)
+    //스터디 소프트 딜리트 (연관된 게시글, 댓글, 멤버까지)
     @Transactional
     public void deleteStudy(Long studyId){
         Study study = studyRepository.findById(studyId)
@@ -91,13 +94,13 @@ public class AdminService {
             studyPostCommentRepository.deleteAll(comments);
         }
         studyPostRepository.deleteAll(studyPosts);
-
+        //멤버는 강제삭제
         studyMemberRepository.deleteByStudyId(studyId);
 
         studyRepository.delete(study);
     }
 
-    //스터디 게시글 강제 삭제 (연관된 댓글까지 함께 삭제)
+    //스터디 게시글 소프트 딜리트 (연관된 댓글까지 함께)
     @Transactional
     public void deleteStudyPost(Long studyPostId){
         StudyPost studyPost = studyPostRepository.findById(studyPostId)
@@ -109,7 +112,7 @@ public class AdminService {
         studyPostRepository.delete(studyPost);
     }
 
-    //스터디 게시글 댓글 강제 삭제
+    //스터디 게시글 댓글 소프트 딜리트
     @Transactional
     public void deleteStudyPostComment(Long commentId){
         StudyPostComment comment = studyPostCommentRepository.findById(commentId)
