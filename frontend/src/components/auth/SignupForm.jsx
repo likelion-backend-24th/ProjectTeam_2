@@ -275,13 +275,13 @@ export default function SignupForm({
             onChange={(event) => onAgreedChange(event.target.checked)}
           />
           <span className={styles.termsText}>
-            <a href="#" className={styles.termsLink}>
+            <Link to="/terms" target="_blank" rel="noopener noreferrer" className={styles.termsLink}>
               이용약관
-            </a>{' '}
+            </Link>{' '}
             및{' '}
-            <a href="#" className={styles.termsLink}>
+            <Link to="/privacy" target="_blank" rel="noopener noreferrer" className={styles.termsLink}>
               개인정보처리방침
-            </a>
+            </Link>
             에 동의합니다. (필수)
           </span>
         </label>

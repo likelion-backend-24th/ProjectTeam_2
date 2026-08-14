@@ -5,6 +5,8 @@ import MyPage from './pages/MyPage'
 import FindPasswordPage from './pages/auth/FindPasswordPage'
 import LoginPage from './pages/auth/LoginPage'
 import SignupPage from './pages/auth/SignupPage'
+import PrivacyPage from './pages/legal/PrivacyPage'
+import TermsPage from './pages/legal/TermsPage'
 import PostDetailPage from './pages/posts/PostDetailPage'
 import PostFormPage from './pages/posts/PostFormPage'
 import PostListPage from './pages/posts/PostListPage'
@@ -37,6 +39,8 @@ export const router = createBrowserRouter([
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
       { path: '/find-password', element: <FindPasswordPage /> },
+      { path: '/terms', element: <TermsPage /> },
+      { path: '/privacy', element: <PrivacyPage /> },
       { path: '/oauth/callback', element: <KakaoCallbackPage /> },
       { path: '/oauth/naver/callback', element: <NaverCallbackPage /> },
       {
