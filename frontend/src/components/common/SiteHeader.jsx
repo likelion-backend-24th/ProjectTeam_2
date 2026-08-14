@@ -35,11 +35,6 @@ export default function SiteHeader() {
               {item.label}
             </Link>
           ))}
-          {isAuthenticated && user.role === 'ADMIN' && (
-            <Link to="/admin" className={styles.navLink}>
-              어드민
-            </Link>
-          )}
         </nav>
 
         <div className={styles.actions}>
