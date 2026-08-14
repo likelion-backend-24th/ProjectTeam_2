@@ -2,9 +2,12 @@ import apiClient from './client'
 
 // ---- 스터디 게시판 ----
 
-// POST /api/studies/:id/posts
-function createStudyPost(studyId, payload) {
-  return apiClient.post(`/api/studies/${studyId}/posts`, payload)
+// POST /api/studies/:id/posts (멀티파트: 백엔드가 @RequestPart("data")+images로 받음)
+function createStudyPost(studyId, payload, images = []) {
+  const formData = new FormData()
+  formData.append('data', new Blob([JSON.stringify(payload)], { type: 'application/json' }))
+  images.forEach((file) => formData.append('images', file))
+  return apiClient.post(`/api/studies/${studyId}/posts`, formData)
 }
 
 // GET /api/studies/:id/posts

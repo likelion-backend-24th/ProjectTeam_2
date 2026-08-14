@@ -2,6 +2,7 @@ import { ChevronLeft, Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { studyPostApi } from '../../api'
+import ImageGallery from '../../components/common/ImageGallery'
 import ReportButton from '../../components/common/ReportButton'
 import SiteHeader from '../../components/common/SiteHeader'
 import StudyPostCommentForm from '../../components/studies/StudyPostCommentForm'
@@ -138,6 +139,7 @@ export default function StudyPostDetailPage() {
             <div className={styles.divider} />
 
             <p className={styles.content}>{post.content}</p>
+            <ImageGallery imageUrls={post.imageUrls} />
 
             <div className={styles.divider} />
 
