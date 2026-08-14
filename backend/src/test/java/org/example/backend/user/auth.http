@@ -1,15 +1,15 @@
-### 회원가입 - 실패 (이메일 인증 안 한 상태로 시도)
+### 1. 회원가입 - 실패 (이메일 인증 안 한 상태로 시도)
 POST http://localhost:8080/api/auth/signup
 Content-Type: application/json
 
 {
   "name": "최승환",
   "username": "이메일_인증_받을_이메일",
-  "password": "test1234!",
+  "password": "test1234",
   "nickname": "안양개발자"
 }
 
-###  이메일 인증코드 발송 -이메일 인증 받을 이메일 입력(구글,네이버 등등)
+### 2. 이메일 인증코드 발송 -자신의 진짜 이메일 입력(구글,네이버 등등)
 POST http://localhost:8080/api/auth/email/send
 Content-Type: application/json
 
@@ -17,23 +17,34 @@ Content-Type: application/json
   "email": "이메일_인증_받을_이메일"
 }
 
-### 이메일 인증코드 검증 (메일함에서 받은 코드로 교체)
+### 3. 이메일 인증코드 검증 (메일함에서 받은 코드로 교체)
 POST http://localhost:8080/api/auth/email/verify
 Content-Type: application/json
 
 {
   "email": "이메일_인증_받을_이메일",
-  "code": "715852"
+  "code": "452358"
 }
 
-### 회원가입 - 성공 (인증 완료 후 재시도)
+### 4. 회원가입 - 성공 (인증 완료 후 재시도)
 POST http://localhost:8080/api/auth/signup
 Content-Type: application/json
 
 {
-  "name": "정선우",
-  "username": "sunwo04@naver.com",
-  "nickname": "광주개발자",
+  "name": "최승환",
+  "username": "이메일_인증_완료한_이메일",
+  "nickname": "안양개발자",
+  "password": "test1234"
+}
+
+###  같은 이메일로 일반 회원가입 - 성공 (통합연결) - 비밀번호만 넣어줌, 이름과 닉네임은 아무값넣어도 변경안됨
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "name": "최승환",
+  "username": "이메일_인증_완료한_이메일이_소셜로그인과_동일한_이메일",
+  "nickname": "새닉네임123",
   "password": "test1234"
 }
 
@@ -43,10 +54,10 @@ POST http://localhost:8080/api/auth/signup
 Content-Type: application/json
 
 {
-  "name": "김지선",
-  "username": "test@naver.com",
+  "name": "최승환",
+  "username": "중복_이메일",
   "password": "test1234",
-  "nickname": "전주 족발집 알바생"
+  "nickname": "안양원펀치"
 }
 
 ### 회원가입 - 실패: nickname 중복 (409)
@@ -54,8 +65,8 @@ POST http://localhost:8080/api/auth/signup
 Content-Type: application/json
 
 {
-  "name": "김태영",
-  "username": "test123@naver.com",
+  "name": "최승환",
+  "username": "중복_되지_않은_이메일",
   "password": "test1234",
   "nickname": "안양개발자"
 }
@@ -65,10 +76,10 @@ POST http://localhost:8080/api/auth/signup
 Content-Type: application/json
 
 {
-  "name": "정선우",
+  "name": "최승환",
   "username": "oh-yeah",
   "password": "test1234",
-  "nickname": "살려조"
+  "nickname": "안양인"
 }
 
 ### 회원가입 - 실패: 비밀번호 8자미만 (400)
@@ -76,10 +87,10 @@ POST http://localhost:8080/api/auth/signup
 Content-Type: application/json
 
 {
-  "name": "김태영",
-  "username": "test3@naver.com",
+  "name": "최승환",
+  "username": "중복_되지_않는_이메일",
   "password": "1234",
-  "nickname": "광명원펀치"
+  "nickname": "안양인"
 }
 
 ### 회원가입 - 실패: 필수값 누락 (400)
@@ -88,7 +99,7 @@ Content-Type: application/json
 
 {
   "name": "",
-  "username": "test4@naver.com",
+  "username": "test@naver.com",
   "password": "test1234",
   "nickname": "새닉네임3"
 }
@@ -98,7 +109,7 @@ POST http://localhost:8080/api/auth/login
 Content-Type: application/json
 
 {
-  "username": "test@naver.com",
+  "username": "회원가입_완료된_이메일",
   "password": "test1234"
 }
 
@@ -120,7 +131,7 @@ POST http://localhost:8080/api/auth/login
 Content-Type: application/json
 
 {
-  "username": "test@naver.com",
+  "username": "회원가입_완료된_이메일",
   "password": "test5555"
 }
 
@@ -141,7 +152,7 @@ POST http://localhost:8080/api/auth/reset-password
 Content-Type: application/json
 
 {
-  "username": "csh980930@naver.com",
+  "username": "이메일_인증_안된_이메일",
   "newPassword": "newpw1234"
 }
 
@@ -150,7 +161,7 @@ POST http://localhost:8080/api/auth/email/send
 Content-Type: application/json
 
 {
-  "email": "csh980930@naver.com"
+  "email": "이메일_인증_받을_이메일"
 }
 
 ### 이메일 인증코드 검증 (메일함에서 받은 코드로 교체)
@@ -158,7 +169,7 @@ POST http://localhost:8080/api/auth/email/verify
 Content-Type: application/json
 
 {
-  "email": "csh980930@naver.com",
+  "email": "이메일_인증_받을_이메일",
   "code": "511318"
 }
 
@@ -167,7 +178,7 @@ POST http://localhost:8080/api/auth/resetpassword
 Content-Type: application/json
 
 {
-  "username": "csh980930@naver.com",
+  "username": "이메일_인증_완료된_이메일",
   "newPassword": "newpw1234"
 }
 
@@ -176,6 +187,6 @@ POST http://localhost:8080/api/auth/resetpassword
 Content-Type: application/json
 
 {
-  "username": "csh980930@naver.com",
+  "username": "이메일_인증_완료된_이메일",
   "newPassword": "anotherpw1234"
 }

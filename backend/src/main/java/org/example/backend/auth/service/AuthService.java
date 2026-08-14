@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -43,7 +44,9 @@ public class AuthService {
     //회원가입
     @Transactional
     public void signup(SignupRequest signupRequest) {
-        if (userRepository.existsByUsername(signupRequest.getUsername())) {
+        Optional<User> existingUser = userRepository.findByUsername(signupRequest.getUsername());
+        // 유저가 존재하고 비밀번호도 갖고있으면 중복으로 회원가입 불가
+        if(existingUser.isPresent() && existingUser.get().getPassword() != null){
             throw new BusinessException(AuthErrorCode.DUPLICATE_USERNAME);
         }
         if (userRepository.existsByNickname(signupRequest.getNickname())) {
@@ -51,6 +54,13 @@ public class AuthService {
         }
         // 이메일 인증이 되어있는지
         emailVerificationService.checkVerified(signupRequest.getUsername());
+        // 기존 소셜 계정에 비밀번호만 연결
+        if(existingUser.isPresent()){
+            User user = existingUser.get();
+            user.setPassword(passwordEncoder.encode(signupRequest.getPassword()));
+            userRepository.save(user);
+            return; //여기서 메서드 종료해야함 밑으로 가면 안됨.
+        }
 
         User user = new User();
         user.setName(signupRequest.getName());
