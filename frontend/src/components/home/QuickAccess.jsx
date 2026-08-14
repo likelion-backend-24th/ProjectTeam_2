@@ -92,7 +92,7 @@ export default function QuickAccess() {
           ))}
         </div>
 
-        <a href="#" className={styles.adminRow}>
+        <Link to="/admin" className={styles.adminRow}>
           <span className={styles.iconBox} style={{ backgroundColor: adminBg, color: adminFg }}>
             <Zap size={20} />
           </span>
@@ -102,7 +102,7 @@ export default function QuickAccess() {
           </span>
           <span className={styles.adminBadge}>ADMIN ONLY</span>
           <ChevronRight size={18} />
-        </a>
+        </Link>
       </div>
     </section>
   )

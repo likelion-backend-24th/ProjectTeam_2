@@ -1,5 +1,7 @@
 import { createBrowserRouter, Outlet, ScrollRestoration } from 'react-router-dom'
+import RequireAdmin from './components/common/RequireAdmin'
 import RequireAuth from './components/common/RequireAuth'
+import AdminPanelPage from './pages/admin/AdminPanelPage'
 import HomePage from './pages/HomePage'
 import MyPage from './pages/MyPage'
 import FindPasswordPage from './pages/auth/FindPasswordPage'
@@ -55,6 +57,14 @@ export const router = createBrowserRouter([
         ),
       },
       { path: '/subscription', element: <SubscriptionPage /> },
+      {
+        path: '/admin',
+        element: (
+          <RequireAdmin>
+            <AdminPanelPage />
+          </RequireAdmin>
+        ),
+      },
       { path: '/experts', element: <ExpertConsultPage /> },
       {
         path: '/experts/apply',
