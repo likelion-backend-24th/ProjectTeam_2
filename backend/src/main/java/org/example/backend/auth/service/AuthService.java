@@ -140,9 +140,6 @@ public class AuthService {
         userRepository.save(user);
     }
 
-
-
-
     //로그아웃
     @Transactional
     public void logout(String username) {
@@ -210,18 +207,10 @@ public class AuthService {
         return new TokenResponse(accessToken, refreshTokenValue);
     }
 
-    // Google 최초 로그인 시 회원가입 처리
+    // Google 최초 로그인 시 회원가입 또는 기존 계정 연결
     private User registerGoogleUser(GoogleUserInfoResponse googleUserInfo,String providerId){
-        User user = new User();
-        user.setUsername(googleUserInfo.getEmail()); //카카오는 이메일권한 막혀있지만 구글은 허용되어서 좋음
-        user.setName(googleUserInfo.getName()); // 이름도 권한 있어서 사용가능
-        user.setNickname(googleUserInfo.getName() + "_GOOGLE"); //이건 나중에 마이페이지에서 닉네임 변경
-        user.setPassword(null);
-        user.setRole(Role.USER);
-        user.setStatus(AccountStatus.ACTIVE);
-        user.setSubscribed(false);
-
-        userRepository.save(user);
+        User user = userRepository.findByUsername(googleUserInfo.getEmail())
+                .orElseGet(() -> createNewGoogleUser(googleUserInfo));
 
         OauthAccount oauthAccount = new OauthAccount();
         oauthAccount.setUser(user);
@@ -232,6 +221,20 @@ public class AuthService {
         oauthAccountRepository.save(oauthAccount);
 
         return user;
+    }
+
+    // 완전히 새로운 구글 유저 생성
+    private User createNewGoogleUser(GoogleUserInfoResponse googleUserInfo) {
+        User user = new User();
+        user.setUsername(googleUserInfo.getEmail());
+        user.setName(googleUserInfo.getName());
+        user.setNickname(googleUserInfo.getName() + googleUserInfo.getId()); // 우연히 닉네임 중복될거같아서 고유아이디로 변경
+        user.setPassword(null);
+        user.setRole(Role.USER);
+        user.setStatus(AccountStatus.ACTIVE);
+        user.setSubscribed(false);
+
+        return userRepository.save(user);
     }
 
     // Google 로그인
@@ -270,16 +273,8 @@ public class AuthService {
 
     // NAVER 최초 로그인 시 회원가입 처리
     private User registerNaverUser(NaverUserInfoResponse naverUserInfo,String prviderId){
-        User user = new User();
-        user.setUsername(naverUserInfo.getResponse().getEmail());
-        user.setName(naverUserInfo.getResponse().getName());
-        user.setNickname(naverUserInfo.getResponse().getName() + "_NAVER");
-        user.setPassword(null);
-        user.setRole(Role.USER);
-        user.setStatus(AccountStatus.ACTIVE);
-        user.setSubscribed(false);
-
-        userRepository.save(user);
+        User user = userRepository.findByUsername(naverUserInfo.getResponse().getEmail())
+                .orElseGet(() -> createNewNaverUser(naverUserInfo));
 
         OauthAccount oauthAccount = new OauthAccount();
         oauthAccount.setUser(user);
@@ -290,7 +285,19 @@ public class AuthService {
         oauthAccountRepository.save(oauthAccount);
 
         return user;
+    }
 
+    private User createNewNaverUser(NaverUserInfoResponse naverUserInfo) {
+        User user = new User();
+        user.setUsername(naverUserInfo.getResponse().getEmail());
+        user.setName(naverUserInfo.getResponse().getName());
+        user.setNickname(naverUserInfo.getResponse().getName() + naverUserInfo.getResponse().getId()); // 우연히 닉네임 중복 예방차원으로 고유아이디로 변경
+        user.setPassword(null);
+        user.setRole(Role.USER);
+        user.setStatus(AccountStatus.ACTIVE);
+        user.setSubscribed(false);
+
+        return userRepository.save(user);
     }
 
     // NAVER 로그인
