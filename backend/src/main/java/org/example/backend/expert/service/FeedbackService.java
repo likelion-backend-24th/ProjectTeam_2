@@ -23,6 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import org.example.backend.user.entity.AccountStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.example.backend.expert.dto.response.ExpertFeedbackListResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -149,24 +152,26 @@ public class FeedbackService {
                 .stream().map(message -> FeedbackMessageResponse.from(message)).toList();
     }
 
-    public MyFeedbackListResponse getMyFeedbacks(Long requesterId) {
-        List<MyFeedbackSummaryResponse> summaries = feedbackRepository.findByRequesterId(requesterId)
-                .stream().map(feedback -> MyFeedbackSummaryResponse.from(feedback)).toList();
-        return MyFeedbackListResponse.from(summaries);
+    public MyFeedbackListResponse getMyFeedbacks(Long requesterId, Pageable pageable) {
+        Page<MyFeedbackSummaryResponse> page = feedbackRepository.findByRequesterId(requesterId, pageable)
+                .map(MyFeedbackSummaryResponse::from);
+        return MyFeedbackListResponse.from(page);
     }
 // 특정 전문가 1명에게 들어온 문의 스레드 리턴
 //    전문가 프로필 id를 지정해서, 그 전문가에게 들어온 문의 스레드를 전부 조회하는 기능
-    public List<FeedbackResponse> getExpertFeedbacks(Long expertProfileId) {
-        return feedbackRepository.findByExpertProfileId(expertProfileId)
-                .stream().map(feedback -> FeedbackResponse.from(feedback)).toList();
+    public ExpertFeedbackListResponse getExpertFeedbacks(Long expertProfileId, Pageable pageable) {
+        Page<FeedbackResponse> page = feedbackRepository.findByExpertProfileId(expertProfileId, pageable)
+                .map(FeedbackResponse::from);
+        return ExpertFeedbackListResponse.from(page);
     }
 // 전문가 본인이 받은 문의 목록
 //    로그인한 전문가 본인이 "내가 받은 문의함" 화면을 열었을 때 쓰는 기능
-    public List<FeedbackResponse> getMyExpertFeedbacks(Long expertUserId) {
+
+    public ExpertFeedbackListResponse getMyExpertFeedbacks(Long expertUserId, Pageable pageable) {
         ExpertProfile expertProfile = expertProfileRepository.findByUserId(expertUserId)
                 .orElseThrow(() -> new BusinessException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND));
-        return getExpertFeedbacks(expertProfile.getId());
-    }
+        return getExpertFeedbacks(expertProfile.getId(), pageable);
+}
 
     private Feedback getFeedbackOrThrow(Long id) {
         return feedbackRepository.findById(id)

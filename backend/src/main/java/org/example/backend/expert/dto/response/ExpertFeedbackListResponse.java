@@ -9,10 +9,10 @@ import java.util.List;
 
 @Getter
 @Builder
-public class MyFeedbackListResponse {
+public class ExpertFeedbackListResponse {
 
-    @Schema(description = "내가 개설한 문의 스레드 요약 목록")
-    private List<MyFeedbackSummaryResponse> feedbacks;
+    @Schema(description = "받은 문의 스레드 목록")
+    private List<FeedbackResponse> feedbacks;
 
     @Schema(description = "현재 페이지 번호 (0부터 시작)", example = "0")
     private int page;
@@ -20,17 +20,17 @@ public class MyFeedbackListResponse {
     @Schema(description = "페이지 크기", example = "20")
     private int size;
 
-    @Schema(description = "전체 요소 개수", example = "37")
+    @Schema(description = "전체 요소 개수", example = "12")
     private long totalElements;
 
-    @Schema(description = "전체 페이지 수", example = "2")
+    @Schema(description = "전체 페이지 수", example = "1")
     private int totalPages;
 
-    @Schema(description = "다음 페이지 존재 여부", example = "true")
+    @Schema(description = "다음 페이지 존재 여부", example = "false")
     private boolean hasNext;
 
-    public static MyFeedbackListResponse from(Page<MyFeedbackSummaryResponse> page) {
-        return MyFeedbackListResponse.builder()
+    public static ExpertFeedbackListResponse from(Page<FeedbackResponse> page) {
+        return ExpertFeedbackListResponse.builder()
                 .feedbacks(page.getContent())
                 .page(page.getNumber())
                 .size(page.getSize())
