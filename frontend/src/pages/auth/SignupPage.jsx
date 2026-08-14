@@ -15,6 +15,7 @@ export default function SignupPage() {
 
   const [name, setName] = useState('')
   const [username, setUsername] = useState('')
+  const [isEmailVerified, setIsEmailVerified] = useState(false)
   const [nickname, setNickname] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -28,11 +29,11 @@ export default function SignupPage() {
   const isPasswordValid = password.length >= 8
   const isConfirmValid = confirmPassword.length > 0 && confirmPassword === password
   const isPasswordStepDone = isPasswordValid && isConfirmValid
-  const canSubmit = isNameValid && isUsernameValid && isNicknameValid && isPasswordStepDone && agreed
+  const canSubmit = isNameValid && isUsernameValid && isEmailVerified && isNicknameValid && isPasswordStepDone && agreed
 
   const steps = [
     { label: '이름', done: isNameValid },
-    { label: '이메일', done: isUsernameValid },
+    { label: '이메일 인증', done: isEmailVerified },
     { label: '닉네임', done: isNicknameValid },
     { label: '비밀번호', done: isPasswordStepDone },
     { label: '약관 동의', done: agreed },
@@ -41,7 +42,7 @@ export default function SignupPage() {
   async function handleSubmit(event) {
     event.preventDefault()
     if (!canSubmit) {
-      setError('입력값을 다시 확인해주세요.')
+      setError(isEmailVerified ? '입력값을 다시 확인해주세요.' : '이메일 인증을 먼저 완료해주세요.')
       return
     }
     setError('')
@@ -73,6 +74,8 @@ export default function SignupPage() {
             onNameChange={setName}
             username={username}
             onUsernameChange={setUsername}
+            isEmailVerified={isEmailVerified}
+            onEmailVerifiedChange={setIsEmailVerified}
             nickname={nickname}
             onNicknameChange={setNickname}
             password={password}
