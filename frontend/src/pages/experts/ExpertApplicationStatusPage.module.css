@@ -1,0 +1,274 @@
+.main {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 48px 24px 100px;
+}
+
+.breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 24px;
+}
+
+.breadcrumb:hover {
+  color: var(--color-text);
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--color-accent);
+  margin-bottom: 10px;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: 800;
+  margin-bottom: 24px;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.tab {
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.tabActivePending {
+  border-color: #fbbf24;
+  background-color: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+}
+
+.tabActiveApproved {
+  border-color: #34d399;
+  background-color: rgba(52, 211, 153, 0.1);
+  color: #34d399;
+}
+
+.tabActiveRejected {
+  border-color: #f87171;
+  background-color: rgba(248, 113, 113, 0.1);
+  color: #f87171;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 32px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+}
+
+.cardPending {
+  background-color: rgba(251, 191, 36, 0.04);
+}
+
+.cardApproved {
+  background-color: rgba(52, 211, 153, 0.04);
+}
+
+.cardRejected {
+  background-color: rgba(248, 113, 113, 0.04);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-md);
+  margin-bottom: 14px;
+}
+
+.iconPending {
+  background-color: rgba(251, 191, 36, 0.14);
+  color: #fbbf24;
+}
+
+.iconApproved {
+  background-color: rgba(52, 211, 153, 0.14);
+  color: #34d399;
+}
+
+.iconRejected {
+  background-color: rgba(248, 113, 113, 0.14);
+  color: #f87171;
+}
+
+.statusBadge {
+  padding: 3px 12px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 14px;
+}
+
+.badgePending {
+  background-color: rgba(251, 191, 36, 0.14);
+  color: #fbbf24;
+}
+
+.badgeApproved {
+  background-color: rgba(52, 211, 153, 0.14);
+  color: #34d399;
+}
+
+.badgeRejected {
+  background-color: rgba(248, 113, 113, 0.14);
+  color: #f87171;
+}
+
+.cardTitle {
+  font-size: 19px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.cardSubtitle {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  margin-bottom: 20px;
+}
+
+.previewCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.previewAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.previewName {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.previewBadge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  background-color: rgba(198, 255, 61, 0.14);
+  color: var(--color-accent);
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.reasonBox {
+  width: 100%;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-elevated);
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.reasonHeading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f87171;
+  margin-bottom: 8px;
+}
+
+.reasonText {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.primaryButton {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.primaryButtonApproved {
+  background-color: #34d399;
+  color: #04140d;
+}
+
+.primaryButtonRejected {
+  background-color: #f87171;
+  color: #250505;
+}
+
+.secondaryButton {
+  flex: 1;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.secondaryButton:hover {
+  color: var(--color-text);
+}
+
+.footerNote {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.state {
+  padding: 60px 0;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}

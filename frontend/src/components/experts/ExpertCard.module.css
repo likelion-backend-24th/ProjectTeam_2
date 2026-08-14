@@ -1,0 +1,67 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-elevated);
+  text-align: left;
+  width: 100%;
+}
+
+.card:hover {
+  border-color: var(--color-border-strong);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 3px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background-color: rgba(198, 255, 61, 0.14);
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.career {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.viewLink {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.card:hover .viewLink {
+  color: var(--color-accent);
+}

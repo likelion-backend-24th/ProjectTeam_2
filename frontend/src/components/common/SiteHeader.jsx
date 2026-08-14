@@ -6,11 +6,10 @@ import styles from './SiteHeader.module.css'
 const NAV_ITEMS = [
   { label: '게시글', to: '/posts' },
   { label: '스터디', to: '/studies' },
-  { label: '전문가 상담', to: null },
+  { label: '전문가 상담', to: '/experts' },
   { label: '구독 플랜', to: '/subscription' },
 ]
 
-// TODO: 전문가 상담 페이지가 생기면 실제 경로 연결 (-> /experts)
 export default function SiteHeader() {
   const { user, isAuthenticated, isLoading, logout } = useAuth()
   const navigate = useNavigate()
@@ -31,17 +30,11 @@ export default function SiteHeader() {
         </div>
 
         <nav className={styles.nav}>
-          {NAV_ITEMS.map((item) =>
-            item.to ? (
-              <Link key={item.label} to={item.to} className={styles.navLink}>
-                {item.label}
-              </Link>
-            ) : (
-              <a key={item.label} href="#" className={styles.navLink}>
-                {item.label}
-              </a>
-            ),
-          )}
+          {NAV_ITEMS.map((item) => (
+            <Link key={item.label} to={item.to} className={styles.navLink}>
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
         <div className={styles.actions}>

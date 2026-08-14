@@ -1,0 +1,398 @@
+.main {
+  max-width: var(--container-width);
+  margin: 0 auto;
+  padding: 64px 24px 100px;
+}
+
+.headingRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--color-accent);
+  margin-bottom: 10px;
+}
+
+.title {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.modeToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.modeToggleActive {
+  border-color: #f87171;
+  color: #f87171;
+}
+
+.switchTrack {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-border-strong);
+  transition: background-color 0.15s;
+}
+
+.switchTrackActive {
+  background-color: #f87171;
+}
+
+.switchThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #fff;
+  transition: transform 0.15s;
+}
+
+.switchThumbActive {
+  transform: translateX(16px);
+}
+
+/* 잠금 티저 (비구독/비로그인) */
+.lockedTeaser {
+  position: relative;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-elevated);
+  padding: 24px;
+  margin-bottom: 40px;
+  overflow: hidden;
+}
+
+.lockedRows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  filter: blur(4px);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.lockedRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.lockedAvatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.lockedLine {
+  height: 10px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-border-strong);
+}
+
+.lockedOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 24px;
+}
+
+.lockIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background-color: rgba(198, 255, 61, 0.14);
+  color: var(--color-accent);
+}
+
+.lockedTitle {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.lockedSubtitle {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+
+.subscribeButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 22px;
+  border: none;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent);
+  color: var(--color-accent-ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* 내 상담 목록 */
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.newConsultButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border: none;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent);
+  color: var(--color-accent-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.threadList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 40px;
+}
+
+.threadRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-elevated);
+  text-align: left;
+}
+
+.threadRow:hover {
+  border-color: var(--color-border-strong);
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.threadBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.threadTopRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.threadName {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.threadTopic {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.threadMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.threadDate {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.statusBadge {
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.statusPending {
+  background-color: rgba(251, 191, 36, 0.14);
+  color: #fbbf24;
+}
+
+.statusAnswered {
+  background-color: rgba(96, 165, 250, 0.14);
+  color: #60a5fa;
+}
+
+.statusClosed {
+  background-color: rgba(52, 211, 153, 0.14);
+  color: #34d399;
+}
+
+.emptyState {
+  padding: 32px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  margin-bottom: 40px;
+}
+
+/* 전문가 모드 통계 */
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.statBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 24px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-elevated);
+}
+
+.statValue {
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.statLabel {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.divider {
+  height: 1px;
+  background-color: var(--color-border);
+  margin: 8px 0 32px;
+}
+
+/* 활동 중인 전문가 그리드 */
+.expertGridHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.expertGridTitle {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.expertGridCount {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.expertGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.applyFooter {
+  margin-top: 32px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.applyFooterLink {
+  border: none;
+  background: none;
+  color: var(--color-accent);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.state {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+@media (max-width: 860px) {
+  .expertGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .statsRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .expertGrid {
+    grid-template-columns: 1fr;
+  }
+}
