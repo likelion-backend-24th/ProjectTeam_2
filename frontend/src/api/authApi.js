@@ -14,6 +14,21 @@ async function login(payload) {
   return data
 }
 
+// POST /api/auth/email/send
+function sendEmailVerificationCode(email) {
+  return apiClient.post('/api/auth/email/send', { email })
+}
+
+// POST /api/auth/email/verify
+function verifyEmailCode(email, code) {
+  return apiClient.post('/api/auth/email/verify', { email, code })
+}
+
+// POST /api/auth/resetpassword (이메일 인증 완료 후에만 성공)
+function resetPassword({ username, newPassword }) {
+  return apiClient.post('/api/auth/resetpassword', { username, newPassword })
+}
+
 // POST /api/auth/logout (인증 필요)
 async function logout() {
   const { data } = await apiClient.post('/api/auth/logout')
@@ -57,4 +72,7 @@ export const authApi = {
   kakaoLogin,
   googleLogin,
   naverLogin,
+  sendEmailVerificationCode,
+  verifyEmailCode,
+  resetPassword,
 }
