@@ -18,6 +18,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.example.backend.expert.dto.response.ExpertFeedbackListResponse;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 
 @Tag(name = "전문가 피드백", description = "구독자-전문가 1:1 문의 스레드를 개설하고, 구독자와 전문가가 메세지를 주고받는 API")
 @RestController
@@ -69,21 +73,23 @@ public class FeedbackController {
         return ResponseEntity.ok(ApiResponse.success("메시지 목록 조회 성공", response));
     }
 
-    @Operation(summary = "내 문의 스레드 목록 조회 (구독자용)", description = "구독자 본인이 개설한 문의 스레드 목록.")
+    @Operation(summary = "내 문의 스레드 목록 조회 (구독자용)", description = "구독자 본인이 개설한 문의 스레드 목록. 페이지네이션 지원 (예: ?page=0&size=20).")
     @GetMapping("/api/feedbacks/me")
     public ResponseEntity<ApiResponse<MyFeedbackListResponse>> getMyFeedbacks(
-            @AuthenticationPrincipal CustomUserDetails userDetails
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        MyFeedbackListResponse response = feedbackService.getMyFeedbacks(userDetails.getUser().getId());
+        MyFeedbackListResponse response = feedbackService.getMyFeedbacks(userDetails.getUser().getId(), pageable);
         return ResponseEntity.ok(ApiResponse.success("내 문의 목록 조회 성공", response));
     }
 
-    @Operation(summary = "받은 문의 목록 조회 (전문가용)", description = "전문가로서 받은 문의 스레드 목록.")
+    @Operation(summary = "받은 문의 목록 조회 (전문가용)", description = "전문가로서 받은 문의 스레드 목록. 페이지네이션 지원 (예: ?page=0&size=20).")
     @GetMapping("/api/feedbacks/expert")
-    public ResponseEntity<ApiResponse<List<FeedbackResponse>>> getMyExpertFeedbacks(
-            @AuthenticationPrincipal CustomUserDetails userDetails
+    public ResponseEntity<ApiResponse<ExpertFeedbackListResponse>> getMyExpertFeedbacks(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        List<FeedbackResponse> response = feedbackService.getMyExpertFeedbacks(userDetails.getUser().getId());
+        ExpertFeedbackListResponse response = feedbackService.getMyExpertFeedbacks(userDetails.getUser().getId(), pageable);
         return ResponseEntity.ok(ApiResponse.success("받은 문의 목록 조회 성공", response));
     }
 

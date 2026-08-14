@@ -3,8 +3,10 @@ package org.example.backend.expert.service;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.expert.dto.request.FeedbackCreateRequest;
 import org.example.backend.expert.dto.request.FeedbackMessageRequest;
+import org.example.backend.expert.dto.response.ExpertFeedbackListResponse;
 import org.example.backend.expert.dto.response.FeedbackMessageResponse;
 import org.example.backend.expert.dto.response.FeedbackResponse;
+import org.example.backend.expert.dto.response.MyFeedbackListResponse;
 import org.example.backend.expert.entity.ExpertProfile;
 import org.example.backend.expert.entity.Feedback;
 import org.example.backend.expert.entity.FeedbackMessage;
@@ -29,11 +31,15 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.example.backend.expert.entity.FeedbackCloseReason;
 import org.example.backend.user.entity.AccountStatus;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.PageImpl;
 
 @ExtendWith(MockitoExtension.class)
 class FeedbackServiceTest {
@@ -226,14 +232,17 @@ class FeedbackServiceTest {
         expertUser.setNickname("김전문");
         Feedback feedback = Feedback.builder()
                 .requester(requester).expertProfile(approvedExpertProfile).topic("포트폴리오 피드백 요청").build();
-        when(feedbackRepository.findByRequesterId(1L)).thenReturn(List.of(feedback));
+        Pageable pageable = PageRequest.of(0, 20);
+        when(feedbackRepository.findByRequesterId(1L, pageable))
+                .thenReturn(new PageImpl<>(List.of(feedback), pageable, 1));
 
-        var response = feedbackService.getMyFeedbacks(1L);
+        MyFeedbackListResponse response = feedbackService.getMyFeedbacks(1L, pageable);
 
         assertThat(response.getFeedbacks()).hasSize(1);
         assertThat(response.getFeedbacks().get(0).getExpertNickname()).isEqualTo("김전문");
         assertThat(response.getFeedbacks().get(0).getTopic()).isEqualTo("포트폴리오 피드백 요청");
         assertThat(response.getFeedbacks().get(0).getStatus()).isEqualTo(FeedbackStatus.PENDING);
+        assertThat(response.getTotalElements()).isEqualTo(1);
     }
 
     @Test
@@ -384,5 +393,35 @@ class FeedbackServiceTest {
 
         verify(feedbackMessageRepository, never()).save(any());
     }
-}
 
+    @Test
+    void getExpertFeedbacks_페이지네이션_정상반환() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).topic("포트폴리오 피드백 요청").build();
+        Pageable pageable = PageRequest.of(0, 20);
+        when(feedbackRepository.findByExpertProfileId(99L, pageable))
+                .thenReturn(new PageImpl<>(List.of(feedback), pageable, 1));
+
+        ExpertFeedbackListResponse response = feedbackService.getExpertFeedbacks(99L, pageable);
+
+        assertThat(response.getFeedbacks()).hasSize(1);
+        assertThat(response.getFeedbacks().get(0).getTopic()).isEqualTo("포트폴리오 피드백 요청");
+        assertThat(response.getTotalElements()).isEqualTo(1);
+        assertThat(response.getPage()).isEqualTo(0);
+    }
+
+    @Test
+    void getMyExpertFeedbacks_전문가프로필로_전환후_조회() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).topic("포트폴리오 피드백 요청").build();
+        Pageable pageable = PageRequest.of(0, 20);
+        when(expertProfileRepository.findByUserId(2L)).thenReturn(Optional.of(approvedExpertProfile));
+        when(feedbackRepository.findByExpertProfileId(any(), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(feedback), pageable, 1));
+
+        ExpertFeedbackListResponse response = feedbackService.getMyExpertFeedbacks(2L, pageable);
+
+        assertThat(response.getFeedbacks()).hasSize(1);
+        assertThat(response.getFeedbacks().get(0).getTopic()).isEqualTo("포트폴리오 피드백 요청");
+    }
+}
