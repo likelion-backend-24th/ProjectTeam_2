@@ -24,12 +24,14 @@ export default function StudyListPage() {
 
   // NOTE: 백엔드 GET /api/studies가 카테고리 필터 파라미터를 지원하지 않아서(키워드만 가능),
   // 키워드로 넉넉히(size=100) 받아온 뒤 카테고리 필터링 + 페이지 나누기를 프론트에서 처리한다.
+  // sort는 넘기지 않는다: 백엔드가 구독자(방장) 모집글을 상단 고정한 뒤 최신순으로 정렬해서 내려주므로,
+  // 여기서 정렬을 지정하면 그 고정 순서가 흐트러질 수 있다.
   useEffect(() => {
     let ignore = false
     setIsFetching(true)
 
     studyApi
-      .getStudies({ keyword: keyword || undefined, size: 100, sort: 'createdAt,desc' })
+      .getStudies({ keyword: keyword || undefined, size: 100 })
       .then(({ data }) => {
         if (ignore) return
         setStudies(data.data)

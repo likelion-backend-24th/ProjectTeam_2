@@ -13,7 +13,7 @@ function getMyStudies(params) {
 
 // GET /api/studies (비로그인 접근 가능)
 function getStudies(params) {
-  // params: { keyword, page, size, sort }
+  // params: { keyword, page, size } — 정렬은 백엔드가 고정(구독자 모집글 상단 고정 + 최신순)하므로 sort는 넘기지 않는다.
   return apiClient.get('/api/studies', { params })
 }
 
