@@ -4,6 +4,7 @@ import { studyPostApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { getAvatarColor } from '../../utils/avatarColor'
 import { formatDateTime } from '../../utils/formatDate'
+import ReportButton from '../common/ReportButton'
 import styles from './StudyPostCommentItem.module.css'
 
 export default function StudyPostCommentItem({ studyId, postId, comment, onChanged }) {
@@ -72,6 +73,12 @@ export default function StudyPostCommentItem({ studyId, postId, comment, onChang
               <button type="button" className={styles.iconButton} onClick={handleDelete} aria-label="댓글 삭제">
                 <Trash2 size={13} />
               </button>
+            </span>
+          )}
+
+          {Boolean(user) && !isOwner && (
+            <span className={styles.ownerActions}>
+              <ReportButton targetType="STUDY_POST_COMMENT" targetId={comment.id} variant="icon" />
             </span>
           )}
         </div>

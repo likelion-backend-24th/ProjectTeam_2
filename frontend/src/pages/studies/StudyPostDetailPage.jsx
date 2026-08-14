@@ -2,6 +2,7 @@ import { ChevronLeft, Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { studyPostApi } from '../../api'
+import ReportButton from '../../components/common/ReportButton'
 import SiteHeader from '../../components/common/SiteHeader'
 import StudyPostCommentForm from '../../components/studies/StudyPostCommentForm'
 import StudyPostCommentItem from '../../components/studies/StudyPostCommentItem'
@@ -124,6 +125,12 @@ export default function StudyPostDetailPage() {
                     <Trash2 size={14} />
                     삭제
                   </button>
+                </span>
+              )}
+
+              {Boolean(user) && !isOwner && (
+                <span className={styles.ownerActions}>
+                  <ReportButton targetType="STUDY_POST" targetId={post.id} />
                 </span>
               )}
             </div>

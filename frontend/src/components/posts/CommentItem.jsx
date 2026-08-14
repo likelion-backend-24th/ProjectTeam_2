@@ -4,6 +4,7 @@ import { commentApi } from '../../api'
 import { useAuth } from '../../context/AuthContext'
 import { getAvatarColor } from '../../utils/avatarColor'
 import { formatDateTime } from '../../utils/formatDate'
+import ReportButton from '../common/ReportButton'
 import styles from './CommentItem.module.css'
 
 export default function CommentItem({ postId, comment, onChanged }) {
@@ -74,6 +75,12 @@ export default function CommentItem({ postId, comment, onChanged }) {
               <button type="button" className={styles.iconButton} onClick={handleDelete} aria-label="댓글 삭제">
                 <Trash2 size={13} />
               </button>
+            </span>
+          )}
+
+          {Boolean(user) && !isOwner && (
+            <span className={styles.ownerActions}>
+              <ReportButton targetType="COMMENT" targetId={comment.id} variant="icon" />
             </span>
           )}
         </div>
