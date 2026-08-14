@@ -153,7 +153,7 @@ public class AuthService {
         User user = new User();
         user.setUsername("kakao_" + providerId + "@kakao.local");
         user.setName(kakaoUserInfo.getKakao_account().getProfile().getNickname());
-        user.setNickname(kakaoUserInfo.getKakao_account().getProfile().getNickname() + "_KAKAO");
+        user.setNickname(kakaoUserInfo.getKakao_account().getProfile().getNickname() + kakaoUserInfo.getId()); //통일성을 위해 이것도 고유 아이디로 변경
         user.setPassword(null);  //카카오에서 실명을 주지 않아서 일단 닉네임으로 채우고
         user.setRole(Role.USER); // 나중에 마이페이지에서 닉네임 수정 유도
         user.setStatus(AccountStatus.ACTIVE);
