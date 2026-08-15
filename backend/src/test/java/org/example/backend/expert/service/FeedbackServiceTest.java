@@ -229,7 +229,7 @@ class FeedbackServiceTest {
 
     @Test
     void getMyFeedbacks_요약목록_expertNickname_포함() {
-        expertUser.setNickname("김전문");
+        expertUser.setName("정선우");
         Feedback feedback = Feedback.builder()
                 .requester(requester).expertProfile(approvedExpertProfile).topic("포트폴리오 피드백 요청").build();
         Pageable pageable = PageRequest.of(0, 20);
@@ -239,7 +239,7 @@ class FeedbackServiceTest {
         MyFeedbackListResponse response = feedbackService.getMyFeedbacks(1L, pageable);
 
         assertThat(response.getFeedbacks()).hasSize(1);
-        assertThat(response.getFeedbacks().get(0).getExpertNickname()).isEqualTo("김전문");
+        assertThat(response.getFeedbacks().get(0).getExpertName()).isEqualTo("정선우");
         assertThat(response.getFeedbacks().get(0).getTopic()).isEqualTo("포트폴리오 피드백 요청");
         assertThat(response.getFeedbacks().get(0).getStatus()).isEqualTo(FeedbackStatus.PENDING);
         assertThat(response.getTotalElements()).isEqualTo(1);

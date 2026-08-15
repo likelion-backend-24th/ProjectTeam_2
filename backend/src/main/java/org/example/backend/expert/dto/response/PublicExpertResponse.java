@@ -13,8 +13,8 @@ public class PublicExpertResponse {
     @Schema(description = "전문가 프로필 ID", example = "1")
     private Long expertId;
 
-    @Schema(description = "전문가 닉네임", example = "전문개발자")
-    private String nickname;
+    @Schema(description = "전문가 이름", example = "정선우")
+    private String name;
 
     @Schema(description = "대표 경력 1건 요약 (회사명 · 직함 · 연차)", example = "카카오 · 백엔드 개발자 · 3년차")
     private String career;
@@ -23,7 +23,7 @@ public class PublicExpertResponse {
     public static PublicExpertResponse from(ExpertProfile profile) {
         return PublicExpertResponse.builder()
                 .expertId(profile.getId())
-                .nickname(profile.getUser().getNickname())
+                .name(profile.getUser().getName())
                 .career(profile.getCareers().stream().findFirst()
                         .map(career -> PublicExpertResponse.summarizeCareer(career))
                         .orElse(null))
