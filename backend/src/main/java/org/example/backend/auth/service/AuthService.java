@@ -52,6 +52,9 @@ public class AuthService {
         if (userRepository.existsByNickname(signupRequest.getNickname())) {
             throw new BusinessException(AuthErrorCode.DUPLICATE_NICKNAME);
         }
+        if (!signupRequest.isTermsAgreed()) {
+            throw new BusinessException(AuthErrorCode.TERMS_NOT_AGREED);
+        }
         // 이메일 인증이 되어있는지
         emailVerificationService.checkVerified(signupRequest.getUsername());
         // 기존 소셜 계정에 비밀번호만 연결
@@ -70,6 +73,7 @@ public class AuthService {
         user.setRole(Role.USER);
         user.setStatus(AccountStatus.ACTIVE);
         user.setSubscribed(false);
+        user.setTermsAgreeAt(LocalDateTime.now());
 
         userRepository.save(user);
     }

@@ -6,7 +6,8 @@ Content-Type: application/json
   "name": "최승환",
   "username": "이메일_인증_받을_이메일",
   "password": "test1234",
-  "nickname": "안양개발자"
+  "nickname": "안양개발자",
+  "termsAgreed": true
 }
 
 ### 2. 이메일 인증코드 발송 -자신의 진짜 이메일 입력(구글,네이버 등등)
@@ -34,7 +35,8 @@ Content-Type: application/json
   "name": "최승환",
   "username": "이메일_인증_완료한_이메일",
   "nickname": "안양개발자",
-  "password": "test1234"
+  "password": "test1234",
+  "termsAgreed": true
 }
 
 ###  같은 이메일로 일반 회원가입 - 성공 (통합연결) - 비밀번호만 넣어줌, 이름과 닉네임은 아무값넣어도 변경안됨
@@ -45,7 +47,8 @@ Content-Type: application/json
   "name": "최승환",
   "username": "이메일_인증_완료한_이메일이_소셜로그인과_동일한_이메일",
   "nickname": "새닉네임123",
-  "password": "test1234"
+  "password": "test1234",
+  "termsAgreed": true
 }
 
 
@@ -60,6 +63,18 @@ Content-Type: application/json
   "nickname": "안양원펀치"
 }
 
+###  회원가입 - 실패 (약관 동의 안 함)
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "name": "테스트유저",
+  "username": "termstest@naver.com",
+  "nickname": "약관테스트",
+  "password": "test1234",
+  "termsAgreed": false
+}
+
 ### 회원가입 - 실패: nickname 중복 (409)
 POST http://localhost:8080/api/auth/signup
 Content-Type: application/json
@@ -68,7 +83,8 @@ Content-Type: application/json
   "name": "최승환",
   "username": "중복_되지_않은_이메일",
   "password": "test1234",
-  "nickname": "안양개발자"
+  "nickname": "안양개발자",
+  "termsAgreed": true
 }
 
 ### 회원가입 - 실패: 이메일 형식 오류 (400)
@@ -79,7 +95,8 @@ Content-Type: application/json
   "name": "최승환",
   "username": "oh-yeah",
   "password": "test1234",
-  "nickname": "안양인"
+  "nickname": "안양인",
+  "termsAgreed": true
 }
 
 ### 회원가입 - 실패: 비밀번호 8자미만 (400)
@@ -90,7 +107,8 @@ Content-Type: application/json
   "name": "최승환",
   "username": "중복_되지_않는_이메일",
   "password": "1234",
-  "nickname": "안양인"
+  "nickname": "안양인",
+  "termsAgreed": true
 }
 
 ### 회원가입 - 실패: 필수값 누락 (400)
@@ -101,7 +119,8 @@ Content-Type: application/json
   "name": "",
   "username": "test@naver.com",
   "password": "test1234",
-  "nickname": "새닉네임3"
+  "nickname": "새닉네임3",
+  "termsAgreed": true
 }
 
 ### 로그인 - 성공 (200)

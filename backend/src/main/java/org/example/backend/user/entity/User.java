@@ -56,6 +56,9 @@ public class User {
     @Column(name = "withdrawn_at")
     private LocalDateTime withdrawnAt;
 
+    @Column(name = "terms_agree_at", nullable = true)
+    private LocalDateTime termsAgreeAt;
+
     // 나중에 필요시 사용할 예정
 //    @LastModifiedDate
 //    @Column(name = "updated_at",nullable = false)
