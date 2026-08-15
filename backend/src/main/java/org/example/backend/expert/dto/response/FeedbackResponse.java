@@ -18,6 +18,9 @@ public class FeedbackResponse {
     @Schema(description = "문의를 요청한 유저 ID", example = "3")
     private Long requesterId;
 
+    @Schema(description = "문의를 요청한 유저 닉네임", example = "천재적인인생계획")
+    private String requesterNickname;
+
     @Schema(description = "담당 전문가 프로필 ID", example = "1")
     private Long expertProfileId;
 
@@ -46,6 +49,7 @@ public class FeedbackResponse {
         return FeedbackResponse.builder()
                 .id(feedback.getId())
                 .requesterId(feedback.getRequester().getId())
+                .requesterNickname(feedback.getRequester().getNickname())
                 .expertProfileId(feedback.getExpertProfile().getId())
                 .topic(feedback.getTopic())
                 .status(feedback.getStatus())
