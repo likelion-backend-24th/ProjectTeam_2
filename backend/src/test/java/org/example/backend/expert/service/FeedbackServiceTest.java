@@ -126,6 +126,27 @@ class FeedbackServiceTest {
     }
 
     @Test
+    void createFeedback_박탈후재승인된전문가와_재개설_성공() {
+        // 기존에 박탈로 닫힌 스레드가 있어도(existsByRequesterIdAndExpertProfileIdAndClosedAtIsNull은
+        // 열린 스레드만 카운트하므로 false를 반환) 재승인된 전문가와는 새 스레드를 열 수 있어야 한다.
+        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+        when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
+        when(feedbackRepository.existsByRequesterIdAndExpertProfileIdAndClosedAtIsNull(1L, 99L)).thenReturn(false);
+        when(feedbackRepository.countByRequesterIdAndClosedAtIsNull(1L)).thenReturn(0L);
+        when(feedbackRepository.save(any(Feedback.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        FeedbackCreateRequest request = new FeedbackCreateRequest();
+        request.setExpertProfileId(99L);
+        request.setTopic("재개설 테스트");
+        request.setContent("박탈 후 재승인된 전문가에게 다시 문의합니다");
+
+        FeedbackResponse response = feedbackService.createFeedback(1L, request);
+
+        assertThat(response.getStatus()).isEqualTo(FeedbackStatus.PENDING);
+        verify(feedbackRepository).save(any(Feedback.class));
+    }
+
+    @Test
     void getFeedback_존재하면_상세반환() {
         Feedback feedback = Feedback.builder()
                 .requester(requester).expertProfile(approvedExpertProfile).topic("포트폴리오 피드백 요청").build();
@@ -442,4 +463,6 @@ class FeedbackServiceTest {
 
         assertThat(feedback.getStatus()).isEqualTo(FeedbackStatus.PENDING);
     }
+
+
 }
