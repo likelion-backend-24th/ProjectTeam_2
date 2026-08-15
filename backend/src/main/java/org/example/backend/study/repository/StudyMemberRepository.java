@@ -19,6 +19,8 @@ public interface StudyMemberRepository extends JpaRepository<StudyMember, Long> 
     List<StudyMember> findByStudyId(Long id);
     Page<StudyMember> findByUserId(Long userId, Pageable pageable);
     void deleteByStudyId(Long id);
+    // 회원탈퇴시 유저가 속한 모든 멤버 삭제를 위해 추가
+    void deleteByUserId(Long userId);
 
     @Query("""
         SELECT sm.study.id AS studyId, COUNT(sm) AS memberCount

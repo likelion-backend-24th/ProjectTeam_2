@@ -1,6 +1,13 @@
 package org.example.backend.user.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.backend.study.entity.Study;
+import org.example.backend.study.entity.StudyPost;
+import org.example.backend.study.entity.StudyPostComment;
+import org.example.backend.study.repository.StudyMemberRepository;
+import org.example.backend.study.repository.StudyPostCommentRepository;
+import org.example.backend.study.repository.StudyPostRepository;
+import org.example.backend.study.repository.StudyRepository;
 import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.auth.repository.RefreshTokenRepository;
 import org.example.backend.common.exception.BusinessException;
@@ -13,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 
 @Service
@@ -21,6 +29,10 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final StudyRepository studyRepository;
+    private final StudyMemberRepository studyMemberRepository;
+    private final StudyPostRepository studyPostRepository;
+    private final StudyPostCommentRepository studyPostCommentRepository;
 
     // 내 정보 조회
     public UserResponse getMyInfo(String username) {
@@ -81,6 +93,21 @@ public class UserService {
         if(user.getPassword() != null && !passwordEncoder.matches(password,user.getPassword())){
             throw new BusinessException(UserErrorCode.INVALID_CURRENT_PASSWORD);
         }
+        // 회원탈퇴자가 스터디 방장인 스터디는 소프트 딜리트
+        List<Study> leagingStudies = studyRepository.findAllByLeaderId(user.getId());
+        for(Study study : leagingStudies){
+            List<StudyPost> studyPosts = studyPostRepository.findAllByStudyId(study.getId());
+            for(StudyPost studyPost : studyPosts){
+                List<StudyPostComment> comments = studyPostCommentRepository.findAllByStudyPostId(studyPost.getId());
+                studyPostCommentRepository.deleteAll(comments);
+            }
+            studyPostRepository.deleteAll(studyPosts);
+            studyMemberRepository.deleteByStudyId(study.getId()); //멤버는 하드 딜리트임
+            studyRepository.delete(study);
+        }
+
+        // 회원탈퇴자가 속한 스터디에서 자신은 삭제해야되니까 하드딜리트
+        studyMemberRepository.deleteByUserId(user.getId());
 
         user.setName("탈퇴한사용자");
         user.setStatus(AccountStatus.WITHDRAWN);
@@ -89,8 +116,6 @@ public class UserService {
         userRepository.save(user);
 
         refreshTokenRepository.deleteByUser(user);
-
-
     }
 
 }

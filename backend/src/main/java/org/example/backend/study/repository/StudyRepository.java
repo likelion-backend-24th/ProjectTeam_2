@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface StudyRepository extends JpaRepository<Study, Long> {
     @Query(value = """
@@ -21,4 +23,7 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
                 s.createdAt DESC
     """, countQuery = "SELECT COUNT(s) FROM Study s WHERE (:keyword IS NULL OR s.title LIKE CONCAT('%', :keyword, '%'))")
     Page<Study> findAllOrderBySubscribedLeader(@Param("keyword") String keyword, Pageable pageable);
+
+    // 스터디 방장이 회원탈퇴시 소프트딜리트하기위해 추가한 메서드
+    List<Study> findAllByLeaderId(Long leaderId);
 }
