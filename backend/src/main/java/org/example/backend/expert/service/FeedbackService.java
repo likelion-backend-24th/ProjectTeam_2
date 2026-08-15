@@ -120,8 +120,9 @@ public class FeedbackService {
         // 전문가가 지금 답변하고 있다면 → 답변완료 처리한다.
         if (isExpertAnswering) {
             feedback.markAnswered();
+        } else if (isRequester) {
+            feedback.markPending();
         }
-
         return FeedbackMessageResponse.from(message);
     }
 

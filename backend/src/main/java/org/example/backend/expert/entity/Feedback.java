@@ -62,6 +62,13 @@ public class Feedback {
         if (this.status == FeedbackStatus.PENDING) {
             this.status = FeedbackStatus.ANSWERED;
             this.answeredAt = LocalDateTime.now();
+            // 상태가 왔다갔다해도 최초 답변 시각 기록은 그대로 남겨두는 쪽으로
+        }
+    }
+
+    public void markPending() {
+        if (this.status == FeedbackStatus.ANSWERED) {
+            this.status = FeedbackStatus.PENDING;
         }
     }
 
