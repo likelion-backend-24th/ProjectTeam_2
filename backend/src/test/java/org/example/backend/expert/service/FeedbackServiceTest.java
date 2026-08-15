@@ -424,4 +424,22 @@ class FeedbackServiceTest {
         assertThat(response.getFeedbacks()).hasSize(1);
         assertThat(response.getFeedbacks().get(0).getTopic()).isEqualTo("포트폴리오 피드백 요청");
     }
+
+    @Test
+    void addMessage_답변후_요청자가_추가질문하면_PENDING으로_전환() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        feedback.markAnswered();
+
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+        when(feedbackMessageRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        FeedbackMessageRequest request = new FeedbackMessageRequest();
+        request.setContent("추가로 궁금한 게 생겼어요");
+
+        feedbackService.addMessage(1L, 1L, request);
+
+        assertThat(feedback.getStatus()).isEqualTo(FeedbackStatus.PENDING);
+    }
 }
