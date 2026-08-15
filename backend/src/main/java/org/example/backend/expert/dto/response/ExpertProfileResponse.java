@@ -16,8 +16,11 @@ public class ExpertProfileResponse {
     @Schema(description = "전문가 프로필 ID", example = "1")
     private Long id;
 
-    @Schema(description = "신청자 유저 ID", example = "3")
+    @Schema(description = "전문가 유저 ID", example = "3")
     private Long userId;
+
+    @Schema(description = "전문가 이름", example = "정선우")
+    private String name;
 
     @Schema(description = "자기소개", example = "5년차 백엔드 개발자입니다.")
     private String introduction;
@@ -41,6 +44,7 @@ public class ExpertProfileResponse {
         return ExpertProfileResponse.builder()
                 .id(profile.getId())
                 .userId(profile.getUser().getId())
+                .name(profile.getUser().getName())
                 .introduction(profile.getIntroduction())
                 .careers(profile.getCareers().stream().map(career -> CareerResponse.from(career)).toList())
                 .certifications(profile.getCertifications().stream()

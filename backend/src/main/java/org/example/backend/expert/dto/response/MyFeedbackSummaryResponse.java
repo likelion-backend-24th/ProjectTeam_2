@@ -15,8 +15,8 @@ public class MyFeedbackSummaryResponse {
     @Schema(description = "문의 스레드 ID", example = "1")
     private Long feedbackId;
 
-    @Schema(description = "담당 전문가 닉네임", example = "전문개발자")
-    private String expertNickname;
+    @Schema(description = "담당 전문가 이름", example = "정선우")
+    private String expertName;
 
     @Schema(description = "문의 주제", example = "이력서 첨삭 부탁드립니다")
     private String topic;
@@ -30,7 +30,7 @@ public class MyFeedbackSummaryResponse {
     public static MyFeedbackSummaryResponse from(Feedback feedback) {
         return MyFeedbackSummaryResponse.builder()
                 .feedbackId(feedback.getId())
-                .expertNickname(feedback.getExpertProfile().getUser().getNickname())
+                .expertName(feedback.getExpertProfile().getUser().getName())
                 .topic(feedback.getTopic())
                 .status(feedback.getStatus())
                 .answeredAt(feedback.getAnsweredAt())

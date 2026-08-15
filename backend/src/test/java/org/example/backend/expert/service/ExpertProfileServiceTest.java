@@ -53,6 +53,7 @@ class ExpertProfileServiceTest {
         user = new User();
         user.setId(1L);
         user.setUsername("test@test.com");
+        user.setName("정선우");
         user.setNickname("테스터");
         user.setRole(Role.USER);
     }
@@ -223,7 +224,7 @@ class ExpertProfileServiceTest {
         var response = expertProfileService.getPublicList();
 
         assertThat(response.getExperts()).hasSize(1);
-        assertThat(response.getExperts().get(0).getNickname()).isEqualTo("테스터");
+        assertThat(response.getExperts().get(0).getName()).isEqualTo("정선우");
         assertThat(response.getExperts().get(0).getCareer()).isEqualTo("카카오 · 시니어 개발자 · 5년차");
     }
 }
