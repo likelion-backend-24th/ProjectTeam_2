@@ -840,3 +840,8 @@ Authorization: Bearer {{accessToken}}
 {
   "content": "재구독 후 메시지 재시도"
 }
+
+### 보류
+### 관리자가 25-3/25-4 전문가를 재신청 가능하게 하려면 reapply → approve 흐름 필요
+### (전문가 본인이 재신청 API 호출 후, 관리자가 다시 승인)
+### 그 다음: 같은 요청자(accessToken)로 다시 POST /api/feedbacks 시도 → 201 기대
