@@ -1,6 +1,7 @@
 package org.example.backend.auth.dto.jwt;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -29,4 +30,7 @@ public class SignupRequest {
     @NotBlank(message = "비밀번호는 필수입니다.")
     @Size(min = 8, message = "비밀번호는 최소 8자 ")
     private String password;
+
+    @Schema(description = "이용약관 및 개인정보처리방침 동의 여부 (필수 동의)", example = "true")
+    private boolean termsAgreed;
 }

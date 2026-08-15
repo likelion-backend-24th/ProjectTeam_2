@@ -15,7 +15,8 @@ public enum AuthErrorCode implements ErrorCode {
     INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다."),
     INACTIVE_ACCOUNT(HttpStatus.FORBIDDEN, "정지되었거나 탈퇴한 계정입니다."),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "유효하지 않은 refresh token입니다."),
-    OAUTH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "소셜 로그인 토큰이 유효하지 않습니다.");
+    OAUTH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "소셜 로그인 토큰이 유효하지 않습니다."),
+    TERMS_NOT_AGREED(HttpStatus.BAD_REQUEST, "이용약관 및 개인정보처리방침에 동의해야 합니다.");
 
     private final HttpStatus httpStatus;
     private final String message;
