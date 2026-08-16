@@ -19,6 +19,7 @@ import org.example.backend.study.repository.StudyPostCommentRepository;
 import org.example.backend.study.repository.StudyPostRepository;
 import org.example.backend.study.repository.StudyRepository;
 import org.example.backend.user.entity.AccountStatus;
+import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
 import org.example.backend.user.repository.UserRepository;
 import org.springframework.data.domain.Page;
@@ -58,6 +59,15 @@ public class AdminService {
         }
 
         user.setStatus(status);
+        userRepository.save(user);
+    }
+
+    //유저 role 변경
+    @Transactional
+    public void changeUserRole(Long userId, Role role){
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(AdminErrorCode.USER_NOT_FOUND));
+        user.setRole(role);
         userRepository.save(user);
     }
 
