@@ -8,6 +8,7 @@ import org.example.backend.study.repository.StudyMemberRepository;
 import org.example.backend.study.repository.StudyPostCommentRepository;
 import org.example.backend.study.repository.StudyPostRepository;
 import org.example.backend.study.repository.StudyRepository;
+import org.example.backend.subscription.service.SubscriptionService;
 import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.auth.repository.RefreshTokenRepository;
 import org.example.backend.common.exception.BusinessException;
@@ -33,7 +34,7 @@ public class UserService {
     private final StudyMemberRepository studyMemberRepository;
     private final StudyPostRepository studyPostRepository;
     private final StudyPostCommentRepository studyPostCommentRepository;
-
+    private final SubscriptionService subscriptionService;
     // 내 정보 조회
     public UserResponse getMyInfo(String username) {
         User user = userRepository.findByUsername(username)
@@ -93,6 +94,11 @@ public class UserService {
         if(user.getPassword() != null && !passwordEncoder.matches(password,user.getPassword())){
             throw new BusinessException(UserErrorCode.INVALID_CURRENT_PASSWORD);
         }
+        // 구독중이면 구독 취소
+        if (user.isSubscribed()){
+            subscriptionService.cancel(user.getId());
+        }
+
         // 회원탈퇴자가 스터디 방장인 스터디는 소프트 딜리트
         List<Study> leagingStudies = studyRepository.findAllByLeaderId(user.getId());
         for(Study study : leagingStudies){
