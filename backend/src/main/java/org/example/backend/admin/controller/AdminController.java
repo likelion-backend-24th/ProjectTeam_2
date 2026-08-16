@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.backend.admin.dto.UserRoleUpdateRequest;
 import org.example.backend.report.dto.ReportResponse;
 import org.example.backend.report.entity.ReportStatus;
 import org.example.backend.admin.dto.AdminUserResponse;
@@ -48,6 +49,16 @@ public class AdminController {
             @Valid @RequestBody UserStatusUpdateRequest request){
         adminService.changeUserStatus(id, request.getStatus());
         return ResponseEntity.ok(ApiResponse.success("유저 상태가 변경되었습니다.", null));
+    }
+
+    // 유저 권한(role) 변경
+    @Operation(summary = "유저 권한 변경", description = "특정 유저의 권한을 변경합니다.")
+    @PatchMapping("/users/{id}/role")
+    public ResponseEntity<ApiResponse<Void>> changeUserRole(
+            @PathVariable Long id,
+            @Valid @RequestBody UserRoleUpdateRequest request){
+        adminService.changeUserRole(id, request.getRole());
+        return ResponseEntity.ok(ApiResponse.success("유저 권한이 변경되었습니다.", null));
     }
 
     //게시글 소프트 딜리트 삭제
