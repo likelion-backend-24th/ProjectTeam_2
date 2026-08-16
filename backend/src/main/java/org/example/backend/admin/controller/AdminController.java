@@ -14,6 +14,7 @@ import org.example.backend.admin.service.AdminService;
 import org.example.backend.common.dto.ApiResponse;
 import org.example.backend.common.dto.Meta;
 import org.example.backend.common.dto.PageMeta;
+import org.example.backend.user.entity.Role;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -32,14 +33,17 @@ public class AdminController {
     private final AdminService adminService;
 
     //유저 목록 조회
-    @Operation(summary = "유저 목록 조회", description = "전체 유저 목록을 페이징하여 조회합니다.")
+    @Operation(summary = "유저 목록 조회", description = "닉네임/이메일 검색과 권한 필터를 적용해 전체 유저 목록을 페이징하여 조회합니다.")
     @GetMapping("/users")
     public ResponseEntity<ApiResponse<List<AdminUserResponse>>> getUsers(
-            @PageableDefault(size = 10)Pageable pageable){
-        Page<AdminUserResponse> page = adminService.getUsers(pageable);
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Role role,
+            @PageableDefault(size = 10) Pageable pageable){
+        Page<AdminUserResponse> page = adminService.getUsers(keyword, role, pageable);
         Meta meta = Meta.builder().pagination(PageMeta.from(page)).build();
-        return ResponseEntity.ok(ApiResponse.success("유저 목록 조회 성공",page.getContent(),meta));
+        return ResponseEntity.ok(ApiResponse.success("유저 목록 조회 성공", page.getContent(), meta));
     }
+
 
     //유저 상태 변경
     @Operation(summary = "유저 상태 변경", description = "특정 유저의 계정 상태를 ACTIVE 또는 SUSPENDED로 변경합니다.")

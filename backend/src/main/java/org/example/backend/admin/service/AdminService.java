@@ -43,8 +43,8 @@ public class AdminService {
     private final ReportService reportService;
 
     //유저 목록 조회
-    public Page<AdminUserResponse> getUsers(Pageable pageable){
-        return userRepository.findAll(pageable)
+    public Page<AdminUserResponse> getUsers(String keyword, Role role, Pageable pageable){
+        return userRepository.searchUsers(keyword, role, pageable)
                 .map(user -> AdminUserResponse.from(user));
     }
 
