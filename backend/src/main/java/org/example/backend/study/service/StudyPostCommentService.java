@@ -75,6 +75,19 @@ public class StudyPostCommentService {
         studyPostCommentRepository.delete(comment);
     }
 
+    @Transactional
+    public void adminDeleteStudyPostComment(Long commentId) {
+        StudyPostComment comment = studyPostCommentRepository.findById(commentId)
+                .orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_POST_COMMENT_NOT_FOUND));
+        studyPostCommentRepository.delete(comment);
+    }
+
+    @Transactional
+    public void deleteAllByStudyPost(Long studyPostId) {
+        List<StudyPostComment> comments = studyPostCommentRepository.findAllByStudyPostId(studyPostId);
+        studyPostCommentRepository.deleteAll(comments);
+    }
+
     private User getUserOrThrow(Long userId) {
         return userRepository.findById(userId).orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
     }

@@ -34,6 +34,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StudyService {
     private final StudyRepository studyRepository;
+    private final StudyPostService studyPostService;
     private final StudyMemberRepository studyMemberRepository;
     private final UserRepository userRepository;
     private final StudyImageRepository studyImageRepository;
@@ -102,7 +103,20 @@ public class StudyService {
         Study study = getStudyOrThrow(id);
         validateStudyLeader(study, userId);
 
-        studyImageRepository.deleteAllByStudyId(id);
+        deleteStudyCascade(study);
+    }
+
+    @Transactional
+    public void adminDeleteStudy(Long studyId) {
+        Study study = getStudyOrThrow(studyId);
+        deleteStudyCascade(study);
+    }
+
+    @Transactional
+    public void deleteStudyCascade(Study study) {
+        studyPostService.deleteAllByStudy(study.getId());   // 원래 없던 게시글/댓글 cascade — 버그 수정
+        studyMemberRepository.deleteByStudyId(study.getId());
+        studyImageRepository.deleteAllByStudyId(study.getId());
         studyRepository.delete(study);
     }
 
