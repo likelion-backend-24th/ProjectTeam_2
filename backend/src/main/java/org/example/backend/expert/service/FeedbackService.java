@@ -1,6 +1,7 @@
 package org.example.backend.expert.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.backend.auth.service.EmailService;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.expert.dto.request.FeedbackCreateRequest;
 import org.example.backend.expert.dto.request.FeedbackMessageRequest;
@@ -36,6 +37,7 @@ public class FeedbackService {
     private final FeedbackMessageRepository feedbackMessageRepository;
     private final ExpertProfileRepository expertProfileRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     @Transactional
     public FeedbackResponse createFeedback(Long requesterId, FeedbackCreateRequest request) {
@@ -120,6 +122,7 @@ public class FeedbackService {
         // 전문가가 지금 답변하고 있다면 → 답변완료 처리한다.
         if (isExpertAnswering) {
             feedback.markAnswered();
+            emailService.sendFeedbackAnswered(feedback.getRequester().getUsername(), feedback.getTopic());
         } else if (isRequester) {
             feedback.markPending();
         }

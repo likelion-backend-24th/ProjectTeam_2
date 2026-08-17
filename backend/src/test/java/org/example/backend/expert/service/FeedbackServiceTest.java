@@ -40,6 +40,7 @@ import org.example.backend.user.entity.AccountStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.PageImpl;
+import org.example.backend.auth.service.EmailService;
 
 @ExtendWith(MockitoExtension.class)
 class FeedbackServiceTest {
@@ -52,6 +53,8 @@ class FeedbackServiceTest {
     private ExpertProfileRepository expertProfileRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private FeedbackService feedbackService;
@@ -64,6 +67,7 @@ class FeedbackServiceTest {
     void setUp() {
         requester = new User();
         requester.setId(1L);
+        requester.setUsername("test@test.com");
         requester.setRole(Role.USER);
         requester.setSubscribed(true);
         requester.setStatus(AccountStatus.ACTIVE);
@@ -201,7 +205,7 @@ class FeedbackServiceTest {
     @Test
     void addMessage_전문가가_답변하면_ANSWERED로_전환() {
         Feedback feedback = Feedback.builder()
-                .requester(requester).expertProfile(approvedExpertProfile).build();
+                .requester(requester).expertProfile(approvedExpertProfile).topic("포트폴리오 피드백 요청").build();
         when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
         when(userRepository.findById(2L)).thenReturn(Optional.of(expertUser));
         when(feedbackMessageRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -212,6 +216,7 @@ class FeedbackServiceTest {
         feedbackService.addMessage(2L, 1L, request);
 
         assertThat(feedback.getStatus()).isEqualTo(FeedbackStatus.ANSWERED);
+        verify(emailService).sendFeedbackAnswered("test@test.com", "포트폴리오 피드백 요청");
     }
 
     @Test
@@ -462,6 +467,7 @@ class FeedbackServiceTest {
         feedbackService.addMessage(1L, 1L, request);
 
         assertThat(feedback.getStatus()).isEqualTo(FeedbackStatus.PENDING);
+        verify(emailService, never()).sendFeedbackAnswered(any(), any());
     }
 
 

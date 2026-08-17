@@ -1,6 +1,7 @@
 package org.example.backend.expert.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.backend.auth.service.EmailService;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.expert.dto.response.*;
 import org.example.backend.expert.dto.request.ExpertSignupRequest;
@@ -26,6 +27,7 @@ public class ExpertProfileService {
     private final ExpertProfileRepository expertProfileRepository;
     private final UserRepository userRepository;
     private final FeedbackService feedbackService;
+    private final EmailService emailService;
 
     @Transactional
     public ExpertSignupResponse signup(Long userId, ExpertSignupRequest request) {
@@ -33,8 +35,7 @@ public class ExpertProfileService {
                 .map(profile -> {
                     profile.reapply();
                     profile.updateIntroduction(request.getIntroduction());
-                    applyCareersAndCertifications(profile, request);
-                    // dirty checking으로 자동 update 수행
+                    applyCareersAndCertifications(profile, request); // dirty checking으로 자동 update 수행
                     return ExpertSignupResponse.from(profile);
                 })
                 .orElseGet(() -> {
@@ -54,8 +55,8 @@ public class ExpertProfileService {
     public ExpertProfileResponse approve(Long expertProfileId) {
         ExpertProfile profile = getProfileOrThrow(expertProfileId);
         profile.approve();
-        profile.getUser().setRole(Role.EXPERT);
-        // dirty checking
+        profile.getUser().setRole(Role.EXPERT); // dirty checking
+        emailService.sendExpertApproved(profile.getUser().getUsername());
         return ExpertProfileResponse.from(profile);
     }
 
@@ -63,6 +64,7 @@ public class ExpertProfileService {
     public ExpertProfileResponse reject(Long expertProfileId, String reason) {
         ExpertProfile profile = getProfileOrThrow(expertProfileId);
         profile.reject(reason);
+        emailService.sendExpertRejected(profile.getUser().getUsername());
         return ExpertProfileResponse.from(profile);
     }
 
