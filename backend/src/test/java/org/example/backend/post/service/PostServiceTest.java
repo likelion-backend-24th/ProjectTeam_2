@@ -1,5 +1,6 @@
 package org.example.backend.post.service;
 
+import org.example.backend.comment.entity.Comment;
 import org.example.backend.comment.repository.CommentRepository;
 import org.example.backend.post.entity.Post;
 import org.example.backend.post.entity.PostCategory;
@@ -21,7 +22,6 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
@@ -59,7 +59,7 @@ class PostServiceTest {
     }
 
     @Test
-    void ADMIN이면_작성자_본인이_아니어도_삭제가_허용된다() {
+    void ADMIN이어도_작성자_본인이_아니면_일반_삭제는_거부된다() {
         // given: 작성자는 1번 유저, 삭제 시도자는 ADMIN 권한의 3번 유저
         User author = new User();
         author.setId(1L);
@@ -74,9 +74,35 @@ class PostServiceTest {
 
         when(postRepository.findById(100L)).thenReturn(Optional.of(post));
 
-        // when & then: ADMIN이면 예외 없이 삭제가 통과되어야 한다
-        assertThatCode(() -> postService.deletePost(100L, admin))
-                .doesNotThrowAnyException();
+        // when & then: 일반 deletePost는 소유자만 허용 — ADMIN도 본인 글이 아니면 거부된다.
+        // 관리자 강제 삭제는 adminDeletePost 전용 경로로만 가능하다.
+        assertThatThrownBy(() -> postService.deletePost(100L, admin))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(PostErrorCode.POST_ACCESS_DENIED);
+    }
+
+    @Test
+    void adminDeletePost는_소유권_체크_없이_삭제하고_딸린_댓글도_함께_지운다() {
+        // given
+        User author = new User();
+        author.setId(1L);
+
+        Post post = new Post();
+        post.setId(100L);
+        post.setUser(author);
+
+        Comment comment = new Comment();
+        comment.setId(1L);
+
+        when(postRepository.findById(100L)).thenReturn(Optional.of(post));
+        when(commentRepository.findAllByPostId(100L)).thenReturn(List.of(comment));
+
+        // when
+        postService.adminDeletePost(100L);
+
+        // then
+        org.mockito.Mockito.verify(commentRepository).deleteAll(List.of(comment));
+        org.mockito.Mockito.verify(postRepository).delete(post);
     }
 
     @Test

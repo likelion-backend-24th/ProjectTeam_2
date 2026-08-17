@@ -12,7 +12,6 @@ import org.example.backend.post.entity.Post;
 import org.example.backend.post.entity.PostCategory;
 import org.example.backend.post.exception.PostErrorCode;
 import org.example.backend.post.repository.PostRepository;
-import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -72,8 +71,8 @@ public class PostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(PostErrorCode.POST_NOT_FOUND));
 
-        // 권한 체크: 작성자 본인이거나 ADMIN이면 허용 (F-06)
-        if (!isOwnerOrAdmin(post, requester)) {
+        // 권한 체크: 작성자 본인만 허용 (관리자는 /api/admin/** 전용 강제 경로를 씀)
+        if (!isOwner(post, requester)) {
             throw new BusinessException(PostErrorCode.POST_ACCESS_DENIED);
         }
 
@@ -88,8 +87,8 @@ public class PostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(PostErrorCode.POST_NOT_FOUND));
 
-        // 권한 체크: 작성자 본인이거나 ADMIN이면 허용 (F-06)
-        if (!isOwnerOrAdmin(post, requester)) {
+        // 권한 체크: 작성자 본인만 허용 (관리자는 /api/admin/** 전용 강제 경로를 씀)
+        if (!isOwner(post, requester)) {
             throw new BusinessException(PostErrorCode.POST_ACCESS_DENIED);
         }
 
@@ -111,9 +110,7 @@ public class PostService {
         postRepository.delete(post);
     }
 
-    private boolean isOwnerOrAdmin(Post post, User requester) {
-        boolean isOwner = post.getUser().getId().equals(requester.getId());
-        boolean isAdmin = requester.getRole() == Role.ADMIN;
-        return isOwner || isAdmin;
+    private boolean isOwner(Post post, User requester) {
+        return post.getUser().getId().equals(requester.getId());
     }
 }
