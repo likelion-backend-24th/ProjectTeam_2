@@ -16,7 +16,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
@@ -58,7 +57,7 @@ class CommentServiceTest {
     }
 
     @Test
-    void ADMIN이면_작성자_본인이_아니어도_삭제가_허용된다() {
+    void ADMIN이어도_작성자_본인이_아니면_일반_삭제는_거부된다() {
         // given: 1번 게시글에 달린, 작성자는 1번 유저, 삭제 시도자는 ADMIN 권한의 3번 유저
         Post post = new Post();
         post.setId(1L);
@@ -77,9 +76,30 @@ class CommentServiceTest {
 
         when(commentRepository.findById(100L)).thenReturn(Optional.of(comment));
 
-        // when & then: ADMIN이면 예외 없이 삭제가 통과되어야 한다
-        assertThatCode(() -> commentService.deleteComment(1L, 100L, admin))
-                .doesNotThrowAnyException();
+        // when & then: 일반 deleteComment는 소유자만 허용 — ADMIN도 본인 댓글이 아니면 거부된다.
+        // 관리자 강제 삭제는 adminDeleteComment 전용 경로로만 가능하다.
+        assertThatThrownBy(() -> commentService.deleteComment(1L, 100L, admin))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(CommentErrorCode.COMMENT_ACCESS_DENIED);
+    }
+
+    @Test
+    void adminDeleteComment는_소유권_체크_없이_삭제한다() {
+        // given
+        User author = new User();
+        author.setId(1L);
+
+        Comment comment = new Comment();
+        comment.setId(100L);
+        comment.setUser(author);
+
+        when(commentRepository.findById(100L)).thenReturn(Optional.of(comment));
+
+        // when
+        commentService.adminDeleteComment(100L);
+
+        // then
+        org.mockito.Mockito.verify(commentRepository).delete(comment);
     }
 
     @Test

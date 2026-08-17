@@ -11,7 +11,6 @@ import org.example.backend.comment.entity.Comment;
 import org.example.backend.post.entity.Post;
 import org.example.backend.post.repository.PostRepository;
 import org.example.backend.post.exception.PostErrorCode;
-import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,8 +48,8 @@ public class CommentService {
             throw new BusinessException(CommentErrorCode.COMMENT_POST_MISMATCH);
         }
 
-        // 권한 체크: 작성자 본인이거나 ADMIN이면 허용 (F-08)
-        if (!isOwnerOrAdmin(comment, requester)) {
+        // 권한 체크: 작성자 본인만 허용 (관리자는 /api/admin/** 전용 강제 경로를 씀)
+        if (!isOwner(comment, requester)) {
             throw new BusinessException(CommentErrorCode.COMMENT_ACCESS_DENIED);
         }
 
@@ -67,8 +66,8 @@ public class CommentService {
             throw new BusinessException(CommentErrorCode.COMMENT_POST_MISMATCH);
         }
 
-        // 권한 체크: 작성자 본인이거나 ADMIN이면 허용 (F-08)
-        if (!isOwnerOrAdmin(comment, requester)) {
+        // 권한 체크: 작성자 본인만 허용 (관리자는 /api/admin/** 전용 강제 경로를 씀)
+        if (!isOwner(comment, requester)) {
             throw new BusinessException(CommentErrorCode.COMMENT_ACCESS_DENIED);
         }
 
@@ -83,9 +82,7 @@ public class CommentService {
         commentRepository.delete(comment);
     }
 
-    private boolean isOwnerOrAdmin(Comment comment, User requester) {
-        boolean isOwner = comment.getUser().getId().equals(requester.getId());
-        boolean isAdmin = requester.getRole() == Role.ADMIN;
-        return isOwner || isAdmin;
+    private boolean isOwner(Comment comment, User requester) {
+        return comment.getUser().getId().equals(requester.getId());
     }
 }
