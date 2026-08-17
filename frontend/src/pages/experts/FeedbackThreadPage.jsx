@@ -8,9 +8,8 @@ import { getAvatarColor } from '../../utils/avatarColor'
 import { formatDateTime } from '../../utils/formatDate'
 import styles from './FeedbackThreadPage.module.css'
 
-// 문의 스레드 상세(채팅). 백엔드가 상대방 닉네임을 안 내려줘서, 요청자 화면일 땐
-// expertProfileId로 전문가 프로필을 별도 조회하고, 전문가 화면일 땐 상대 닉네임을 알 방법이
-// 없어 "요청자 #id"로 표시한다.
+// 문의 스레드 상세(채팅). 요청자 화면일 땐 expertProfileId로 전문가 프로필을 별도 조회하고,
+// 전문가 화면일 땐 피드백 응답에 포함된 요청자 닉네임을 그대로 사용한다.
 export default function FeedbackThreadPage() {
   const { feedbackId } = useParams()
   const { user } = useAuth()
@@ -48,7 +47,7 @@ export default function FeedbackThreadPage() {
       .then((feedbackData) => {
         if (ignore || !user) return
         if (feedbackData.requesterId !== user.id) {
-          setOtherParty({ nickname: `요청자 #${feedbackData.requesterId}` })
+          setOtherParty({ nickname: feedbackData.requesterNickname })
           return
         }
         return expertApi.getExpertDetail(feedbackData.expertProfileId).then(({ data }) => {

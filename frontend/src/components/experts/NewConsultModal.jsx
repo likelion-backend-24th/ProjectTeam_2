@@ -77,12 +77,12 @@ export default function NewConsultModal({ experts, preselected, onClose, onCreat
                     className={styles.expertRow}
                     onClick={() => setSelectedExpert(expert)}
                   >
-                    <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(expert.nickname) }}>
-                      {expert.nickname?.[0]}
+                    <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(expert.name) }}>
+                      {expert.name?.[0]}
                     </span>
                     <div className={styles.expertRowBody}>
                       <div className={styles.nameRow}>
-                        <span className={styles.name}>{expert.nickname}</span>
+                        <span className={styles.name}>{expert.name}</span>
                         <span className={styles.badge}>전문가</span>
                       </div>
                       <p className={styles.career}>{expert.career ?? '경력 정보 없음'}</p>
@@ -96,11 +96,11 @@ export default function NewConsultModal({ experts, preselected, onClose, onCreat
         ) : (
           <>
             <div className={styles.selectedExpertCard}>
-              <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(selectedExpert.nickname) }}>
-                {selectedExpert.nickname?.[0]}
+              <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(selectedExpert.name) }}>
+                {selectedExpert.name?.[0]}
               </span>
               <div>
-                <p className={styles.name}>{selectedExpert.nickname}</p>
+                <p className={styles.name}>{selectedExpert.name}</p>
                 {selectedExpert.career && <p className={styles.career}>{selectedExpert.career}</p>}
               </div>
             </div>

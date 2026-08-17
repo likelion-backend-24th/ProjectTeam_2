@@ -216,11 +216,11 @@ function DashboardTab({ onGoToExperts }) {
             <div className={styles.list}>
               {expertPreview.map((expert) => (
                 <div key={expert.id} className={styles.row}>
-                  <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(String(expert.userId)) }}>
-                    {expert.userId}
+                  <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(expert.name) }}>
+                    {expert.name?.[0]}
                   </span>
                   <div className={styles.rowMain}>
-                    <p className={styles.rowTitle}>신청자 #{expert.userId}</p>
+                    <p className={styles.rowTitle}>{expert.name}</p>
                     <span className={styles.rowMeta}>
                       {expert.careers[0]
                         ? `${expert.careers[0].companyName} · ${expert.careers[0].position} · ${expert.careers[0].years}년차`
@@ -488,7 +488,7 @@ function ExpertReviewTab({ onPendingCountChange }) {
   const selected = experts.find((e) => e.id === selectedId) ?? null
 
   async function handleApprove(expert) {
-    if (!window.confirm(`신청자 #${expert.userId}를 전문가로 승인할까요?`)) return
+    if (!window.confirm(`${expert.name}님을 전문가로 승인할까요?`)) return
     setActingId(expert.id)
     try {
       await expertApi.approveExpert(expert.id)
@@ -587,11 +587,11 @@ function ExpertReviewTab({ onPendingCountChange }) {
           </div>
 
           <div className={styles.detailProfile}>
-            <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(String(selected.userId)) }}>
-              {selected.userId}
+            <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(selected.name) }}>
+              {selected.name?.[0]}
             </span>
             <div>
-              <p className={styles.rowTitle}>신청자 #{selected.userId}</p>
+              <p className={styles.rowTitle}>{selected.name}</p>
               <ExpertStatusBadge status={selected.status} />
             </div>
           </div>
@@ -693,11 +693,11 @@ function ExpertRow({ expert, active, onClick, actions }) {
         }
       }}
     >
-      <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(String(expert.userId)) }}>
-        {expert.userId}
+      <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(expert.name) }}>
+        {expert.name?.[0]}
       </span>
       <div className={styles.rowMain}>
-        <p className={styles.rowTitle}>신청자 #{expert.userId}</p>
+        <p className={styles.rowTitle}>{expert.name}</p>
         <span className={styles.rowMeta}>
           {expert.careers[0]
             ? `${expert.careers[0].companyName} · ${expert.careers[0].position} · ${expert.careers[0].years}년차`
