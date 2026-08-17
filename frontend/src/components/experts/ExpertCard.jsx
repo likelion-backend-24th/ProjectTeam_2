@@ -7,11 +7,11 @@ export default function ExpertCard({ expert, onClick }) {
   return (
     <button type="button" className={styles.card} onClick={() => onClick(expert.expertId)}>
       <div className={styles.head}>
-        <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(expert.nickname) }}>
-          {expert.nickname?.[0]}
+        <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(expert.name) }}>
+          {expert.name?.[0]}
         </span>
         <div>
-          <p className={styles.name}>{expert.nickname}</p>
+          <p className={styles.name}>{expert.name}</p>
           <span className={styles.badge}>
             <Star size={10} />
             전문가

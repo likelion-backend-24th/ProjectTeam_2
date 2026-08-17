@@ -94,7 +94,7 @@ export default function ExpertConsultPage() {
     setProfileExpertId(expertId)
   }
 
-  function handleStartConsult(expertId, nickname) {
+  function handleStartConsult(expertId, name) {
     if (!isAuthenticated) {
       navigate('/login', { state: { from: location } })
       return
@@ -104,7 +104,7 @@ export default function ExpertConsultPage() {
       return
     }
     setProfileExpertId(null)
-    setConsultModal({ preselected: { expertId, nickname } })
+    setConsultModal({ preselected: { expertId, name } })
   }
 
   function handleNewConsultClick() {
@@ -190,13 +190,13 @@ export default function ExpertConsultPage() {
                       >
                         <span
                           className={styles.avatar}
-                          style={{ backgroundColor: getAvatarColor(feedback.expertNickname) }}
+                          style={{ backgroundColor: getAvatarColor(feedback.expertName) }}
                         >
-                          {feedback.expertNickname?.[0]}
+                          {feedback.expertName?.[0]}
                         </span>
                         <div className={styles.threadBody}>
                           <div className={styles.threadTopRow}>
-                            <span className={styles.threadName}>{feedback.expertNickname}</span>
+                            <span className={styles.threadName}>{feedback.expertName}</span>
                           </div>
                           <p className={styles.threadTopic}>{feedback.topic}</p>
                         </div>
@@ -319,14 +319,14 @@ function FeedbackGroup({ title, feedbacks, onClick }) {
         <div className={styles.threadList}>
           {feedbacks.map((feedback) => (
             <button key={feedback.id} type="button" className={styles.threadRow} onClick={() => onClick(feedback.id)}>
-              <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(String(feedback.requesterId)) }}>
-                ?
+              <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(feedback.requesterNickname) }}>
+                {feedback.requesterNickname?.[0]}
               </span>
               <div className={styles.threadBody}>
                 <div className={styles.threadTopRow}>
                   <span className={styles.threadName}>{feedback.topic}</span>
                 </div>
-                <p className={styles.threadTopic}>요청자 #{feedback.requesterId}</p>
+                <p className={styles.threadTopic}>{feedback.requesterNickname}</p>
               </div>
               <div className={styles.threadMeta}>
                 <span className={styles.threadDate}>{formatDate(feedback.createdAt)}</span>
