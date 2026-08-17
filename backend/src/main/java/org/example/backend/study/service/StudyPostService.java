@@ -99,7 +99,27 @@ public class StudyPostService {
         StudyPost post = getStudyPostOrThrow(id, postId);
         validatePostOwner(post, userId);
 
-        studyPostImageRepository.deleteAllByStudyPostId(postId);
+        deleteStudyPostCascade(post);
+    }
+
+    @Transactional
+    public void adminDeleteStudyPost(Long postId) {
+        StudyPost post = studyPostRepository.findById(postId)
+                .orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_POST_NOT_FOUND));
+        deleteStudyPostCascade(post);
+    }
+
+    @Transactional
+    public void deleteAllByStudy(Long studyId) {
+        List<StudyPost> posts = studyPostRepository.findAllByStudyId(studyId);
+        for (StudyPost post : posts) {
+            deleteStudyPostCascade(post);
+        }
+    }
+
+    private void deleteStudyPostCascade(StudyPost post) {
+        studyPostCommentService.deleteAllByStudyPost(post.getId());  // 원래 없던 댓글 cascade — 버그 수정
+        studyPostImageRepository.deleteAllByStudyPostId(post.getId());
         studyPostRepository.delete(post);
     }
 

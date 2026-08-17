@@ -1,18 +1,17 @@
 package org.example.backend.user.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.backend.auth.repository.RefreshTokenRepository;
+import org.example.backend.common.exception.BusinessException;
 import org.example.backend.study.entity.Study;
-import org.example.backend.study.entity.StudyPost;
-import org.example.backend.study.entity.StudyPostComment;
 import org.example.backend.study.repository.StudyMemberRepository;
 import org.example.backend.study.repository.StudyPostCommentRepository;
 import org.example.backend.study.repository.StudyPostRepository;
 import org.example.backend.study.repository.StudyRepository;
+import org.example.backend.study.service.StudyService;
 import org.example.backend.subscription.service.SubscriptionService;
-import org.example.backend.user.entity.AccountStatus;
-import org.example.backend.auth.repository.RefreshTokenRepository;
-import org.example.backend.common.exception.BusinessException;
 import org.example.backend.user.dto.UserResponse;
+import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.User;
 import org.example.backend.user.exception.UserErrorCode;
 import org.example.backend.user.repository.UserRepository;
@@ -30,6 +29,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final StudyService studyService;
     private final StudyRepository studyRepository;
     private final StudyMemberRepository studyMemberRepository;
     private final StudyPostRepository studyPostRepository;
@@ -100,16 +100,9 @@ public class UserService {
         }
 
         // 회원탈퇴자가 스터디 방장인 스터디는 소프트 딜리트
-        List<Study> leagingStudies = studyRepository.findAllByLeaderId(user.getId());
-        for(Study study : leagingStudies){
-            List<StudyPost> studyPosts = studyPostRepository.findAllByStudyId(study.getId());
-            for(StudyPost studyPost : studyPosts){
-                List<StudyPostComment> comments = studyPostCommentRepository.findAllByStudyPostId(studyPost.getId());
-                studyPostCommentRepository.deleteAll(comments);
-            }
-            studyPostRepository.deleteAll(studyPosts);
-            studyMemberRepository.deleteByStudyId(study.getId()); //멤버는 하드 딜리트임
-            studyRepository.delete(study);
+        List<Study> leadingStudies = studyRepository.findAllByLeaderId(user.getId());
+        for (Study study : leadingStudies) {
+            studyService.deleteStudyCascade(study);   // ← 기존 8줄짜리 중복 로직 대신 재사용
         }
 
         // 회원탈퇴자가 속한 스터디에서 자신은 삭제해야되니까 하드딜리트

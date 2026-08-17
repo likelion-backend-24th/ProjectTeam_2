@@ -3,21 +3,18 @@ package org.example.backend.admin.service;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.admin.dto.AdminUserResponse;
 import org.example.backend.admin.exception.AdminErrorCode;
-import org.example.backend.comment.entity.Comment;
-import org.example.backend.comment.repository.CommentRepository;
+import org.example.backend.comment.service.CommentService;
 import org.example.backend.common.exception.BusinessException;
-import org.example.backend.post.entity.Post;
-import org.example.backend.post.repository.PostRepository;
+import org.example.backend.expert.dto.response.ExpertProfileResponse;
+import org.example.backend.expert.entity.ExpertStatus;
+import org.example.backend.expert.service.ExpertProfileService;
+import org.example.backend.post.service.PostService;
 import org.example.backend.report.dto.ReportResponse;
 import org.example.backend.report.entity.ReportStatus;
 import org.example.backend.report.service.ReportService;
-import org.example.backend.study.entity.Study;
-import org.example.backend.study.entity.StudyPost;
-import org.example.backend.study.entity.StudyPostComment;
-import org.example.backend.study.repository.StudyMemberRepository;
-import org.example.backend.study.repository.StudyPostCommentRepository;
-import org.example.backend.study.repository.StudyPostRepository;
-import org.example.backend.study.repository.StudyRepository;
+import org.example.backend.study.service.StudyPostCommentService;
+import org.example.backend.study.service.StudyPostService;
+import org.example.backend.study.service.StudyService;
 import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
@@ -27,20 +24,18 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 public class AdminService {
 
     private final UserRepository userRepository;
-    private final PostRepository postRepository;
-    private final CommentRepository commentRepository;
-    private final StudyRepository studyRepository;
-    private final StudyPostRepository studyPostRepository;
-    private final StudyPostCommentRepository studyPostCommentRepository;
-    private final StudyMemberRepository studyMemberRepository;
+    private final PostService postService;
+    private final CommentService commentService;
     private final ReportService reportService;
+    private final ExpertProfileService expertProfileService;
+    private final StudyService studyService;
+    private final StudyPostService studyPostService;
+    private final StudyPostCommentService studyPostCommentService;
 
     //유저 목록 조회
     public Page<AdminUserResponse> getUsers(String keyword, Role role, Pageable pageable){
@@ -74,61 +69,51 @@ public class AdminService {
     // 게시글 소프트 딜리트 (게시물에 딸린 댓글도 소프트 딜리트)
     @Transactional
     public void deletePost(Long postId){
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new BusinessException(AdminErrorCode.POST_NOT_FOUND));
-
-        List<Comment> comments = commentRepository.findAllByPostId(postId);
-        commentRepository.deleteAll(comments);
-
-        postRepository.delete(post);
+        postService.adminDeletePost(postId);
     }
 
     //댓글 소프트 딜리트
     @Transactional
     public void deleteComment(Long commentId){
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new BusinessException(AdminErrorCode.COMMENT_NOT_FOUND));
-
-        commentRepository.delete(comment);
+        commentService.adminDeleteComment(commentId);
     }
 
     //스터디 소프트 딜리트 (연관된 게시글, 댓글, 멤버까지)
     @Transactional
     public void deleteStudy(Long studyId){
-        Study study = studyRepository.findById(studyId)
-                .orElseThrow(() -> new BusinessException(AdminErrorCode.STUDY_NOT_FOUND));
-
-        List<StudyPost> studyPosts = studyPostRepository.findAllByStudyId(studyId);
-        for (StudyPost studyPost : studyPosts) {
-            List<StudyPostComment> comments = studyPostCommentRepository.findAllByStudyPostId(studyPost.getId());
-            studyPostCommentRepository.deleteAll(comments);
-        }
-        studyPostRepository.deleteAll(studyPosts);
-        //멤버는 강제삭제
-        studyMemberRepository.deleteByStudyId(studyId);
-
-        studyRepository.delete(study);
+        studyService.adminDeleteStudy(studyId);
     }
 
     //스터디 게시글 소프트 딜리트 (연관된 댓글까지 함께)
     @Transactional
     public void deleteStudyPost(Long studyPostId){
-        StudyPost studyPost = studyPostRepository.findById(studyPostId)
-                .orElseThrow(() -> new BusinessException(AdminErrorCode.STUDY_POST_NOT_FOUND));
-
-        List<StudyPostComment> comments = studyPostCommentRepository.findAllByStudyPostId(studyPostId);
-        studyPostCommentRepository.deleteAll(comments);
-
-        studyPostRepository.delete(studyPost);
+        studyPostService.adminDeleteStudyPost(studyPostId);
     }
 
     //스터디 게시글 댓글 소프트 딜리트
     @Transactional
     public void deleteStudyPostComment(Long commentId){
-        StudyPostComment comment = studyPostCommentRepository.findById(commentId)
-                .orElseThrow(() -> new BusinessException(AdminErrorCode.STUDY_POST_COMMENT_NOT_FOUND));
+        studyPostCommentService.adminDeleteStudyPostComment(commentId);
+    }
 
-        studyPostCommentRepository.delete(comment);
+    // 전문가 목록 조회
+    public Page<ExpertProfileResponse> getList(ExpertStatus status, Pageable pageable) {
+        return expertProfileService.getList(status, pageable);
+    }
+
+    // 전문가 승인
+    public ExpertProfileResponse approve(Long expertProfileId) {
+        return expertProfileService.approve(expertProfileId);
+    }
+
+    // 전문가 거절
+    public ExpertProfileResponse reject(Long expertProfileId, String reason) {
+        return expertProfileService.reject(expertProfileId, reason);
+    }
+
+    // 전문가 자격 박탈
+    public void revoke(Long expertProfileId, String reason) {
+        expertProfileService.revoke(expertProfileId, reason);
     }
 
     //신고 목록 조회 (status로 필터링, status가 null이면 전체 조회)

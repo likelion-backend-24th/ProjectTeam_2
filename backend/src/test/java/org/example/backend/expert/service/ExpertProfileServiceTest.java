@@ -2,10 +2,10 @@ package org.example.backend.expert.service;
 
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.expert.dto.request.CareerRequest;
-import org.example.backend.expert.dto.response.ExpertListResponse;
 import org.example.backend.expert.dto.response.ExpertProfileResponse;
 import org.example.backend.expert.dto.request.ExpertSignupRequest;
 import org.example.backend.expert.dto.response.ExpertSignupResponse;
+import org.example.backend.expert.dto.response.PublicExpertResponse;
 import org.example.backend.expert.entity.Career;
 import org.example.backend.expert.entity.ExpertProfile;
 import org.example.backend.expert.entity.ExpertStatus;
@@ -21,6 +21,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -203,15 +207,16 @@ class ExpertProfileServiceTest {
     }
 
     @Test
-    void getList_상태null이면_findAll_호출하고_experts로_감싸서_반환() {
+    void getList_상태null이면_findAll_호출하고_페이지로_반환() {
         ExpertProfile profile = ExpertProfile.builder().user(user).introduction("소개").build();
-        when(expertProfileRepository.findAll()).thenReturn(List.of(profile));
+        Pageable pageable = PageRequest.of(0, 20);
+        when(expertProfileRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(profile)));
 
-        ExpertListResponse response = expertProfileService.getList(null);
+        Page<ExpertProfileResponse> response = expertProfileService.getList(null, pageable);
 
-        assertThat(response.getExperts()).hasSize(1);
-        verify(expertProfileRepository).findAll();
-        verify(expertProfileRepository, never()).findByStatus(any());
+        assertThat(response.getContent()).hasSize(1);
+        verify(expertProfileRepository).findAll(pageable);
+        verify(expertProfileRepository, never()).findByStatus(any(), any());
     }
 
     @Test
@@ -225,12 +230,14 @@ class ExpertProfileServiceTest {
                 .jobField(JobField.IT_DEVELOPMENT)
                 .build());
         profile.approve();
-        when(expertProfileRepository.findByStatus(ExpertStatus.APPROVED)).thenReturn(List.of(profile));
+        Pageable pageable = PageRequest.of(0, 20);
+        when(expertProfileRepository.findByStatus(ExpertStatus.APPROVED, pageable))
+                .thenReturn(new PageImpl<>(List.of(profile)));
 
-        var response = expertProfileService.getPublicList();
+        Page<PublicExpertResponse> response = expertProfileService.getPublicList(pageable);
 
-        assertThat(response.getExperts()).hasSize(1);
-        assertThat(response.getExperts().get(0).getName()).isEqualTo("정선우");
-        assertThat(response.getExperts().get(0).getCareer()).isEqualTo("카카오 · 시니어 개발자 · 5년차");
+        assertThat(response.getContent()).hasSize(1);
+        assertThat(response.getContent().get(0).getName()).isEqualTo("정선우");
+        assertThat(response.getContent().get(0).getCareer()).isEqualTo("카카오 · 시니어 개발자 · 5년차");
     }
 }
