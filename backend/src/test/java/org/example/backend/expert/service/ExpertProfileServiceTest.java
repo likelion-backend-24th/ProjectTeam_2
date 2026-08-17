@@ -31,6 +31,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.example.backend.auth.service.EmailService;
 
 @ExtendWith(MockitoExtension.class)
 class ExpertProfileServiceTest {
@@ -42,6 +43,8 @@ class ExpertProfileServiceTest {
     private ExpertProfileRepository expertProfileRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private ExpertProfileService expertProfileService;
@@ -132,6 +135,7 @@ class ExpertProfileServiceTest {
 
         assertThat(response.getStatus()).isEqualTo(ExpertStatus.APPROVED);
         assertThat(user.getRole()).isEqualTo(Role.EXPERT);
+        verify(emailService).sendExpertApproved(user.getUsername());
     }
 
     @Test
@@ -143,6 +147,8 @@ class ExpertProfileServiceTest {
 
         assertThat(response.getStatus()).isEqualTo(ExpertStatus.REJECTED);
         assertThat(response.getRejectReason()).isEqualTo("경력 부족");
+        verify(emailService).sendExpertRejected(user.getUsername());
+
     }
 
     @Test

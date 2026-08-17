@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import org.example.backend.user.entity.AccountStatus;
+import org.example.backend.auth.service.EmailService;
 
 @ExtendWith(MockitoExtension.class)
 class SubscriptionServiceTest {
@@ -32,6 +33,8 @@ class SubscriptionServiceTest {
     private SubscriptionRepository subscriptionRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private SubscriptionService subscriptionService;
@@ -61,6 +64,7 @@ class SubscriptionServiceTest {
         assertThat(response.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
         assertThat(response.getExpiredAt()).isEqualTo(response.getStartedAt().plusMonths(1));
         assertThat(user.isSubscribed()).isTrue();
+        verify(emailService).sendSubscriptionStarted(user.getUsername());
     }
 
     @Test
@@ -96,6 +100,7 @@ class SubscriptionServiceTest {
 
         assertThat(response.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
         assertThat(user.isSubscribed()).isFalse();
+        verify(emailService).sendSubscriptionCancelled(user.getUsername());
     }
 
     @Test

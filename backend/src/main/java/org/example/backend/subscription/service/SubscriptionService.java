@@ -1,6 +1,7 @@
 package org.example.backend.subscription.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.backend.auth.service.EmailService;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.subscription.dto.response.SubscriptionResponse;
 import org.example.backend.subscription.entity.Subscription;
@@ -22,6 +23,7 @@ public class SubscriptionService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     @Transactional
     public SubscriptionResponse subscribe(Long userId) {
@@ -44,6 +46,7 @@ public class SubscriptionService {
         subscriptionRepository.save(subscription);
 
         user.setSubscribed(true);
+        emailService.sendSubscriptionStarted(user.getUsername());
 
         return SubscriptionResponse.from(subscription);
     }
@@ -57,6 +60,7 @@ public class SubscriptionService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.USER_NOT_FOUND));
         user.setSubscribed(false);
+        emailService.sendSubscriptionCancelled(user.getUsername());
 
         return SubscriptionResponse.from(subscription);
     }
