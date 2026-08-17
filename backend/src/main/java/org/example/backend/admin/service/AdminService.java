@@ -6,6 +6,9 @@ import org.example.backend.admin.exception.AdminErrorCode;
 import org.example.backend.comment.entity.Comment;
 import org.example.backend.comment.repository.CommentRepository;
 import org.example.backend.common.exception.BusinessException;
+import org.example.backend.expert.dto.response.ExpertProfileResponse;
+import org.example.backend.expert.entity.ExpertStatus;
+import org.example.backend.expert.service.ExpertProfileService;
 import org.example.backend.post.entity.Post;
 import org.example.backend.post.repository.PostRepository;
 import org.example.backend.report.dto.ReportResponse;
@@ -41,6 +44,7 @@ public class AdminService {
     private final StudyPostCommentRepository studyPostCommentRepository;
     private final StudyMemberRepository studyMemberRepository;
     private final ReportService reportService;
+    private final ExpertProfileService expertProfileService;
 
     //유저 목록 조회
     public Page<AdminUserResponse> getUsers(String keyword, Role role, Pageable pageable){
@@ -129,6 +133,26 @@ public class AdminService {
                 .orElseThrow(() -> new BusinessException(AdminErrorCode.STUDY_POST_COMMENT_NOT_FOUND));
 
         studyPostCommentRepository.delete(comment);
+    }
+
+    // 전문가 목록 조회
+    public Page<ExpertProfileResponse> getList(ExpertStatus status, Pageable pageable) {
+        return expertProfileService.getList(status, pageable);
+    }
+
+    // 전문가 승인
+    public ExpertProfileResponse approve(Long expertProfileId) {
+        return expertProfileService.approve(expertProfileId);
+    }
+
+    // 전문가 거절
+    public ExpertProfileResponse reject(Long expertProfileId, String reason) {
+        return expertProfileService.reject(expertProfileId, reason);
+    }
+
+    // 전문가 자격 박탈
+    public ExpertProfileResponse revoke(Long expertProfileId, String reason) {
+        return expertProfileService.revoke(expertProfileId, reason);
     }
 
     //신고 목록 조회 (status로 필터링, status가 null이면 전체 조회)

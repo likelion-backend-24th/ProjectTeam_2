@@ -5,22 +5,24 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.example.backend.admin.dto.UserRoleUpdateRequest;
-import org.example.backend.report.dto.ReportResponse;
-import org.example.backend.report.entity.ReportStatus;
 import org.example.backend.admin.dto.AdminUserResponse;
+import org.example.backend.admin.dto.UserRoleUpdateRequest;
 import org.example.backend.admin.dto.UserStatusUpdateRequest;
 import org.example.backend.admin.service.AdminService;
 import org.example.backend.common.dto.ApiResponse;
 import org.example.backend.common.dto.Meta;
 import org.example.backend.common.dto.PageMeta;
+import org.example.backend.expert.dto.request.ExpertRejectRequest;
+import org.example.backend.expert.dto.response.ExpertProfileResponse;
+import org.example.backend.expert.entity.ExpertStatus;
+import org.example.backend.report.dto.ReportResponse;
+import org.example.backend.report.entity.ReportStatus;
 import org.example.backend.user.entity.Role;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 
 import java.util.List;
 
@@ -103,6 +105,46 @@ public class AdminController {
     public ResponseEntity<ApiResponse<Void>> deleteStudyPostComment(@PathVariable Long id){
         adminService.deleteStudyPostComment(id);
         return ResponseEntity.ok(ApiResponse.success("스터디 게시글 댓글이 숨김처리되었습니다.", null));
+    }
+
+    @Operation(summary = "ADMIN 전문가 목록 조회", description = "status 파라미터로 필터링, 없으면 전체 조회. 페이징 지원.")
+    @GetMapping("/experts")
+    public ResponseEntity<ApiResponse<List<ExpertProfileResponse>>> getList(
+            @RequestParam(required = false) ExpertStatus status,
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        Page<ExpertProfileResponse> page = adminService.getList(status, pageable);
+        Meta meta = Meta.builder().pagination(PageMeta.from(page)).build();
+        return ResponseEntity.ok(ApiResponse.success("전문가 목록 조회 성공", page.getContent(), meta));
+    }
+
+    @Operation(summary = "ADMIN 전문가 승인", description = "PENDING 상태의 신청을 승인, role이 EXPERT로 전환됩니다.")
+    @PatchMapping("/experts/{id}/approve")
+    public ResponseEntity<ApiResponse<ExpertProfileResponse>> approve(@PathVariable Long id) {
+        ExpertProfileResponse response = adminService.approve(id);
+        return ResponseEntity.ok(ApiResponse.success("전문가 승인이 완료되었습니다.", response));
+    }
+
+    @Operation(summary = "ADMIN 전문가 거절", description = "PENDING 상태의 신청을 거절, 사유를 저장합니다.")
+    @PatchMapping("/experts/{id}/reject")
+    public ResponseEntity<ApiResponse<ExpertProfileResponse>> reject(
+            @PathVariable Long id,
+            @RequestBody(required = false) @Valid ExpertRejectRequest request
+    ) {
+        String reason = request != null ? request.getReason() : null;
+        ExpertProfileResponse response = adminService.reject(id, reason);
+        return ResponseEntity.ok(ApiResponse.success("전문가 신청이 거절되었습니다.", response));
+    }
+
+    @Operation(summary = "ADMIN 전문가 자격 박탈", description = "APPROVED 전문가를 박탈, role은 USER로 원복됩니다.")
+    @DeleteMapping("/experts/{id}")
+    public ResponseEntity<Void> revoke(
+            @PathVariable Long id,
+            @RequestBody(required = false) @Valid ExpertRejectRequest request
+    ) {
+        String reason = request != null ? request.getReason() : null;
+        adminService.revoke(id, reason);
+        return ResponseEntity.noContent().build();
     }
 
     //신고 목록 조회
