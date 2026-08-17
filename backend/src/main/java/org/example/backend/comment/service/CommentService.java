@@ -75,6 +75,14 @@ public class CommentService {
         commentRepository.delete(comment);
     }
 
+    // 관리자 강제 삭제 전용. postId도 필요 없고 권한 체크도 없음
+    @Transactional
+    public void adminDeleteComment(Long commentId) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new BusinessException(CommentErrorCode.COMMENT_NOT_FOUND));
+        commentRepository.delete(comment);
+    }
+
     private boolean isOwnerOrAdmin(Comment comment, User requester) {
         boolean isOwner = comment.getUser().getId().equals(requester.getId());
         boolean isAdmin = requester.getRole() == Role.ADMIN;

@@ -3,14 +3,12 @@ package org.example.backend.admin.service;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.admin.dto.AdminUserResponse;
 import org.example.backend.admin.exception.AdminErrorCode;
-import org.example.backend.comment.entity.Comment;
-import org.example.backend.comment.repository.CommentRepository;
+import org.example.backend.comment.service.CommentService;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.expert.dto.response.ExpertProfileResponse;
 import org.example.backend.expert.entity.ExpertStatus;
 import org.example.backend.expert.service.ExpertProfileService;
-import org.example.backend.post.entity.Post;
-import org.example.backend.post.repository.PostRepository;
+import org.example.backend.post.service.PostService;
 import org.example.backend.report.dto.ReportResponse;
 import org.example.backend.report.entity.ReportStatus;
 import org.example.backend.report.service.ReportService;
@@ -37,12 +35,12 @@ import java.util.List;
 public class AdminService {
 
     private final UserRepository userRepository;
-    private final PostRepository postRepository;
-    private final CommentRepository commentRepository;
     private final StudyRepository studyRepository;
     private final StudyPostRepository studyPostRepository;
     private final StudyPostCommentRepository studyPostCommentRepository;
     private final StudyMemberRepository studyMemberRepository;
+    private final PostService postService;
+    private final CommentService commentService;
     private final ReportService reportService;
     private final ExpertProfileService expertProfileService;
 
@@ -78,22 +76,13 @@ public class AdminService {
     // 게시글 소프트 딜리트 (게시물에 딸린 댓글도 소프트 딜리트)
     @Transactional
     public void deletePost(Long postId){
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new BusinessException(AdminErrorCode.POST_NOT_FOUND));
-
-        List<Comment> comments = commentRepository.findAllByPostId(postId);
-        commentRepository.deleteAll(comments);
-
-        postRepository.delete(post);
+        postService.adminDeletePost(postId);   // ← 기존 4줄짜리 로직을 위임 한 줄로
     }
 
     //댓글 소프트 딜리트
     @Transactional
     public void deleteComment(Long commentId){
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new BusinessException(AdminErrorCode.COMMENT_NOT_FOUND));
-
-        commentRepository.delete(comment);
+        commentService.adminDeleteComment(commentId);  // ← 기존 3줄짜리 로직을 위임 한 줄로
     }
 
     //스터디 소프트 딜리트 (연관된 게시글, 댓글, 멤버까지)

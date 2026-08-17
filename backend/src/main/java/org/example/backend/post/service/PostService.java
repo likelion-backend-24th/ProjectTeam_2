@@ -1,15 +1,15 @@
 package org.example.backend.post.service;
 
 import lombok.RequiredArgsConstructor;
-import org.example.backend.comment.repository.CommentRepository;
 import org.example.backend.comment.entity.Comment;
-import org.example.backend.post.entity.Post;
+import org.example.backend.comment.repository.CommentRepository;
+import org.example.backend.common.exception.BusinessException;
 import org.example.backend.post.dto.PostCreateRequest;
 import org.example.backend.post.dto.PostDetailResponse;
 import org.example.backend.post.dto.PostResponse;
 import org.example.backend.post.dto.PostUpdateRequest;
+import org.example.backend.post.entity.Post;
 import org.example.backend.post.entity.PostCategory;
-import org.example.backend.common.exception.BusinessException;
 import org.example.backend.post.exception.PostErrorCode;
 import org.example.backend.post.repository.PostRepository;
 import org.example.backend.user.entity.Role;
@@ -85,15 +85,29 @@ public class PostService {
 
     @Transactional
     public void deletePost(Long postId, User requester) {
-        // 1. postId로 게시글 찾기 (없으면 예외)
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(PostErrorCode.POST_NOT_FOUND));
 
-        // 2. 작성자 본인이거나 ADMIN이면 허용 (F-06)
+        // 권한 체크: 작성자 본인이거나 ADMIN이면 허용 (F-06)
         if (!isOwnerOrAdmin(post, requester)) {
             throw new BusinessException(PostErrorCode.POST_ACCESS_DENIED);
         }
-        // 3. postRepository.delete(post) 또는 postRepository.deleteById(postId)
+
+        deletePostCascade(post);   // ← 원래 postRepository.delete(post) 한 줄이던 걸 공통 메서드 호출로 교체
+    }
+
+    // 관리자 강제 삭제 전용. 권한 체크 없음 — /api/admin/** 경로에서 이미 ADMIN만 통과되기 때문
+    @Transactional
+    public void adminDeletePost(Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new BusinessException(PostErrorCode.POST_NOT_FOUND));
+        deletePostCascade(post);
+    }
+
+    // 실제 삭제 로직(게시글 + 딸린 댓글). deletePost/adminDeletePost 둘 다 이걸 씀
+    private void deletePostCascade(Post post) {
+        List<Comment> comments = commentRepository.findAllByPostId(post.getId());
+        commentRepository.deleteAll(comments);
         postRepository.delete(post);
     }
 
