@@ -6,17 +6,24 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.common.dto.ApiResponse;
+import org.example.backend.common.dto.Meta;
+import org.example.backend.common.dto.PageMeta;
 import org.example.backend.expert.dto.response.*;
 import org.example.backend.expert.dto.request.ExpertRejectRequest;
 import org.example.backend.expert.dto.request.ExpertSignupRequest;
 import org.example.backend.expert.entity.ExpertStatus;
 import org.example.backend.expert.service.ExpertProfileService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+
+import java.util.List;
 
 
 @Tag(name = "전문가", description = "전문가 신청, 프로필 조회, 재신청 및 관리자 승인/거절/자격 박탈 API")
@@ -38,11 +45,14 @@ public class ExpertProfileController {
     }
 
 
-    @Operation(summary = "전문가 목록 공개 조회", description = "승인된 전문가를 비로그인 포함 전체 공개합니다.")
+    @Operation(summary = "전문가 목록 공개 조회", description = "승인된 전문가를 비로그인 포함 전체 공개합니다. 페이징 지원.")
     @GetMapping("/api/experts")
-    public ResponseEntity<ApiResponse<PublicExpertListResponse>> getPublicList() {
-        PublicExpertListResponse response = expertProfileService.getPublicList();
-        return ResponseEntity.ok(ApiResponse.success("전문가 목록 조회 성공", response));
+    public ResponseEntity<ApiResponse<List<PublicExpertResponse>>> getPublicList(
+            @PageableDefault(size = 12) Pageable pageable
+    ) {
+        Page<PublicExpertResponse> page = expertProfileService.getPublicList(pageable);
+        Meta meta = Meta.builder().pagination(PageMeta.from(page)).build();
+        return ResponseEntity.ok(ApiResponse.success("전문가 목록 조회 성공", page.getContent(), meta));
     }
 
     @Operation(summary = "전문가 프로필 상세 조회", description = "승인된 전문가의 닉네임, 경력 전체, 자격증, 소개글을 비로그인 포함 전체 공개합니다.")
@@ -72,14 +82,16 @@ public class ExpertProfileController {
     }
 
 
-    @Operation(summary = "ADMIN 전문가 목록 조회", description = "status 파라미터로 필터링, 없으면 전체 조회.")
+    @Operation(summary = "ADMIN 전문가 목록 조회", description = "status 파라미터로 필터링, 없으면 전체 조회. 페이징 지원.")
     @GetMapping("/api/admin/experts")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<ExpertListResponse>> getList(
-            @RequestParam(required = false) ExpertStatus status
+    public ResponseEntity<ApiResponse<List<ExpertProfileResponse>>> getList(
+            @RequestParam(required = false) ExpertStatus status,
+            @PageableDefault(size = 10) Pageable pageable
     ) {
-        ExpertListResponse response = expertProfileService.getList(status);
-        return ResponseEntity.ok(ApiResponse.success("전문가 목록 조회 성공", response));
+        Page<ExpertProfileResponse> page = expertProfileService.getList(status, pageable);
+        Meta meta = Meta.builder().pagination(PageMeta.from(page)).build();
+        return ResponseEntity.ok(ApiResponse.success("전문가 목록 조회 성공", page.getContent(), meta));
     }
 
     @Operation(summary = "ADMIN 전문가 승인", description = "PENDING 상태의 신청을 승인, role이 EXPERT로 전환됩니다.")

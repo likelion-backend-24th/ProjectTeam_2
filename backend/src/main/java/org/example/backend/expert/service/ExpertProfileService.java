@@ -11,12 +11,12 @@ import org.example.backend.expert.repository.ExpertProfileRepository;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
 import org.example.backend.user.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.example.backend.expert.entity.Career;
 import org.example.backend.expert.entity.Certification;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -66,14 +66,11 @@ public class ExpertProfileService {
         return ExpertProfileResponse.from(profile);
     }
 
-    public ExpertListResponse getList(ExpertStatus status) {
-        List<ExpertProfile> profiles = (status == null)
-                ? expertProfileRepository.findAll()
-                : expertProfileRepository.findByStatus(status);
-        List<ExpertProfileResponse> responses = profiles.stream()
-                .map(profile -> ExpertProfileResponse.from(profile))
-                .toList();
-        return ExpertListResponse.from(responses);
+    public Page<ExpertProfileResponse> getList(ExpertStatus status, Pageable pageable) {
+        Page<ExpertProfile> profiles = (status == null)
+                ? expertProfileRepository.findAll(pageable)
+                : expertProfileRepository.findByStatus(status, pageable);
+        return profiles.map(profile -> ExpertProfileResponse.from(profile));
     }
 
     @Transactional
@@ -85,12 +82,9 @@ public class ExpertProfileService {
         return ExpertProfileResponse.from(profile);
     }
 
-    public PublicExpertListResponse getPublicList() {
-        List<PublicExpertResponse> responses = expertProfileRepository.findByStatus(ExpertStatus.APPROVED)
-                .stream()
-                .map(profile -> PublicExpertResponse.from(profile))
-                .toList();
-        return PublicExpertListResponse.from(responses);
+    public Page<PublicExpertResponse> getPublicList(Pageable pageable) {
+        return expertProfileRepository.findByStatus(ExpertStatus.APPROVED, pageable)
+                .map(profile -> PublicExpertResponse.from(profile));
     }
 
     public ExpertProfileDetailResponse getDetail(Long expertProfileId) {
