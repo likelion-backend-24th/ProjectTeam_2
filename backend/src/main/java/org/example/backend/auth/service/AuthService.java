@@ -26,6 +26,7 @@ import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -161,7 +162,7 @@ public class AuthService {
         User user = new User();
         user.setUsername("kakao_" + providerId + "@kakao.local");
         user.setName(kakaoUserInfo.getKakao_account().getProfile().getNickname());
-        user.setNickname(kakaoUserInfo.getKakao_account().getProfile().getNickname() + kakaoUserInfo.getId()); //통일성을 위해 이것도 고유 아이디로 변경
+        user.setNickname(generateUniqueNickname(kakaoUserInfo.getKakao_account().getProfile().getNickname())); //뒤에 랜덤 숫자4자리 붙임
         user.setPassword(null);  //카카오에서 실명을 주지 않아서 일단 닉네임으로 채우고
         user.setRole(Role.USER); // 나중에 마이페이지에서 닉네임 수정 유도
         user.setStatus(AccountStatus.ACTIVE);
@@ -236,7 +237,7 @@ public class AuthService {
         User user = new User();
         user.setUsername(googleUserInfo.getEmail());
         user.setName(googleUserInfo.getName());
-        user.setNickname(googleUserInfo.getName() + googleUserInfo.getId()); // 우연히 닉네임 중복될거같아서 고유아이디로 변경
+        user.setNickname(generateUniqueNickname(googleUserInfo.getName())); // 뒤에 랜덤 숫자 4자리 붙임
         user.setPassword(null);
         user.setRole(Role.USER);
         user.setStatus(AccountStatus.ACTIVE);
@@ -299,7 +300,7 @@ public class AuthService {
         User user = new User();
         user.setUsername(naverUserInfo.getResponse().getEmail());
         user.setName(naverUserInfo.getResponse().getName());
-        user.setNickname(naverUserInfo.getResponse().getName() + naverUserInfo.getResponse().getId()); // 우연히 닉네임 중복 예방차원으로 고유아이디로 변경
+        user.setNickname(generateUniqueNickname(naverUserInfo.getResponse().getName())); // 뒤에 숫자 4자리 붙임
         user.setPassword(null);
         user.setRole(Role.USER);
         user.setStatus(AccountStatus.ACTIVE);
@@ -340,6 +341,20 @@ public class AuthService {
         refreshTokenRepository.save(refreshToken);
 
         return new TokenResponse(accessToken, refreshTokenValue);
+    }
+
+
+    // 이름 뒤에 랜덤4자리 숫자 붙여서 닉네임 생성 메서드
+    private String generateUniqueNickname(String name){
+        Random random = new Random();
+        String nickname;
+
+        do{
+            int randomNumber = random.nextInt(10000);
+            nickname = name + "_" + randomNumber;
+        }while (userRepository.existsByNickname(nickname));
+
+        return nickname;
     }
 
 }
