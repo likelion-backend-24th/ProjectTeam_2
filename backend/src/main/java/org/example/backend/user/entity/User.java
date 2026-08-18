@@ -59,6 +59,12 @@ public class User {
     @Column(name = "terms_agree_at", nullable = true)
     private LocalDateTime termsAgreeAt;
 
+    @Column(name = "failed_login_attempts",nullable = false)
+    private int failedLoginAttempts = 0;  //연속으로 몇번 틀렸는지 확인
+
+    @Column(name = "locked_until")
+    private LocalDateTime lockedUntil; //연속 몇번 틀리면 몇분간 잠그는 시간
+
     // 나중에 필요시 사용할 예정
 //    @LastModifiedDate
 //    @Column(name = "updated_at",nullable = false)
