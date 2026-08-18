@@ -126,10 +126,16 @@ public class AdminService {
         return reportService.getReports(status, pageable);
     }
 
-    //신고 처리 (PENDING → RESOLVED)
+    //신고 처리 - 신고 대상 콘텐츠를 삭제하면서 종료 (PENDING → DELETED)
     @Transactional
     public void resolveReport(Long reportId){
         reportService.resolveReport(reportId);
+    }
+
+    //신고 처리 - 콘텐츠는 유지하고 반려 (PENDING → REJECTED)
+    @Transactional
+    public void rejectReport(Long reportId){
+        reportService.rejectReport(reportId);
     }
 
     // 신고된 피드백 스레드 상세 조회 (신고가 접수된 스레드만 열람 가능)

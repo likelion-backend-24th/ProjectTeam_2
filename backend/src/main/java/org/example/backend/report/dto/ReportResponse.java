@@ -11,7 +11,7 @@ import org.example.backend.report.entity.ReportTargetType;
 import java.time.LocalDateTime;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class ReportResponse {
 
     @Schema(description = "신고 ID", example = "1")
@@ -37,6 +37,15 @@ public class ReportResponse {
 
     @Schema(description = "신고 접수일시", example = "2026-08-11T10:00:00")
     private LocalDateTime createdAt;
+
+    @Schema(description = "신고 대상의 제목 (댓글류는 없음)", example = "취준 6개월째... 멘탈 관리 어떻게 하세요?")
+    private String targetTitle;
+
+    @Schema(description = "신고 대상 내용 미리보기", example = "저도 6개월째 취준 중인데...")
+    private String targetContentPreview;
+
+    @Schema(description = "신고 대상 작성자 닉네임", example = "김민준")
+    private String targetAuthorNickname;
 
     public static ReportResponse from(Report report) {
         return ReportResponse.builder()

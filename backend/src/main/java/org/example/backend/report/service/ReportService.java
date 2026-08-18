@@ -58,15 +58,66 @@ public class ReportService {
         Page<Report> reports = (status == null)
                 ? reportRepository.findAll(pageable)
                 : reportRepository.findAllByStatus(status, pageable);
-        return reports.map(ReportResponse::from);
+        return reports.map(this::toResponseWithTargetSnapshot);
     }
 
+    // 관리자가 신고 목록에서 뭘 신고당했는지 바로 볼 수 있도록 대상 콘텐츠의 제목/내용/작성자를 채워 넣는다.
+    // 이미 삭제 처리된 대상은 SoftDelete 필터에 걸려 조회가 안 되므로 안내 문구로 대체한다.
+    private ReportResponse toResponseWithTargetSnapshot(Report report) {
+        ReportResponse.ReportResponseBuilder builder = ReportResponse.from(report).toBuilder();
+
+        switch (report.getTargetType()) {
+            case POST -> postRepository.findById(report.getTargetId()).ifPresentOrElse(
+                    post -> builder.targetTitle(post.getTitle())
+                            .targetContentPreview(truncate(post.getContent()))
+                            .targetAuthorNickname(post.getUser().getNickname()),
+                    () -> builder.targetContentPreview("삭제된 게시글입니다."));
+            case COMMENT -> commentRepository.findById(report.getTargetId()).ifPresentOrElse(
+                    comment -> builder.targetContentPreview(truncate(comment.getContent()))
+                            .targetAuthorNickname(comment.getUser().getNickname()),
+                    () -> builder.targetContentPreview("삭제된 댓글입니다."));
+            case STUDY_POST -> studyPostRepository.findById(report.getTargetId()).ifPresentOrElse(
+                    studyPost -> builder.targetTitle(studyPost.getTitle())
+                            .targetContentPreview(truncate(studyPost.getContent()))
+                            .targetAuthorNickname(studyPost.getUser().getNickname()),
+                    () -> builder.targetContentPreview("삭제된 스터디 게시글입니다."));
+            case STUDY_POST_COMMENT -> studyPostCommentRepository.findById(report.getTargetId()).ifPresentOrElse(
+                    comment -> builder.targetContentPreview(truncate(comment.getContent()))
+                            .targetAuthorNickname(comment.getUser().getNickname()),
+                    () -> builder.targetContentPreview("삭제된 댓글입니다."));
+            case FEEDBACK -> feedbackRepository.findById(report.getTargetId()).ifPresentOrElse(
+                    feedback -> builder.targetTitle(feedback.getTopic())
+                            .targetAuthorNickname(feedback.getRequester().getNickname()),
+                    () -> builder.targetContentPreview("존재하지 않는 상담입니다."));
+        }
+
+        return builder.build();
+    }
+
+    private String truncate(String text) {
+        if (text == null) return null;
+        return text.length() > 80 ? text.substring(0, 80) + "..." : text;
+    }
+
+    // 신고 대상 콘텐츠를 삭제 처리하면서 신고를 종료할 때
     @Transactional
     public void resolveReport(Long reportId) {
-        Report report = reportRepository.findById(reportId)
-                .orElseThrow(() -> new BusinessException(ReportErrorCode.REPORT_NOT_FOUND));
-        report.setStatus(ReportStatus.RESOLVED);
+        Report report = getReportOrThrow(reportId);
+        report.setStatus(ReportStatus.DELETED);
         report.setResolvedAt(java.time.LocalDateTime.now());
+    }
+
+    // 콘텐츠는 그대로 두고 신고를 반려할 때
+    @Transactional
+    public void rejectReport(Long reportId) {
+        Report report = getReportOrThrow(reportId);
+        report.setStatus(ReportStatus.REJECTED);
+        report.setResolvedAt(java.time.LocalDateTime.now());
+    }
+
+    private Report getReportOrThrow(Long reportId) {
+        return reportRepository.findById(reportId)
+                .orElseThrow(() -> new BusinessException(ReportErrorCode.REPORT_NOT_FOUND));
     }
 
     private void validateTargetExists(org.example.backend.report.entity.ReportTargetType targetType, Long targetId) {
