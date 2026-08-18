@@ -17,6 +17,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.example.backend.expert.repository.FeedbackRepository;
+import org.example.backend.expert.service.FeedbackService;
+import org.example.backend.report.entity.ReportTargetType;
 
 @Service
 @RequiredArgsConstructor
@@ -27,10 +30,13 @@ public class ReportService {
     private final CommentRepository commentRepository;
     private final StudyPostRepository studyPostRepository;
     private final StudyPostCommentRepository studyPostCommentRepository;
+    private final FeedbackRepository feedbackRepository;
+    private final FeedbackService feedbackService;
 
     @Transactional
     public ReportResponse createReport(ReportCreateRequest request, User reporter) {
         validateTargetExists(request.getTargetType(), request.getTargetId());
+        validateReportPermission(request.getTargetType(), request.getTargetId(), reporter.getId());
 
         if (reportRepository.existsByTargetTypeAndTargetIdAndReporterId(
                 request.getTargetType(), request.getTargetId(), reporter.getId())) {
@@ -69,10 +75,18 @@ public class ReportService {
             case COMMENT -> commentRepository.existsById(targetId);
             case STUDY_POST -> studyPostRepository.existsById(targetId);
             case STUDY_POST_COMMENT -> studyPostCommentRepository.existsById(targetId);
+            case FEEDBACK -> feedbackRepository.existsById(targetId);
         };
 
         if (!exists) {
             throw new BusinessException(ReportErrorCode.REPORT_TARGET_NOT_FOUND);
         }
     }
+
+    private void validateReportPermission(ReportTargetType targetType, Long targetId, Long reporterId) {
+        if (targetType == ReportTargetType.FEEDBACK && !feedbackService.isParticipant(targetId, reporterId)) {
+            throw new BusinessException(ReportErrorCode.REPORT_ACCESS_DENIED);
+        }
+    }
+
 }

@@ -21,11 +21,13 @@ import org.example.backend.user.repository.UserRepository;
 import org.example.backend.auth.security.JwtTokenProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +42,7 @@ public class AuthService {
     private final GoogleApiClient googleApiClient;
     private final NaverApiClient naverApiClient;
     private final EmailVerificationService emailVerificationService;
+    private final LoginAttemptService loginAttemptService;
 
     //회원가입
     @Transactional
@@ -83,10 +86,19 @@ public class AuthService {
     public TokenResponse login(LoginRequest loginRequest) {
         User user = userRepository.findByUsername(loginRequest.getUsername())
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
+        // 잠금 상태 확인
+        if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now())){
+            throw new BusinessException(AuthErrorCode.ACCOUNT_LOCKED);
+        }
 
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+            loginAttemptService.recordFailedLoginAttempt(user);
             throw new BusinessException(AuthErrorCode.INVALID_PASSWORD);
         }
+        //로그인 성공하면 다시 초기화
+        user.setFailedLoginAttempts(0);
+        user.setLockedUntil(null);
+
         if (user.getStatus() != AccountStatus.ACTIVE) {
             throw new BusinessException(AuthErrorCode.INACTIVE_ACCOUNT);
         }
@@ -117,6 +129,10 @@ public class AuthService {
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_REFRESH_TOKEN));
 
         User user = savedRefreshToken.getUser();
+
+        if (user.getStatus() != AccountStatus.ACTIVE){
+            throw  new BusinessException(AuthErrorCode.INACTIVE_ACCOUNT);
+        }
 
         String newAccessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getUsername());
@@ -157,7 +173,7 @@ public class AuthService {
         User user = new User();
         user.setUsername("kakao_" + providerId + "@kakao.local");
         user.setName(kakaoUserInfo.getKakao_account().getProfile().getNickname());
-        user.setNickname(kakaoUserInfo.getKakao_account().getProfile().getNickname() + kakaoUserInfo.getId()); //통일성을 위해 이것도 고유 아이디로 변경
+        user.setNickname(generateUniqueNickname(kakaoUserInfo.getKakao_account().getProfile().getNickname())); //뒤에 랜덤 숫자4자리 붙임
         user.setPassword(null);  //카카오에서 실명을 주지 않아서 일단 닉네임으로 채우고
         user.setRole(Role.USER); // 나중에 마이페이지에서 닉네임 수정 유도
         user.setStatus(AccountStatus.ACTIVE);
@@ -232,7 +248,7 @@ public class AuthService {
         User user = new User();
         user.setUsername(googleUserInfo.getEmail());
         user.setName(googleUserInfo.getName());
-        user.setNickname(googleUserInfo.getName() + googleUserInfo.getId()); // 우연히 닉네임 중복될거같아서 고유아이디로 변경
+        user.setNickname(generateUniqueNickname(googleUserInfo.getName())); // 뒤에 랜덤 숫자 4자리 붙임
         user.setPassword(null);
         user.setRole(Role.USER);
         user.setStatus(AccountStatus.ACTIVE);
@@ -295,7 +311,7 @@ public class AuthService {
         User user = new User();
         user.setUsername(naverUserInfo.getResponse().getEmail());
         user.setName(naverUserInfo.getResponse().getName());
-        user.setNickname(naverUserInfo.getResponse().getName() + naverUserInfo.getResponse().getId()); // 우연히 닉네임 중복 예방차원으로 고유아이디로 변경
+        user.setNickname(generateUniqueNickname(naverUserInfo.getResponse().getName())); // 뒤에 숫자 4자리 붙임
         user.setPassword(null);
         user.setRole(Role.USER);
         user.setStatus(AccountStatus.ACTIVE);
@@ -336,6 +352,20 @@ public class AuthService {
         refreshTokenRepository.save(refreshToken);
 
         return new TokenResponse(accessToken, refreshTokenValue);
+    }
+
+
+    // 이름 뒤에 랜덤4자리 숫자 붙여서 닉네임 생성 메서드
+    private String generateUniqueNickname(String name){
+        Random random = new Random();
+        String nickname;
+
+        do{
+            int randomNumber = random.nextInt(10000);
+            nickname = name + "_" + randomNumber;
+        }while (userRepository.existsByNickname(nickname));
+
+        return nickname;
     }
 
 }

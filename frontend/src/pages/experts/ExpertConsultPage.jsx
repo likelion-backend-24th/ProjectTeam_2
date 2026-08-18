@@ -58,7 +58,7 @@ export default function ExpertConsultPage() {
     expertApi
       .getPublicExperts()
       .then(({ data }) => {
-        if (!ignore) setExperts(data.data.experts)
+        if (!ignore) setExperts(data.data)
       })
       .finally(() => {
         if (!ignore) setIsLoadingExperts(false)

@@ -48,6 +48,12 @@
   color: var(--color-text-secondary);
 }
 
+.viewCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
 .avatar {
   display: inline-flex;
   align-items: center;

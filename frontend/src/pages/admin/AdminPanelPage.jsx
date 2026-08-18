@@ -111,7 +111,7 @@ function DashboardTab({ onGoToExperts }) {
     ])
       .then(([usersRes, allUsersRes, studyCountRes, studiesRes, postsRes, expertsRes]) => {
         if (ignore) return
-        const experts = expertsRes.data.data.experts
+        const experts = expertsRes.data.data
         setStats({
           totalUsers: usersRes.data.meta.pagination.totalItems,
           subscriberCount: allUsersRes.data.data.filter((u) => u.subscribed).length,
@@ -465,7 +465,7 @@ function ExpertReviewTab({ onPendingCountChange }) {
 
   const load = useCallback(() => {
     return expertApi.getExperts().then(({ data }) => {
-      const list = data.data.experts
+      const list = data.data
       setExperts(list)
       onPendingCountChange?.(list.filter((e) => e.status === 'PENDING').length)
     })

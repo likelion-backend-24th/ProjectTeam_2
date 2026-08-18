@@ -41,6 +41,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.PageImpl;
 import org.example.backend.auth.service.EmailService;
+import org.example.backend.common.file.FileStorageService;
+import org.example.backend.common.file.ImageValidator;
+import org.example.backend.expert.repository.FeedbackMessageImageRepository;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
+import org.example.backend.report.entity.ReportTargetType;
+import org.example.backend.report.repository.ReportRepository;
 
 @ExtendWith(MockitoExtension.class)
 class FeedbackServiceTest {
@@ -55,6 +62,14 @@ class FeedbackServiceTest {
     private UserRepository userRepository;
     @Mock
     private EmailService emailService;
+    @Mock
+    private FeedbackMessageImageRepository feedbackMessageImageRepository;
+    @Mock
+    private FileStorageService fileStorageService;
+    @Mock
+    private ImageValidator imageValidator;
+    @Mock
+    private ReportRepository reportRepository;
 
     @InjectMocks
     private FeedbackService feedbackService;
@@ -93,7 +108,7 @@ class FeedbackServiceTest {
         request.setExpertProfileId(99L);
 
         BusinessException e = assertThrows(BusinessException.class,
-                () -> feedbackService.createFeedback(1L, request));
+                () -> feedbackService.createFeedback(1L, request, null));
         assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_EXPERT_NOT_APPROVED);
     }
 
@@ -106,7 +121,7 @@ class FeedbackServiceTest {
         request.setExpertProfileId(99L);
 
         BusinessException e = assertThrows(BusinessException.class,
-                () -> feedbackService.createFeedback(1L, request));
+                () -> feedbackService.createFeedback(1L, request, null));
         assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.SUBSCRIPTION_REQUIRED);
 
         verify(expertProfileRepository, never()).findById(any());
@@ -123,7 +138,7 @@ class FeedbackServiceTest {
         request.setTopic("포트폴리오 피드백 요청");
         request.setContent("이력서 첨삭 부탁드려요");
 
-        FeedbackResponse response = feedbackService.createFeedback(1L, request);
+        FeedbackResponse response = feedbackService.createFeedback(1L, request, null);
 
         assertThat(response.getStatus()).isEqualTo(FeedbackStatus.PENDING);
         assertThat(response.getTopic()).isEqualTo("포트폴리오 피드백 요청");
@@ -144,10 +159,94 @@ class FeedbackServiceTest {
         request.setTopic("재개설 테스트");
         request.setContent("박탈 후 재승인된 전문가에게 다시 문의합니다");
 
-        FeedbackResponse response = feedbackService.createFeedback(1L, request);
+        FeedbackResponse response = feedbackService.createFeedback(1L, request, null);
 
         assertThat(response.getStatus()).isEqualTo(FeedbackStatus.PENDING);
         verify(feedbackRepository).save(any(Feedback.class));
+    }
+
+    @Test
+    void createFeedback_같은전문가와_열린스레드가있으면_예외() {
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
+        when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
+        when(feedbackRepository.existsByRequesterIdAndExpertProfileIdAndClosedAtIsNull(1L, 99L)).thenReturn(true);
+
+        FeedbackCreateRequest request = new FeedbackCreateRequest();
+        request.setExpertProfileId(99L);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.createFeedback(1L, request, null));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_ALREADY_OPEN);
+
+        verify(feedbackRepository, never()).save(any());
+    }
+
+    @Test
+    void createFeedback_열린스레드가5개면_예외() {
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
+        when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
+        when(feedbackRepository.countByRequesterIdAndClosedAtIsNull(1L)).thenReturn(5L);
+
+        FeedbackCreateRequest request = new FeedbackCreateRequest();
+        request.setExpertProfileId(99L);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.createFeedback(1L, request, null));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_OPEN_LIMIT_EXCEEDED);
+
+        verify(feedbackRepository, never()).save(any());
+    }
+
+    @Test
+    void createFeedback_요청자탈퇴시_예외() {
+        requester.setStatus(AccountStatus.WITHDRAWN);
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
+
+        FeedbackCreateRequest request = new FeedbackCreateRequest();
+        request.setExpertProfileId(99L);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.createFeedback(1L, request, null));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_USER_INACTIVE);
+
+        verify(expertProfileRepository, never()).findById(any());
+    }
+
+    @Test
+    void createFeedback_전문가탈퇴시_예외() {
+        expertUser.setStatus(AccountStatus.WITHDRAWN);
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
+        when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
+
+        FeedbackCreateRequest request = new FeedbackCreateRequest();
+        request.setExpertProfileId(99L);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.createFeedback(1L, request, null));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_USER_INACTIVE);
+
+        verify(feedbackRepository, never()).save(any());
+    }
+
+    @Test
+    void createFeedback_이미지첨부하면_업로드후_저장된다() {
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
+        when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
+        when(feedbackRepository.save(any(Feedback.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(fileStorageService.upload(any(), eq("feedback-messages"))).thenReturn("https://cdn.test/resume.png");
+
+        FeedbackCreateRequest request = new FeedbackCreateRequest();
+        request.setExpertProfileId(99L);
+        request.setTopic("포트폴리오 피드백 요청");
+        request.setContent("이력서 첨부합니다");
+
+        MultipartFile image = new MockMultipartFile("images", "resume.png", "image/png", "dummy".getBytes());
+
+        feedbackService.createFeedback(1L, request, List.of(image));
+
+        verify(imageValidator).validate(image);
+        verify(fileStorageService).upload(image, "feedback-messages");
+        verify(feedbackMessageImageRepository).save(any());
     }
 
     @Test
@@ -213,7 +312,7 @@ class FeedbackServiceTest {
         FeedbackMessageRequest request = new FeedbackMessageRequest();
         request.setContent("이렇게 수정해보세요");
 
-        feedbackService.addMessage(2L, 1L, request);
+        feedbackService.addMessage(2L, 1L, request, null);
 
         assertThat(feedback.getStatus()).isEqualTo(FeedbackStatus.ANSWERED);
         verify(emailService).sendFeedbackAnswered("test@test.com", "포트폴리오 피드백 요청");
@@ -230,7 +329,7 @@ class FeedbackServiceTest {
         FeedbackMessageRequest request = new FeedbackMessageRequest();
         request.setContent("추가로 궁금한 게 있어요");
 
-        feedbackService.addMessage(1L, 1L, request);
+        feedbackService.addMessage(1L, 1L, request, null);
 
         assertThat(feedback.getStatus()).isEqualTo(FeedbackStatus.PENDING);
     }
@@ -247,10 +346,85 @@ class FeedbackServiceTest {
         when(userRepository.findById(999L)).thenReturn(Optional.of(stranger));
 
         BusinessException e = assertThrows(BusinessException.class,
-                () -> feedbackService.addMessage(999L, 1L, new FeedbackMessageRequest()));
+                () -> feedbackService.addMessage(999L, 1L, new FeedbackMessageRequest(), null));
         assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_ACCESS_DENIED);
 
         verify(feedbackMessageRepository, never()).save(any());
+    }
+
+    @Test
+    void addMessage_요청자구독만료시_예외() {
+        requester.setSubscribed(false);
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+
+        FeedbackMessageRequest request = new FeedbackMessageRequest();
+        request.setContent("구독 만료 후 메시지 시도");
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.addMessage(1L, 1L, request, null));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_SUBSCRIPTION_EXPIRED);
+
+        verify(feedbackMessageRepository, never()).save(any());
+    }
+
+    @Test
+    void addMessage_상대방탈퇴시_예외() {
+        expertUser.setStatus(AccountStatus.WITHDRAWN);
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+
+        FeedbackMessageRequest request = new FeedbackMessageRequest();
+        request.setContent("상대방 탈퇴 후 메시지 시도");
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.addMessage(1L, 1L, request, null));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_USER_INACTIVE);
+
+        verify(feedbackMessageRepository, never()).save(any());
+    }
+
+    @Test
+    void addMessage_답변후_요청자가_추가질문하면_PENDING으로_전환() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        feedback.markAnswered();
+
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+        when(feedbackMessageRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        FeedbackMessageRequest request = new FeedbackMessageRequest();
+        request.setContent("추가로 궁금한 게 생겼어요");
+
+        feedbackService.addMessage(1L, 1L, request, null);
+
+        assertThat(feedback.getStatus()).isEqualTo(FeedbackStatus.PENDING);
+        verify(emailService, never()).sendFeedbackAnswered(any(), any());
+    }
+
+    @Test
+    void addMessage_이미지첨부하면_업로드후_URL반환() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(expertUser));
+        when(feedbackMessageRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(fileStorageService.upload(any(), eq("feedback-messages"))).thenReturn("https://cdn.test/screenshot.png");
+
+        FeedbackMessageRequest request = new FeedbackMessageRequest();
+        request.setContent("이 부분 스크린샷 첨부합니다");
+
+        MultipartFile image = new MockMultipartFile("images", "screenshot.png", "image/png", "dummy".getBytes());
+
+        FeedbackMessageResponse response = feedbackService.addMessage(2L, 1L, request, List.of(image));
+
+        assertThat(response.getImageUrls()).containsExactly("https://cdn.test/screenshot.png");
+        verify(feedbackMessageImageRepository).save(any());
     }
 
     @Test
@@ -272,35 +446,18 @@ class FeedbackServiceTest {
     }
 
     @Test
-    void createFeedback_같은전문가와_열린스레드가있으면_예외() {
-        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
-        when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
-        when(feedbackRepository.existsByRequesterIdAndExpertProfileIdAndClosedAtIsNull(1L, 99L)).thenReturn(true);
+    void getMyExpertFeedbacks_전문가프로필로_전환후_조회() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).topic("포트폴리오 피드백 요청").build();
+        Pageable pageable = PageRequest.of(0, 20);
+        when(expertProfileRepository.findByUserId(2L)).thenReturn(Optional.of(approvedExpertProfile));
+        when(feedbackRepository.findByExpertProfileId(any(), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(feedback), pageable, 1));
 
-        FeedbackCreateRequest request = new FeedbackCreateRequest();
-        request.setExpertProfileId(99L);
+        ExpertFeedbackListResponse response = feedbackService.getMyExpertFeedbacks(2L, pageable);
 
-        BusinessException e = assertThrows(BusinessException.class,
-                () -> feedbackService.createFeedback(1L, request));
-        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_ALREADY_OPEN);
-
-        verify(feedbackRepository, never()).save(any());
-    }
-
-    @Test
-    void createFeedback_열린스레드가5개면_예외() {
-        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
-        when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
-        when(feedbackRepository.countByRequesterIdAndClosedAtIsNull(1L)).thenReturn(5L);
-
-        FeedbackCreateRequest request = new FeedbackCreateRequest();
-        request.setExpertProfileId(99L);
-
-        BusinessException e = assertThrows(BusinessException.class,
-                () -> feedbackService.createFeedback(1L, request));
-        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_OPEN_LIMIT_EXCEEDED);
-
-        verify(feedbackRepository, never()).save(any());
+        assertThat(response.getFeedbacks()).hasSize(1);
+        assertThat(response.getFeedbacks().get(0).getTopic()).isEqualTo("포트폴리오 피드백 요청");
     }
 
     @Test
@@ -354,73 +511,6 @@ class FeedbackServiceTest {
     }
 
     @Test
-    void addMessage_요청자구독만료시_예외() {
-        requester.setSubscribed(false);
-        Feedback feedback = Feedback.builder()
-                .requester(requester).expertProfile(approvedExpertProfile).build();
-        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
-
-        FeedbackMessageRequest request = new FeedbackMessageRequest();
-        request.setContent("구독 만료 후 메시지 시도");
-
-        BusinessException e = assertThrows(BusinessException.class,
-                () -> feedbackService.addMessage(1L, 1L, request));
-        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_SUBSCRIPTION_EXPIRED);
-
-        verify(feedbackMessageRepository, never()).save(any());
-    }
-
-    @Test
-    void createFeedback_요청자탈퇴시_예외() {
-        requester.setStatus(AccountStatus.WITHDRAWN);
-        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
-
-        FeedbackCreateRequest request = new FeedbackCreateRequest();
-        request.setExpertProfileId(99L);
-
-        BusinessException e = assertThrows(BusinessException.class,
-                () -> feedbackService.createFeedback(1L, request));
-        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_USER_INACTIVE);
-
-        verify(expertProfileRepository, never()).findById(any());
-    }
-
-    @Test
-    void createFeedback_전문가탈퇴시_예외() {
-        expertUser.setStatus(AccountStatus.WITHDRAWN);
-        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
-        when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
-
-        FeedbackCreateRequest request = new FeedbackCreateRequest();
-        request.setExpertProfileId(99L);
-
-        BusinessException e = assertThrows(BusinessException.class,
-                () -> feedbackService.createFeedback(1L, request));
-        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_USER_INACTIVE);
-
-        verify(feedbackRepository, never()).save(any());
-    }
-
-    @Test
-    void addMessage_상대방탈퇴시_예외() {
-        expertUser.setStatus(AccountStatus.WITHDRAWN);
-        Feedback feedback = Feedback.builder()
-                .requester(requester).expertProfile(approvedExpertProfile).build();
-        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
-
-        FeedbackMessageRequest request = new FeedbackMessageRequest();
-        request.setContent("상대방 탈퇴 후 메시지 시도");
-
-        BusinessException e = assertThrows(BusinessException.class,
-                () -> feedbackService.addMessage(1L, 1L, request));
-        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_USER_INACTIVE);
-
-        verify(feedbackMessageRepository, never()).save(any());
-    }
-
-    @Test
     void getExpertFeedbacks_페이지네이션_정상반환() {
         Feedback feedback = Feedback.builder()
                 .requester(requester).expertProfile(approvedExpertProfile).topic("포트폴리오 피드백 요청").build();
@@ -437,37 +527,99 @@ class FeedbackServiceTest {
     }
 
     @Test
-    void getMyExpertFeedbacks_전문가프로필로_전환후_조회() {
+    void isParticipant_요청자면_true() {
         Feedback feedback = Feedback.builder()
-                .requester(requester).expertProfile(approvedExpertProfile).topic("포트폴리오 피드백 요청").build();
-        Pageable pageable = PageRequest.of(0, 20);
-        when(expertProfileRepository.findByUserId(2L)).thenReturn(Optional.of(approvedExpertProfile));
-        when(feedbackRepository.findByExpertProfileId(any(), eq(pageable)))
-                .thenReturn(new PageImpl<>(List.of(feedback), pageable, 1));
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
 
-        ExpertFeedbackListResponse response = feedbackService.getMyExpertFeedbacks(2L, pageable);
+        boolean result = feedbackService.isParticipant(1L, requester.getId());
 
-        assertThat(response.getFeedbacks()).hasSize(1);
-        assertThat(response.getFeedbacks().get(0).getTopic()).isEqualTo("포트폴리오 피드백 요청");
+        assertThat(result).isTrue();
     }
 
     @Test
-    void addMessage_답변후_요청자가_추가질문하면_PENDING으로_전환() {
+    void isParticipant_담당전문가면_true() {
         Feedback feedback = Feedback.builder()
                 .requester(requester).expertProfile(approvedExpertProfile).build();
-        feedback.markAnswered();
-
         when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
-        when(feedbackMessageRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        FeedbackMessageRequest request = new FeedbackMessageRequest();
-        request.setContent("추가로 궁금한 게 생겼어요");
+        boolean result = feedbackService.isParticipant(1L, expertUser.getId());
 
-        feedbackService.addMessage(1L, 1L, request);
+        assertThat(result).isTrue();
+    }
 
-        assertThat(feedback.getStatus()).isEqualTo(FeedbackStatus.PENDING);
-        verify(emailService, never()).sendFeedbackAnswered(any(), any());
+    @Test
+    void isParticipant_당사자가아니면_false() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+
+        boolean result = feedbackService.isParticipant(1L, 999L);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void isParticipant_존재하지않는스레드면_false() {
+        when(feedbackRepository.findById(999L)).thenReturn(Optional.empty());
+
+        boolean result = feedbackService.isParticipant(999L, 1L);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void getFeedbackForAdmin_신고된스레드면_조회성공() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).topic("포트폴리오 피드백 요청").build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(reportRepository.existsByTargetTypeAndTargetId(ReportTargetType.FEEDBACK, 1L)).thenReturn(true);
+
+        FeedbackResponse response = feedbackService.getFeedbackForAdmin(1L);
+
+        assertThat(response.getTopic()).isEqualTo("포트폴리오 피드백 요청");
+    }
+
+    @Test
+    void getFeedbackForAdmin_신고안된스레드면_예외() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(reportRepository.existsByTargetTypeAndTargetId(ReportTargetType.FEEDBACK, 1L)).thenReturn(false);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.getFeedbackForAdmin(1L));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_NOT_REPORTED);
+    }
+
+    @Test
+    void getMessagesForAdmin_신고된스레드면_메시지목록반환() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(reportRepository.existsByTargetTypeAndTargetId(ReportTargetType.FEEDBACK, 1L)).thenReturn(true);
+        when(feedbackMessageRepository.findByFeedbackIdOrderByCreatedAtAsc(1L))
+                .thenReturn(List.of(
+                        FeedbackMessage.builder().feedback(feedback).sender(requester).content("첫 메시지").build()
+                ));
+
+        List<FeedbackMessageResponse> response = feedbackService.getMessagesForAdmin(1L);
+
+        assertThat(response).hasSize(1);
+    }
+
+    @Test
+    void getMessagesForAdmin_신고안된스레드면_예외() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(reportRepository.existsByTargetTypeAndTargetId(ReportTargetType.FEEDBACK, 1L)).thenReturn(false);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.getMessagesForAdmin(1L));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_NOT_REPORTED);
+
+        verify(feedbackMessageRepository, never()).findByFeedbackIdOrderByCreatedAtAsc(any());
     }
 
 

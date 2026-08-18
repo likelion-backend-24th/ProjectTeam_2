@@ -25,6 +25,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.example.backend.expert.dto.response.FeedbackMessageResponse;
+import org.example.backend.expert.dto.response.FeedbackResponse;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -164,6 +166,22 @@ public class AdminController {
     public ResponseEntity<ApiResponse<Void>> resolveReport(@PathVariable Long id) {
         adminService.resolveReport(id);
         return ResponseEntity.ok(ApiResponse.success("신고가 처리되었습니다.", null));
+    }
+
+    //신고된 피드백 스레드 상세 조회
+    @Operation(summary = "ADMIN 피드백 스레드 조회", description = "신고가 접수된 피드백 스레드만 조회 가능합니다. 신고되지 않은 스레드는 403이 반환됩니다.")
+    @GetMapping("/feedbacks/{id}")
+    public ResponseEntity<ApiResponse<FeedbackResponse>> getFeedback(@PathVariable Long id) {
+        FeedbackResponse response = adminService.getFeedback(id);
+        return ResponseEntity.ok(ApiResponse.success("문의 스레드 조회 성공", response));
+    }
+
+    //신고된 피드백 스레드의 메시지 목록 조회
+    @Operation(summary = "ADMIN 피드백 메시지 목록 조회", description = "신고가 접수된 피드백 스레드의 메시지만 조회 가능합니다.")
+    @GetMapping("/feedbacks/{id}/messages")
+    public ResponseEntity<ApiResponse<List<FeedbackMessageResponse>>> getFeedbackMessages(@PathVariable Long id) {
+        List<FeedbackMessageResponse> response = adminService.getFeedbackMessages(id);
+        return ResponseEntity.ok(ApiResponse.success("메시지 목록 조회 성공", response));
     }
 
 }
