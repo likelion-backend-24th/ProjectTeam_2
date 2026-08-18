@@ -8,6 +8,8 @@ import org.example.backend.common.exception.BusinessException;
 import org.example.backend.comment.exception.CommentErrorCode;
 import org.example.backend.comment.repository.CommentRepository;
 import org.example.backend.comment.entity.Comment;
+import org.example.backend.notification.entity.NotificationTargetType;
+import org.example.backend.notification.service.NotificationService;
 import org.example.backend.post.entity.Post;
 import org.example.backend.post.repository.PostRepository;
 import org.example.backend.post.exception.PostErrorCode;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CommentService {
 
+    private final NotificationService notificationService;
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
 
@@ -34,6 +37,15 @@ public class CommentService {
         comment.setUser(user);
 
         Comment savedComment = commentRepository.save(comment);
+
+        notificationService.notifyComment(
+                savedComment.getPost().getUser(),
+                user,
+                NotificationTargetType.POST,
+                savedComment.getPost().getId(),
+                savedComment.getId(),
+                request.getContent()
+        );
 
         return CommentResponse.from(savedComment);
     }

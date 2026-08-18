@@ -15,6 +15,7 @@ import org.example.backend.expert.exception.ExpertErrorCode;
 import org.example.backend.expert.repository.ExpertProfileRepository;
 import org.example.backend.expert.repository.FeedbackMessageRepository;
 import org.example.backend.expert.repository.FeedbackRepository;
+import org.example.backend.notification.service.NotificationService;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
 import org.example.backend.user.repository.UserRepository;
@@ -35,6 +36,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 import org.example.backend.expert.entity.FeedbackCloseReason;
 import org.example.backend.user.entity.AccountStatus;
 import org.springframework.data.domain.Pageable;
@@ -70,7 +72,8 @@ class FeedbackServiceTest {
     private ImageValidator imageValidator;
     @Mock
     private ReportRepository reportRepository;
-
+    @Mock
+    private NotificationService notificationService;
     @InjectMocks
     private FeedbackService feedbackService;
 
@@ -132,6 +135,7 @@ class FeedbackServiceTest {
         when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
         when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
         when(feedbackRepository.save(any(Feedback.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(feedbackMessageRepository.save(any(FeedbackMessage.class))).thenAnswer(inv -> inv.getArgument(0));
 
         FeedbackCreateRequest request = new FeedbackCreateRequest();
         request.setExpertProfileId(99L);
@@ -153,6 +157,7 @@ class FeedbackServiceTest {
         when(feedbackRepository.existsByRequesterIdAndExpertProfileIdAndClosedAtIsNull(1L, 99L)).thenReturn(false);
         when(feedbackRepository.countByRequesterIdAndClosedAtIsNull(1L)).thenReturn(0L);
         when(feedbackRepository.save(any(Feedback.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(feedbackMessageRepository.save(any(FeedbackMessage.class))).thenAnswer(inv -> inv.getArgument(0));
 
         FeedbackCreateRequest request = new FeedbackCreateRequest();
         request.setExpertProfileId(99L);
@@ -234,6 +239,7 @@ class FeedbackServiceTest {
         when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
         when(feedbackRepository.save(any(Feedback.class))).thenAnswer(inv -> inv.getArgument(0));
         when(fileStorageService.upload(any(), eq("feedback-messages"))).thenReturn("https://cdn.test/resume.png");
+        when(feedbackMessageRepository.save(any(FeedbackMessage.class))).thenAnswer(inv -> inv.getArgument(0));
 
         FeedbackCreateRequest request = new FeedbackCreateRequest();
         request.setExpertProfileId(99L);
