@@ -160,12 +160,20 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("신고 목록 조회 성공", page.getContent(), meta));
     }
 
-    //신고 처리
-    @Operation(summary = "신고 처리", description = "관리자 권한으로 특정 신고를 처리 완료 상태로 변경합니다.")
+    //신고 처리 - 콘텐츠 삭제로 종료 (실제 콘텐츠 삭제는 /posts/{id} 등 별도 API 호출 후 이걸 호출)
+    @Operation(summary = "신고 처리(삭제)", description = "관리자 권한으로 신고를 콘텐츠 삭제 처리 상태로 변경합니다.")
     @PatchMapping("/reports/{id}/resolve")
     public ResponseEntity<ApiResponse<Void>> resolveReport(@PathVariable Long id) {
         adminService.resolveReport(id);
         return ResponseEntity.ok(ApiResponse.success("신고가 처리되었습니다.", null));
+    }
+
+    //신고 처리 - 콘텐츠는 유지하고 반려
+    @Operation(summary = "신고 처리(반려)", description = "관리자 권한으로 신고를 반려 상태로 변경합니다. 콘텐츠는 그대로 유지됩니다.")
+    @PatchMapping("/reports/{id}/reject")
+    public ResponseEntity<ApiResponse<Void>> rejectReport(@PathVariable Long id) {
+        adminService.rejectReport(id);
+        return ResponseEntity.ok(ApiResponse.success("신고가 반려되었습니다.", null));
     }
 
     //신고된 피드백 스레드 상세 조회

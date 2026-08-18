@@ -20,9 +20,45 @@ function deleteStudy(id) {
   return apiClient.delete(`/api/admin/studies/${id}`)
 }
 
+// DELETE /api/admin/comments/:id (강제 삭제)
+function deleteComment(id) {
+  return apiClient.delete(`/api/admin/comments/${id}`)
+}
+
+// DELETE /api/admin/study-posts/:id (강제 삭제)
+function deleteStudyPost(id) {
+  return apiClient.delete(`/api/admin/study-posts/${id}`)
+}
+
+// DELETE /api/admin/study-post-comments/:id (강제 삭제)
+function deleteStudyPostComment(id) {
+  return apiClient.delete(`/api/admin/study-post-comments/${id}`)
+}
+
+// GET /api/admin/reports?status= (status 없으면 전체)
+function getReports(params) {
+  return apiClient.get('/api/admin/reports', { params })
+}
+
+// PATCH /api/admin/reports/:id/resolve (신고 대상 콘텐츠 삭제로 종료)
+function resolveReport(id) {
+  return apiClient.patch(`/api/admin/reports/${id}/resolve`)
+}
+
+// PATCH /api/admin/reports/:id/reject (콘텐츠는 유지하고 반려)
+function rejectReport(id) {
+  return apiClient.patch(`/api/admin/reports/${id}/reject`)
+}
+
 export const adminApi = {
   getUsers,
   updateUserStatus,
   deletePost,
   deleteStudy,
+  deleteComment,
+  deleteStudyPost,
+  deleteStudyPostComment,
+  getReports,
+  resolveReport,
+  rejectReport,
 }

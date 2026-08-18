@@ -356,11 +356,11 @@ export default function ExpertApplyFormPage() {
             <p className={styles.previewLabel}>카드 미리보기</p>
             <div className={styles.previewCard}>
               <div className={styles.previewHead}>
-                <span className={styles.previewAvatar} style={{ backgroundColor: getAvatarColor(user?.nickname) }}>
-                  {user?.nickname?.[0]}
+                <span className={styles.previewAvatar} style={{ backgroundColor: getAvatarColor(user?.name) }}>
+                  {user?.name?.[0]}
                 </span>
                 <div>
-                  <p className={styles.previewName}>{user?.nickname}</p>
+                  <p className={styles.previewName}>{user?.name}</p>
                   {previewCareer?.companyName && (
                     <p className={styles.previewCareer}>
                       {previewCareer.position || '직함'} · {previewCareer.companyName} · {previewCareer.years || 0}년

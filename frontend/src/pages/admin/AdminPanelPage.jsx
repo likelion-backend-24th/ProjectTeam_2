@@ -1,6 +1,7 @@
 import {
   Activity,
   AlertCircle,
+  AlertTriangle,
   Award,
   Ban,
   Briefcase,
@@ -24,6 +25,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { adminApi, expertApi, postApi, studyApi } from '../../api'
 import SiteHeader from '../../components/common/SiteHeader'
 import { getJobFieldLabel } from '../../constants/jobField'
+import { REPORT_REASONS } from '../../constants/reportReason'
 import { getAvatarColor } from '../../utils/avatarColor'
 import { formatDate } from '../../utils/formatDate'
 import styles from './AdminPanelPage.module.css'
@@ -32,7 +34,18 @@ const TABS = [
   { key: 'dashboard', label: '대시보드', icon: LayoutGrid },
   { key: 'members', label: '회원 관리', icon: Users },
   { key: 'experts', label: '전문가 심사', icon: Shield },
+  { key: 'reports', label: '신고 관리', icon: AlertTriangle },
 ]
+
+const REPORT_REASON_LABELS = Object.fromEntries(REPORT_REASONS.map((item) => [item.value, item.label]))
+
+const REPORT_TARGET_TYPE_META = {
+  POST: { label: '게시글', deleteAction: (id) => adminApi.deletePost(id) },
+  COMMENT: { label: '댓글', deleteAction: (id) => adminApi.deleteComment(id) },
+  STUDY_POST: { label: '스터디 게시글', deleteAction: (id) => adminApi.deleteStudyPost(id) },
+  STUDY_POST_COMMENT: { label: '스터디 댓글', deleteAction: (id) => adminApi.deleteStudyPostComment(id) },
+  FEEDBACK: { label: '전문가 상담', deleteAction: null },
+}
 
 const ROLE_META = {
   USER: { label: 'USER', color: '#c6ff3d' },
@@ -43,6 +56,7 @@ const ROLE_META = {
 export default function AdminPanelPage() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [pendingCount, setPendingCount] = useState(0)
+  const [reportPendingCount, setReportPendingCount] = useState(0)
 
   return (
     <>
@@ -74,15 +88,19 @@ export default function AdminPanelPage() {
               <tab.icon size={15} />
               {tab.label}
               {tab.key === 'experts' && pendingCount > 0 && <span className={styles.tabCount}>{pendingCount}</span>}
+              {tab.key === 'reports' && reportPendingCount > 0 && (
+                <span className={styles.tabCount}>{reportPendingCount}</span>
+              )}
             </button>
           ))}
         </nav>
 
         {activeTab === 'dashboard' && (
-          <DashboardTab onGoToExperts={() => setActiveTab('experts')} />
+          <DashboardTab onGoToExperts={() => setActiveTab('experts')} onGoToReports={() => setActiveTab('reports')} />
         )}
         {activeTab === 'members' && <MembersTab />}
         {activeTab === 'experts' && <ExpertReviewTab onPendingCountChange={setPendingCount} />}
+        {activeTab === 'reports' && <ReportsTab onPendingCountChange={setReportPendingCount} />}
       </main>
     </>
   )
@@ -90,7 +108,7 @@ export default function AdminPanelPage() {
 
 // ---------------- 대시보드 ----------------
 
-function DashboardTab({ onGoToExperts }) {
+function DashboardTab({ onGoToExperts, onGoToReports }) {
   const [stats, setStats] = useState(null)
   const [recentPosts, setRecentPosts] = useState([])
   const [expertPreview, setExpertPreview] = useState([])
@@ -108,8 +126,9 @@ function DashboardTab({ onGoToExperts }) {
       studyApi.getStudies({ page: 0, size: 4 }),
       postApi.getPosts({ page: 0, size: 4 }),
       expertApi.getExperts(),
+      adminApi.getReports({ status: 'PENDING', size: 1 }),
     ])
-      .then(([usersRes, allUsersRes, studyCountRes, studiesRes, postsRes, expertsRes]) => {
+      .then(([usersRes, allUsersRes, studyCountRes, studiesRes, postsRes, expertsRes, reportsRes]) => {
         if (ignore) return
         const experts = expertsRes.data.data
         setStats({
@@ -118,6 +137,7 @@ function DashboardTab({ onGoToExperts }) {
           totalStudies: studyCountRes.data.meta.pagination.totalItems,
           totalPosts: postsRes.data.data.totalElements,
           pendingExperts: experts.filter((e) => e.status === 'PENDING').length,
+          pendingReports: reportsRes.data.meta.pagination.totalItems,
         })
         setExpertPreview(experts.slice(0, 4))
         setRecentPosts(postsRes.data.data.content)
@@ -166,6 +186,13 @@ function DashboardTab({ onGoToExperts }) {
         <StatCard icon={<FileText size={18} />} color="#34d399" value={stats.totalPosts} label="전체 게시글" />
         <StatCard icon={<Crown size={18} />} color="#c6ff3d" value={stats.subscriberCount} label="구독자" />
         <StatCard icon={<ShieldAlert size={18} />} color="#fb923c" value={stats.pendingExperts} label="전문가 신청" />
+        <StatCard
+          icon={<AlertTriangle size={18} />}
+          color="#f87171"
+          value={stats.pendingReports}
+          label="신고 접수"
+          onClick={onGoToReports}
+        />
       </div>
 
       <div className={styles.dashboardGrid}>
@@ -272,9 +299,24 @@ function DashboardTab({ onGoToExperts }) {
   )
 }
 
-function StatCard({ icon, color, value, label }) {
+function StatCard({ icon, color, value, label, onClick }) {
   return (
-    <div className={styles.statCard}>
+    <div
+      className={styles.statCard}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onClick()
+              }
+            }
+          : undefined
+      }
+    >
       <span className={styles.statIcon} style={{ backgroundColor: `${color}24`, color }}>
         {icon}
       </span>
@@ -732,6 +774,226 @@ function ExpertStatusBadge({ status }) {
     <span className={`${styles.expertStatusBadge} ${styles.expertStatusPending}`}>
       <Clock size={12} />
       심사중
+    </span>
+  )
+}
+
+// ---------------- 신고 관리 ----------------
+
+const REPORT_FILTERS = ['ALL', 'PENDING', 'DONE']
+
+// 신고는 신고자 수만큼 행이 따로 쌓이므로(같은 글을 여러 명이 신고 가능),
+// targetType+targetId 기준으로 묶어서 "콘텐츠 1개당 카드 1개"로 보여준다.
+function groupReportsByTarget(reports) {
+  const groups = new Map()
+  for (const report of reports) {
+    const key = `${report.targetType}-${report.targetId}`
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        targetType: report.targetType,
+        targetId: report.targetId,
+        targetTitle: report.targetTitle,
+        targetContentPreview: report.targetContentPreview,
+        targetAuthorNickname: report.targetAuthorNickname,
+        reports: [],
+      })
+    }
+    groups.get(key).reports.push(report)
+  }
+
+  return [...groups.values()].map((group) => {
+    const latest = group.reports.reduce((a, b) => (a.createdAt > b.createdAt ? a : b))
+    const hasPending = group.reports.some((r) => r.status === 'PENDING')
+    // 그룹 안 신고들이 전부 같은 상태로 처리되는 게 정상 흐름이라, 처리됐다면 첫 건 상태를 대표값으로 쓴다.
+    const status = hasPending ? 'PENDING' : group.reports[0].status
+    return { ...group, status, latestCreatedAt: latest.createdAt }
+  })
+}
+
+function ReportsTab({ onPendingCountChange }) {
+  const [reports, setReports] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [filter, setFilter] = useState('ALL')
+  const [actingKey, setActingKey] = useState(null)
+
+  const load = useCallback(() => {
+    return adminApi.getReports({ size: 500 }).then(({ data }) => {
+      setReports(data.data)
+      onPendingCountChange?.(
+        groupReportsByTarget(data.data).filter((g) => g.status === 'PENDING').length,
+      )
+    })
+  }, [onPendingCountChange])
+
+  useEffect(() => {
+    let ignore = false
+    setIsLoading(true)
+    load()
+      .catch(() => {
+        if (!ignore) setError('신고 목록을 불러오지 못했습니다.')
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false)
+      })
+    return () => {
+      ignore = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const groups = groupReportsByTarget(reports).sort((a, b) => (a.latestCreatedAt < b.latestCreatedAt ? 1 : -1))
+  const pending = groups.filter((g) => g.status === 'PENDING')
+  const done = groups.filter((g) => g.status !== 'PENDING')
+  const visible = filter === 'PENDING' ? pending : filter === 'DONE' ? done : groups
+
+  async function handleDelete(group) {
+    const meta = REPORT_TARGET_TYPE_META[group.targetType]
+    if (!meta.deleteAction) return
+    if (!window.confirm(`이 ${meta.label}을(를) 삭제 처리할까요? 콘텐츠가 실제로 삭제됩니다.`)) return
+
+    setActingKey(group.key)
+    try {
+      await meta.deleteAction(group.targetId)
+      await Promise.all(
+        group.reports.filter((r) => r.status === 'PENDING').map((r) => adminApi.resolveReport(r.id)),
+      )
+      await load()
+    } catch (err) {
+      window.alert(err.response?.data?.message ?? '삭제 처리에 실패했습니다.')
+    } finally {
+      setActingKey(null)
+    }
+  }
+
+  async function handleReject(group) {
+    if (!window.confirm('신고를 반려할까요? 콘텐츠는 그대로 유지됩니다.')) return
+
+    setActingKey(group.key)
+    try {
+      await Promise.all(
+        group.reports.filter((r) => r.status === 'PENDING').map((r) => adminApi.rejectReport(r.id)),
+      )
+      await load()
+    } catch (err) {
+      window.alert(err.response?.data?.message ?? '반려 처리에 실패했습니다.')
+    } finally {
+      setActingKey(null)
+    }
+  }
+
+  if (isLoading) return <p className={styles.state}>불러오는 중...</p>
+  if (error) return <p className={styles.state}>{error}</p>
+
+  return (
+    <>
+      <div className={styles.statsGrid} style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+        <StatCard icon={<Clock size={18} />} color="#fbbf24" value={pending.length} label="대기중" />
+        <StatCard icon={<CheckCircle2 size={18} />} color="#34d399" value={done.length} label="처리완료" />
+        <StatCard icon={<AlertTriangle size={18} />} color="#f87171" value={groups.length} label="전체 접수" />
+      </div>
+
+      <div className={styles.roleTabs} style={{ marginBottom: 16 }}>
+        {REPORT_FILTERS.map((key) => (
+          <button
+            key={key}
+            type="button"
+            className={`${styles.roleTab} ${filter === key ? styles.roleTabActive : ''}`}
+            onClick={() => setFilter(key)}
+          >
+            {key === 'ALL' ? '전체' : key === 'PENDING' ? `대기중 (${pending.length})` : '처리완료'}
+          </button>
+        ))}
+      </div>
+
+      {visible.length === 0 ? (
+        <p className={styles.emptyState}>해당하는 신고가 없어요.</p>
+      ) : (
+        <div className={styles.list}>
+          {visible.map((group) => (
+            <ReportCard
+              key={group.key}
+              group={group}
+              isActing={actingKey === group.key}
+              onDelete={() => handleDelete(group)}
+              onReject={() => handleReject(group)}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
+function ReportCard({ group, isActing, onDelete, onReject }) {
+  const meta = REPORT_TARGET_TYPE_META[group.targetType]
+
+  return (
+    <div className={styles.reportCard}>
+      <div className={styles.reportCardHead}>
+        <div className={styles.reportCardBadges}>
+          <span className={styles.reportTypeBadge}>{meta.label}</span>
+          <ReportStatusBadge status={group.status} />
+        </div>
+        {group.status === 'PENDING' && (
+          <div className={styles.reviewRowActions}>
+            {meta.deleteAction && (
+              <button type="button" className={styles.rejectButton} disabled={isActing} onClick={onDelete}>
+                <Trash2 size={13} />
+                삭제
+              </button>
+            )}
+            <button type="button" className={styles.approveButton} disabled={isActing} onClick={onReject}>
+              <X size={13} />
+              반려
+            </button>
+          </div>
+        )}
+      </div>
+
+      <p className={styles.reportCardMeta}>
+        작성자: {group.targetAuthorNickname ?? '알 수 없음'} · {formatDate(group.latestCreatedAt)}
+      </p>
+      {group.targetTitle && <p className={styles.reportCardTitle}>{group.targetTitle}</p>}
+      {group.targetContentPreview && <p className={styles.reportCardPreview}>{group.targetContentPreview}</p>}
+
+      <div className={styles.reportReasonBox}>
+        <p className={styles.reportReasonHeading}>신고자 ({group.reports.length}명)</p>
+        {group.reports.map((r) => (
+          <p key={r.id} className={styles.reportReasonRow}>
+            <span className={styles.reportReasonNickname}>{r.reporterNickname}</span>
+            {' · '}
+            {REPORT_REASON_LABELS[r.reason] ?? r.reason}
+            {r.detail && ` — ${r.detail}`}
+          </p>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ReportStatusBadge({ status }) {
+  if (status === 'DELETED') {
+    return (
+      <span className={`${styles.expertStatusBadge} ${styles.expertStatusRejected}`}>
+        <Trash2 size={12} />
+        삭제됨
+      </span>
+    )
+  }
+  if (status === 'REJECTED') {
+    return (
+      <span className={styles.expertStatusBadge} style={{ backgroundColor: 'rgba(148, 163, 184, 0.14)', color: '#94a3b8' }}>
+        <X size={12} />
+        반려됨
+      </span>
+    )
+  }
+  return (
+    <span className={`${styles.expertStatusBadge} ${styles.expertStatusPending}`}>
+      <Clock size={12} />
+      대기중
     </span>
   )
 }
