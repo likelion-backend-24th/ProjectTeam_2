@@ -2,7 +2,7 @@ import apiClient, { setAccessToken } from './client'
 
 // POST /api/auth/signup
 function signup(payload) {
-  // payload: { name, username, password, nickname }
+  // payload: { name, username, password, nickname, termsAgreed }
   return apiClient.post('/api/auth/signup', payload)
 }
 
