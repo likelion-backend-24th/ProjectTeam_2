@@ -23,6 +23,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.example.backend.expert.dto.response.FeedbackMessageResponse;
+import org.example.backend.expert.dto.response.FeedbackResponse;
+import org.example.backend.expert.service.FeedbackService;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +37,7 @@ public class AdminService {
     private final CommentService commentService;
     private final ReportService reportService;
     private final ExpertProfileService expertProfileService;
+    private final FeedbackService feedbackService;
     private final StudyService studyService;
     private final StudyPostService studyPostService;
     private final StudyPostCommentService studyPostCommentService;
@@ -125,6 +130,16 @@ public class AdminService {
     @Transactional
     public void resolveReport(Long reportId){
         reportService.resolveReport(reportId);
+    }
+
+    // 신고된 피드백 스레드 상세 조회 (신고가 접수된 스레드만 열람 가능)
+    public FeedbackResponse getFeedback(Long feedbackId) {
+        return feedbackService.getFeedbackForAdmin(feedbackId);
+    }
+
+    // 신고된 피드백 스레드의 메시지 목록 조회
+    public List<FeedbackMessageResponse> getFeedbackMessages(Long feedbackId) {
+        return feedbackService.getMessagesForAdmin(feedbackId);
     }
 
 }

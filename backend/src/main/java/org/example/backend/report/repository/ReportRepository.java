@@ -15,4 +15,7 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
             ReportTargetType targetType, Long targetId, Long reporterId);
 
     Page<Report> findAllByStatus(ReportStatus status, Pageable pageable);
+
+    // 관리자가 신고된 피드백 스레드만 열람할 수 있도록 게이트할 때 사용 (신고자 무관하게 존재 여부만 확인)
+    boolean existsByTargetTypeAndTargetId(ReportTargetType targetType, Long targetId);
 }

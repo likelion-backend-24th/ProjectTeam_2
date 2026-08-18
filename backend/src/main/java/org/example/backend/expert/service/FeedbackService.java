@@ -29,6 +29,8 @@ import org.example.backend.user.entity.AccountStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.example.backend.expert.dto.response.ExpertFeedbackListResponse;
+import org.example.backend.report.entity.ReportTargetType;
+import org.example.backend.report.repository.ReportRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +45,7 @@ public class FeedbackService {
     private final FeedbackMessageImageRepository feedbackMessageImageRepository;
     private final FileStorageService fileStorageService;
     private final ImageValidator imageValidator;
+    private final ReportRepository reportRepository;
 
     @Transactional
     public FeedbackResponse createFeedback(Long requesterId, FeedbackCreateRequest request,  List<MultipartFile> images) {
@@ -194,6 +197,25 @@ public class FeedbackService {
                 .map(feedback -> feedback.getRequester().getId().equals(userId)
                         || feedback.getExpertProfile().getUser().getId().equals(userId))
                 .orElse(false);
+    }
+
+    // 관리자용 - 당사자 여부와 무관하게, 이 스레드에 대한 신고가 실제로 존재할 때만 열람을 허용한다
+    public FeedbackResponse getFeedbackForAdmin(Long feedbackId) {
+        Feedback feedback = getFeedbackOrThrow(feedbackId);
+        if (!reportRepository.existsByTargetTypeAndTargetId(ReportTargetType.FEEDBACK, feedbackId)) {
+            throw new BusinessException(ExpertErrorCode.FEEDBACK_NOT_REPORTED);
+        }
+        return FeedbackResponse.from(feedback);
+    }
+
+    // 관리자용 - 위와 동일한 게이트로, 신고된 스레드의 메시지(이미지 포함)를 조회한다
+    public List<FeedbackMessageResponse> getMessagesForAdmin(Long feedbackId) {
+        getFeedbackOrThrow(feedbackId);
+        if (!reportRepository.existsByTargetTypeAndTargetId(ReportTargetType.FEEDBACK, feedbackId)) {
+            throw new BusinessException(ExpertErrorCode.FEEDBACK_NOT_REPORTED);
+        }
+        return feedbackMessageRepository.findByFeedbackIdOrderByCreatedAtAsc(feedbackId)
+                .stream().map(message -> FeedbackMessageResponse.from(message, getImageUrls(message.getId()))).toList();
     }
 
     private void validateFeedbackAccess(Feedback feedback, Long callerId) {

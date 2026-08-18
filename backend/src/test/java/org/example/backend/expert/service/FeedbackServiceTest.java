@@ -46,6 +46,8 @@ import org.example.backend.common.file.ImageValidator;
 import org.example.backend.expert.repository.FeedbackMessageImageRepository;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
+import org.example.backend.report.entity.ReportTargetType;
+import org.example.backend.report.repository.ReportRepository;
 
 @ExtendWith(MockitoExtension.class)
 class FeedbackServiceTest {
@@ -66,6 +68,8 @@ class FeedbackServiceTest {
     private FileStorageService fileStorageService;
     @Mock
     private ImageValidator imageValidator;
+    @Mock
+    private ReportRepository reportRepository;
 
     @InjectMocks
     private FeedbackService feedbackService;
@@ -562,6 +566,60 @@ class FeedbackServiceTest {
         boolean result = feedbackService.isParticipant(999L, 1L);
 
         assertThat(result).isFalse();
+    }
+
+    @Test
+    void getFeedbackForAdmin_신고된스레드면_조회성공() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).topic("포트폴리오 피드백 요청").build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(reportRepository.existsByTargetTypeAndTargetId(ReportTargetType.FEEDBACK, 1L)).thenReturn(true);
+
+        FeedbackResponse response = feedbackService.getFeedbackForAdmin(1L);
+
+        assertThat(response.getTopic()).isEqualTo("포트폴리오 피드백 요청");
+    }
+
+    @Test
+    void getFeedbackForAdmin_신고안된스레드면_예외() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(reportRepository.existsByTargetTypeAndTargetId(ReportTargetType.FEEDBACK, 1L)).thenReturn(false);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.getFeedbackForAdmin(1L));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_NOT_REPORTED);
+    }
+
+    @Test
+    void getMessagesForAdmin_신고된스레드면_메시지목록반환() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(reportRepository.existsByTargetTypeAndTargetId(ReportTargetType.FEEDBACK, 1L)).thenReturn(true);
+        when(feedbackMessageRepository.findByFeedbackIdOrderByCreatedAtAsc(1L))
+                .thenReturn(List.of(
+                        FeedbackMessage.builder().feedback(feedback).sender(requester).content("첫 메시지").build()
+                ));
+
+        List<FeedbackMessageResponse> response = feedbackService.getMessagesForAdmin(1L);
+
+        assertThat(response).hasSize(1);
+    }
+
+    @Test
+    void getMessagesForAdmin_신고안된스레드면_예외() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+        when(reportRepository.existsByTargetTypeAndTargetId(ReportTargetType.FEEDBACK, 1L)).thenReturn(false);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> feedbackService.getMessagesForAdmin(1L));
+        assertThat(e.getErrorCode()).isEqualTo(ExpertErrorCode.FEEDBACK_NOT_REPORTED);
+
+        verify(feedbackMessageRepository, never()).findByFeedbackIdOrderByCreatedAtAsc(any());
     }
 
 
