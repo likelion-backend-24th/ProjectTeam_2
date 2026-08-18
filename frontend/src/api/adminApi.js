@@ -40,6 +40,11 @@ function getReports(params) {
   return apiClient.get('/api/admin/reports', { params })
 }
 
+// GET /api/admin/feedbacks/:id (신고 접수된 상담 스레드만 조회 가능. expertProfileId 확인용)
+function getFeedback(id) {
+  return apiClient.get(`/api/admin/feedbacks/${id}`)
+}
+
 // PATCH /api/admin/reports/:id/resolve (신고 대상 콘텐츠 삭제로 종료)
 function resolveReport(id) {
   return apiClient.patch(`/api/admin/reports/${id}/resolve`)
@@ -59,6 +64,7 @@ export const adminApi = {
   deleteStudyPost,
   deleteStudyPostComment,
   getReports,
+  getFeedback,
   resolveReport,
   rejectReport,
 }

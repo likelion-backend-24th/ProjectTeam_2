@@ -17,6 +17,7 @@ import {
   Trash2,
   UserCheck,
   Users,
+  UserX,
   X,
   XCircle,
   Zap,
@@ -40,11 +41,52 @@ const TABS = [
 const REPORT_REASON_LABELS = Object.fromEntries(REPORT_REASONS.map((item) => [item.value, item.label]))
 
 const REPORT_TARGET_TYPE_META = {
-  POST: { label: '게시글', deleteAction: (id) => adminApi.deletePost(id) },
-  COMMENT: { label: '댓글', deleteAction: (id) => adminApi.deleteComment(id) },
-  STUDY_POST: { label: '스터디 게시글', deleteAction: (id) => adminApi.deleteStudyPost(id) },
-  STUDY_POST_COMMENT: { label: '스터디 댓글', deleteAction: (id) => adminApi.deleteStudyPostComment(id) },
-  FEEDBACK: { label: '전문가 상담', deleteAction: null },
+  POST: {
+    label: '게시글',
+    deleteAction: (id) => adminApi.deletePost(id),
+    actionLabel: '삭제',
+    actionIcon: Trash2,
+    resolvedLabel: '삭제됨',
+    confirmMessage: '이 게시글을 삭제 처리할까요? 콘텐츠가 실제로 삭제됩니다.',
+  },
+  COMMENT: {
+    label: '댓글',
+    deleteAction: (id) => adminApi.deleteComment(id),
+    actionLabel: '삭제',
+    actionIcon: Trash2,
+    resolvedLabel: '삭제됨',
+    confirmMessage: '이 댓글을 삭제 처리할까요? 콘텐츠가 실제로 삭제됩니다.',
+  },
+  STUDY_POST: {
+    label: '스터디 게시글',
+    deleteAction: (id) => adminApi.deleteStudyPost(id),
+    actionLabel: '삭제',
+    actionIcon: Trash2,
+    resolvedLabel: '삭제됨',
+    confirmMessage: '이 스터디 게시글을 삭제 처리할까요? 콘텐츠가 실제로 삭제됩니다.',
+  },
+  STUDY_POST_COMMENT: {
+    label: '스터디 댓글',
+    deleteAction: (id) => adminApi.deleteStudyPostComment(id),
+    actionLabel: '삭제',
+    actionIcon: Trash2,
+    resolvedLabel: '삭제됨',
+    confirmMessage: '이 스터디 댓글을 삭제 처리할까요? 콘텐츠가 실제로 삭제됩니다.',
+  },
+  FEEDBACK: {
+    label: '전문가 상담',
+    // 상담 메시지 자체는 삭제할 방법이 없어서, 신고 처리는 담당 전문가 자격 박탈로 대신한다.
+    // 박탈 시 그 전문가가 진행 중인 다른 상담들도 함께 강제 종료된다(ExpertProfileService.revoke).
+    deleteAction: (id) =>
+      adminApi
+        .getFeedback(id)
+        .then(({ data }) => expertApi.revokeExpert(data.data.expertProfileId, '신고 접수로 인한 전문가 자격 박탈')),
+    actionLabel: '전문가 박탈',
+    actionIcon: UserX,
+    resolvedLabel: '박탈됨',
+    confirmMessage:
+      '이 상담의 담당 전문가 자격을 박탈할까요? 박탈되면 해당 전문가가 진행 중인 다른 모든 상담도 함께 종료됩니다.',
+  },
 }
 
 const ROLE_META = {
@@ -851,7 +893,7 @@ function ReportsTab({ onPendingCountChange }) {
   async function handleDelete(group) {
     const meta = REPORT_TARGET_TYPE_META[group.targetType]
     if (!meta.deleteAction) return
-    if (!window.confirm(`이 ${meta.label}을(를) 삭제 처리할까요? 콘텐츠가 실제로 삭제됩니다.`)) return
+    if (!window.confirm(meta.confirmMessage ?? `이 ${meta.label}을(를) 삭제 처리할까요? 콘텐츠가 실제로 삭제됩니다.`)) return
 
     setActingKey(group.key)
     try {
@@ -861,7 +903,7 @@ function ReportsTab({ onPendingCountChange }) {
       )
       await load()
     } catch (err) {
-      window.alert(err.response?.data?.message ?? '삭제 처리에 실패했습니다.')
+      window.alert(err.response?.data?.message ?? '처리에 실패했습니다.')
     } finally {
       setActingKey(null)
     }
@@ -934,14 +976,14 @@ function ReportCard({ group, isActing, onDelete, onReject }) {
       <div className={styles.reportCardHead}>
         <div className={styles.reportCardBadges}>
           <span className={styles.reportTypeBadge}>{meta.label}</span>
-          <ReportStatusBadge status={group.status} />
+          <ReportStatusBadge status={group.status} resolvedLabel={meta.resolvedLabel} ResolvedIcon={meta.actionIcon} />
         </div>
         {group.status === 'PENDING' && (
           <div className={styles.reviewRowActions}>
             {meta.deleteAction && (
               <button type="button" className={styles.rejectButton} disabled={isActing} onClick={onDelete}>
-                <Trash2 size={13} />
-                삭제
+                <meta.actionIcon size={13} />
+                {meta.actionLabel}
               </button>
             )}
             <button type="button" className={styles.approveButton} disabled={isActing} onClick={onReject}>
@@ -973,12 +1015,12 @@ function ReportCard({ group, isActing, onDelete, onReject }) {
   )
 }
 
-function ReportStatusBadge({ status }) {
+function ReportStatusBadge({ status, resolvedLabel = '삭제됨', ResolvedIcon = Trash2 }) {
   if (status === 'DELETED') {
     return (
       <span className={`${styles.expertStatusBadge} ${styles.expertStatusRejected}`}>
-        <Trash2 size={12} />
-        삭제됨
+        <ResolvedIcon size={12} />
+        {resolvedLabel}
       </span>
     )
   }
