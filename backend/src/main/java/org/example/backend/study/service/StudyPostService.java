@@ -59,7 +59,7 @@ public class StudyPostService {
         getStudyOrThrow(id);
         validateStudyMember(id, userId);
 
-        List<StudyPost> posts = studyPostRepository.findAllByStudyId(id);
+        List<StudyPost> posts = studyPostRepository.findAllByStudyIdOrderByPinnedDescCreatedAtDesc(id);
         return posts.stream()
                 .map(post -> StudyPostResponse.from(post, getImageUrls(post.getId())))
                 .toList();
@@ -93,6 +93,20 @@ public class StudyPostService {
     }
 
     @Transactional
+    public StudyPostResponse updatePinStatus(Long userId, Long id, Long postId, boolean pinned) {
+        Study study = getStudyOrThrow(id);
+        validateStudyMember(id, userId);
+        validateStudyLeader(study, userId);
+        StudyPost post = getStudyPostOrThrow(id, postId);
+
+        post.setPinned(pinned);
+
+        List<String> imageUrls = getImageUrls(postId);
+
+        return StudyPostResponse.from(post, imageUrls);
+    }
+
+    @Transactional
     public void deleteStudyPost(Long userId, Long id, Long postId) {
         getStudyOrThrow(id);
         validateStudyMember(id, userId);
@@ -111,7 +125,7 @@ public class StudyPostService {
 
     @Transactional
     public void deleteAllByStudy(Long studyId) {
-        List<StudyPost> posts = studyPostRepository.findAllByStudyId(studyId);
+        List<StudyPost> posts = studyPostRepository.findAllByStudyIdOrderByPinnedDescCreatedAtDesc(studyId);
         for (StudyPost post : posts) {
             deleteStudyPostCascade(post);
         }
@@ -172,6 +186,12 @@ public class StudyPostService {
     private void validatePostOwner(StudyPost post, Long userId) {
         if (!post.getUser().getId().equals(userId)) {
             throw new BusinessException(StudyErrorCode.STUDY_POST_FORBIDDEN);
+        }
+    }
+
+    private void validateStudyLeader(Study study, Long userId) {
+        if (!study.getLeader().getId().equals(userId)) {
+            throw new BusinessException(StudyErrorCode.STUDY_ACCESS_DENIED);
         }
     }
 }
