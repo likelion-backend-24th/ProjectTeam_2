@@ -322,6 +322,13 @@
   min-width: 0;
 }
 
+.pinIcon {
+  flex-shrink: 0;
+  margin-right: 4px;
+  vertical-align: -2px;
+  color: var(--color-accent);
+}
+
 .postMeta {
   display: flex;
   align-items: center;

@@ -30,6 +30,11 @@ function deleteStudyPost(studyId, postId) {
   return apiClient.delete(`/api/studies/${studyId}/posts/${postId}`)
 }
 
+// PATCH /api/studies/:id/posts/:postId/pin (방장 전용)
+function updateStudyPostPin(studyId, postId, pinned) {
+  return apiClient.patch(`/api/studies/${studyId}/posts/${postId}/pin`, { pinned })
+}
+
 // ---- 스터디 게시판 댓글 ----
 
 // POST /api/studies/:id/posts/:postId/comments
@@ -53,6 +58,7 @@ export const studyPostApi = {
   getStudyPostDetail,
   updateStudyPost,
   deleteStudyPost,
+  updateStudyPostPin,
   createStudyPostComment,
   updateStudyPostComment,
   deleteStudyPostComment,

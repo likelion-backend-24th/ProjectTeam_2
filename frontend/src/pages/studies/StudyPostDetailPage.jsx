@@ -1,7 +1,7 @@
-import { ChevronLeft, Pencil, Trash2 } from 'lucide-react'
+import { ChevronLeft, Pencil, Pin, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { studyPostApi } from '../../api'
+import { studyApi, studyPostApi } from '../../api'
 import ImageGallery from '../../components/common/ImageGallery'
 import ReportButton from '../../components/common/ReportButton'
 import SiteHeader from '../../components/common/SiteHeader'
@@ -18,6 +18,7 @@ export default function StudyPostDetailPage() {
   const { user } = useAuth()
 
   const [post, setPost] = useState(null)
+  const [study, setStudy] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [refetchTrigger, setRefetchTrigger] = useState(0)
@@ -42,10 +43,11 @@ export default function StudyPostDetailPage() {
     if (isFirstLoadRef.current) setIsLoading(true)
     setError('')
 
-    studyPostApi
-      .getStudyPostDetail(studyId, postId)
-      .then(({ data }) => {
-        if (!ignore) setPost(data.data)
+    Promise.all([studyPostApi.getStudyPostDetail(studyId, postId), studyApi.getStudyById(studyId)])
+      .then(([postRes, studyRes]) => {
+        if (ignore) return
+        setPost(postRes.data.data)
+        setStudy(studyRes.data.data)
       })
       .catch((err) => {
         if (ignore) return
@@ -74,6 +76,16 @@ export default function StudyPostDetailPage() {
   }
 
   const isOwner = Boolean(user) && Boolean(post) && user.id === post.authorId
+  const isLeader = Boolean(user) && Boolean(study) && user.id === study.leaderId
+
+  async function handleTogglePin() {
+    try {
+      await studyPostApi.updateStudyPostPin(studyId, postId, !post.pinned)
+      refetch()
+    } catch (err) {
+      window.alert(err.response?.data?.message ?? '고정 상태 변경에 실패했습니다.')
+    }
+  }
 
   async function handleDelete() {
     if (!window.confirm('게시글을 삭제할까요? 삭제하면 되돌릴 수 없어요.')) return
@@ -101,7 +113,10 @@ export default function StudyPostDetailPage() {
 
         {!isLoading && post && (
           <div className={styles.fadeIn}>
-            <h1 className={styles.title}>{post.title}</h1>
+            <h1 className={styles.title}>
+              {post.pinned && <Pin size={20} className={styles.pinIcon} />}
+              {post.title}
+            </h1>
 
             <div className={styles.meta}>
               <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(post.authorNickname) }}>
@@ -110,6 +125,20 @@ export default function StudyPostDetailPage() {
               <span className={styles.name}>{post.authorNickname}</span>
               <span>·</span>
               <span>{formatDateTime(post.createdAt)}</span>
+
+              {isLeader && (
+                <span className={styles.ownerActions}>
+                  <button
+                    type="button"
+                    className={styles.iconButton}
+                    onClick={handleTogglePin}
+                    aria-label={post.pinned ? '게시글 고정 해제' : '게시글 고정'}
+                  >
+                    <Pin size={14} />
+                    {post.pinned ? '고정 해제' : '고정'}
+                  </button>
+                </span>
+              )}
 
               {isOwner && (
                 <span className={styles.ownerActions}>

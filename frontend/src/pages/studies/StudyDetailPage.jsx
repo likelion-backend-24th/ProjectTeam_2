@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, Crown, Lock, PenLine, UserX } from 'lucide-react'
+import { Check, ChevronLeft, Crown, Lock, PenLine, Pin, UserX } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { studyApi, studyPostApi } from '../../api'
@@ -86,7 +86,10 @@ export default function StudyDetailPage() {
       .getStudyPosts(studyId)
       .then(({ data }) => {
         if (ignore) return
-        const sorted = [...data.data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        // 서버가 pinned desc, createdAt desc로 정렬해서 내려주지만, 방어적으로 한 번 더 정렬한다.
+        const sorted = [...data.data].sort(
+          (a, b) => Number(b.pinned) - Number(a.pinned) || new Date(b.createdAt) - new Date(a.createdAt),
+        )
         setPosts(sorted)
         setBoardLoaded(true)
       })
@@ -328,7 +331,10 @@ export default function StudyDetailPage() {
               <div className={styles.postList}>
                 {posts.map((post) => (
                   <Link key={post.id} to={`/studies/${studyId}/posts/${post.id}`} className={styles.postRow}>
-                    <p className={styles.postTitle}>{post.title}</p>
+                    <p className={styles.postTitle}>
+                      {post.pinned && <Pin size={13} className={styles.pinIcon} />}
+                      {post.title}
+                    </p>
                     <span className={styles.postMeta}>
                       <span>{post.authorNickname}</span>
                       <span>·</span>
