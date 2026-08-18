@@ -51,7 +51,10 @@ public class PostDetailResponse {
     @Schema(description = "댓글 전체 개수", example = "27")
     private long totalComments;
 
-    public static PostDetailResponse from(Post post, Page<Comment> commentsPage) {
+    @Schema(description = "이미지 URL 목록")
+    private List<String> imageUrls;
+
+    public static PostDetailResponse from(Post post, Page<Comment> commentsPage, List<String> imageUrls) {
         List<CommentResponse> commentResponses = commentsPage.getContent().stream()
                 .map(CommentResponse::from)
                 .toList();
@@ -69,6 +72,7 @@ public class PostDetailResponse {
                 .comments(commentResponses)
                 .totalCommentPages(commentsPage.getTotalPages())
                 .totalComments(commentsPage.getTotalElements())
+                .imageUrls(imageUrls)
                 .build();
     }
 }

@@ -1,6 +1,7 @@
 package org.example.backend.post.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -38,7 +39,10 @@ public class PostResponse {
     @Schema(description = "수정일시", example = "2026-08-05T10:00:00")
     private LocalDateTime updatedAt;
 
-    public static PostResponse from(Post post) {
+    @Schema(description = "이미지 URL 목록")
+    private List<String> imageUrls;
+
+    public static PostResponse from(Post post, List<String> imageUrls) {
         return PostResponse.builder()
                 .id(post.getId())
                 .title(post.getTitle())
@@ -49,6 +53,7 @@ public class PostResponse {
                 .authorNickname(post.getUser().getNickname())
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
+                .imageUrls(imageUrls)
                 .build();
     }
 }

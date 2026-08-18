@@ -2,10 +2,13 @@ package org.example.backend.post.service;
 
 import org.example.backend.comment.entity.Comment;
 import org.example.backend.comment.repository.CommentRepository;
+import org.example.backend.common.file.FileStorageService;
+import org.example.backend.common.file.ImageValidator;
 import org.example.backend.post.entity.Post;
 import org.example.backend.post.entity.PostCategory;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.post.exception.PostErrorCode;
+import org.example.backend.post.repository.PostImageRepository;
 import org.example.backend.post.repository.PostRepository;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
@@ -34,8 +37,18 @@ class PostServiceTest {
     @Mock
     private CommentRepository commentRepository;
 
+    @Mock
+    private PostImageRepository postImageRepository;
+
+    @Mock
+    private FileStorageService fileStorageService;
+
+    @Mock
+    private ImageValidator imageValidator;
+
     @InjectMocks
     private PostService postService;
+
 
     @Test
     void 작성자_본인이_아니면_삭제시_예외가_발생한다() {
