@@ -94,7 +94,7 @@ export default function ExpertConsultPage() {
     setProfileExpertId(expertId)
   }
 
-  function handleStartConsult(expertId, name) {
+  function handleStartConsult(expertId, name, career) {
     if (!isAuthenticated) {
       navigate('/login', { state: { from: location } })
       return
@@ -104,7 +104,7 @@ export default function ExpertConsultPage() {
       return
     }
     setProfileExpertId(null)
-    setConsultModal({ preselected: { expertId, name } })
+    setConsultModal({ preselected: { expertId, name, career } })
   }
 
   function handleNewConsultClick() {

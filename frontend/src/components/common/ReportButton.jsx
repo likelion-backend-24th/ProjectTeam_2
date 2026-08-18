@@ -4,8 +4,8 @@ import { reportApi } from '../../api'
 import { REPORT_REASONS } from '../../constants/reportReason'
 import styles from './ReportButton.module.css'
 
-// 게시글/댓글/스터디게시글/스터디댓글 공용 신고 버튼 + 모달.
-// 백엔드 POST /api/reports 하나로 네 종류(targetType) 모두 처리한다.
+// 게시글/댓글/스터디게시글/스터디댓글/전문가 상담 공용 신고 버튼 + 모달.
+// 백엔드 POST /api/reports 하나로 다섯 종류(targetType) 모두 처리한다.
 // variant: 'text'(아이콘+텍스트, 게시글 상단용) | 'icon'(아이콘만, 댓글 목록용)
 export default function ReportButton({ targetType, targetId, variant = 'text' }) {
   const [isOpen, setIsOpen] = useState(false)

@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, MessageSquarePlus } from 'lucide-react'
 import { useState } from 'react'
 import { feedbackApi } from '../../api'
 import { getAvatarColor } from '../../utils/avatarColor'
+import ImagePicker from '../common/ImagePicker'
 import Modal from '../common/Modal'
 import styles from './NewConsultModal.module.css'
 
@@ -14,6 +15,7 @@ export default function NewConsultModal({ experts, preselected, onClose, onCreat
   const [selectedExpert, setSelectedExpert] = useState(preselected ?? null)
   const [topic, setTopic] = useState('')
   const [content, setContent] = useState('')
+  const [images, setImages] = useState([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -28,11 +30,14 @@ export default function NewConsultModal({ experts, preselected, onClose, onCreat
     setError('')
     setIsSubmitting(true)
     try {
-      const { data } = await feedbackApi.createFeedback({
-        expertProfileId: selectedExpert.expertId,
-        topic,
-        content,
-      })
+      const { data } = await feedbackApi.createFeedback(
+        {
+          expertProfileId: selectedExpert.expertId,
+          topic,
+          content,
+        },
+        images,
+      )
       onCreated(data.data)
     } catch (err) {
       setError(err.response?.data?.message ?? '상담 신청에 실패했습니다.')
@@ -132,6 +137,11 @@ export default function NewConsultModal({ experts, preselected, onClose, onCreat
                   value={content}
                   onChange={(event) => setContent(event.target.value)}
                 />
+              </div>
+
+              <div className={styles.field}>
+                <label className={styles.label}>첨부 이미지 (선택)</label>
+                <ImagePicker images={images} onChange={setImages} maxCount={5} disabled={isSubmitting} />
               </div>
 
               {error && <p className={styles.error}>{error}</p>}

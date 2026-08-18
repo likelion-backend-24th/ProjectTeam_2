@@ -50,12 +50,12 @@ export default function ExpertProfileModal({ expertId, isSubscribed, onClose, on
         {!isLoading && profile && (
           <>
             <div className={styles.head}>
-              <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(profile.nickname) }}>
-                {profile.nickname?.[0]}
+              <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(profile.name) }}>
+                {profile.name?.[0]}
               </span>
               <div>
                 <div className={styles.nameRow}>
-                  <p className={styles.name}>{profile.nickname}</p>
+                  <p className={styles.name}>{profile.name}</p>
                   <span className={styles.badge}>
                     <Star size={10} />
                     전문가
@@ -115,7 +115,7 @@ export default function ExpertProfileModal({ expertId, isSubscribed, onClose, on
             <button
               type="button"
               className={styles.ctaButton}
-              onClick={() => onStartConsult(profile.expertId, profile.nickname)}
+              onClick={() => onStartConsult(profile.expertId, profile.name, careerSummary)}
             >
               <Crown size={16} />
               {isSubscribed ? '새 상담 시작하기' : '구독하고 상담 시작하기'}
