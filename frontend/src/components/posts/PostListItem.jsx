@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Eye } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { getPostCategoryMeta } from '../../constants/postCategory'
 import { getAvatarColor } from '../../utils/avatarColor'
@@ -24,6 +24,11 @@ export default function PostListItem({ post }) {
           <span>{post.authorNickname}</span>
           <span>·</span>
           <span>{formatDateTime(post.createdAt)}</span>
+          <span>·</span>
+          <span className={styles.viewCount}>
+            <Eye size={13} />
+            {post.viewCount}
+          </span>
         </div>
       </div>
       <ChevronRight className={styles.chevron} size={18} />

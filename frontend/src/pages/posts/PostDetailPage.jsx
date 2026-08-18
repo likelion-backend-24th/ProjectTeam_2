@@ -1,4 +1,4 @@
-import { ChevronLeft, Pencil, Trash2 } from "lucide-react";
+import { ChevronLeft, Eye, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   Link,
@@ -160,6 +160,11 @@ export default function PostDetailPage() {
               <span className={styles.name}>{post.authorNickname}</span>
               <span>·</span>
               <span>{formatDateTime(post.createdAt)}</span>
+              <span>·</span>
+              <span className={styles.viewCount}>
+                <Eye size={13} />
+                {post.viewCount}
+              </span>
 
               {isOwner && (
                 <span className={styles.ownerActions}>

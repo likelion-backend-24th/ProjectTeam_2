@@ -61,6 +61,12 @@
   font-weight: 600;
 }
 
+.viewCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
 .ownerActions {
   display: flex;
   align-items: center;
