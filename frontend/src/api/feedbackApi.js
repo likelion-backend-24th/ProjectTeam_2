@@ -1,9 +1,12 @@
 import apiClient from './client'
 
-// POST /api/feedbacks
-function createFeedback(payload) {
-  // payload: { expertProfileId, topic }
-  return apiClient.post('/api/feedbacks', payload)
+// POST /api/feedbacks (멀티파트: 백엔드가 @RequestPart("data")+images로 받음)
+function createFeedback(payload, images = []) {
+  // payload: { expertProfileId, topic, content }
+  const formData = new FormData()
+  formData.append('data', new Blob([JSON.stringify(payload)], { type: 'application/json' }))
+  images.forEach((file) => formData.append('images', file))
+  return apiClient.post('/api/feedbacks', formData)
 }
 
 // GET /api/feedbacks/:id
@@ -11,10 +14,13 @@ function getFeedback(id) {
   return apiClient.get(`/api/feedbacks/${id}`)
 }
 
-// POST /api/feedbacks/:id/messages
-function addMessage(id, payload) {
+// POST /api/feedbacks/:id/messages (멀티파트: 백엔드가 @RequestPart("data")+images로 받음)
+function addMessage(id, payload, images = []) {
   // payload: { content }
-  return apiClient.post(`/api/feedbacks/${id}/messages`, payload)
+  const formData = new FormData()
+  formData.append('data', new Blob([JSON.stringify(payload)], { type: 'application/json' }))
+  images.forEach((file) => formData.append('images', file))
+  return apiClient.post(`/api/feedbacks/${id}/messages`, formData)
 }
 
 // GET /api/feedbacks/:id/messages
