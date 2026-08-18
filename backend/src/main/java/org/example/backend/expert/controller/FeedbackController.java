@@ -13,9 +13,11 @@ import org.example.backend.expert.dto.response.FeedbackResponse;
 import org.example.backend.expert.dto.response.MyFeedbackListResponse;
 import org.example.backend.expert.service.FeedbackService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import org.example.backend.expert.dto.response.ExpertFeedbackListResponse;
@@ -30,13 +32,14 @@ public class FeedbackController {
 
     private final FeedbackService feedbackService;
 
-    @Operation(summary = "전문가 피드백 요청 등록", description = "구독자가 담당 전문가를 지정해 질문 스레드를 개설합니다.")
-    @PostMapping("/api/feedbacks")
+    @Operation(summary = "전문가 피드백 요청 등록", description = "구독자가 담당 전문가를 지정해 질문 스레드를 개설합니다. 이미지 첨부 가능(선택).")
+    @PostMapping(value = "/api/feedbacks", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<FeedbackResponse>> createFeedback(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody @Valid FeedbackCreateRequest request
+            @RequestPart("data") @Valid FeedbackCreateRequest request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images
     ) {
-        FeedbackResponse response = feedbackService.createFeedback(userDetails.getUser().getId(), request);
+        FeedbackResponse response = feedbackService.createFeedback(userDetails.getUser().getId(), request, images);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("문의 스레드가 개설되었습니다.", response));
     }
@@ -51,14 +54,15 @@ public class FeedbackController {
         return ResponseEntity.ok(ApiResponse.success("문의 스레드 조회 성공", response));
     }
 
-    @Operation(summary = "피드백 메시지 등록", description = "메시지를 추가합니다. 담당 전문가 답변 시 ANSWERED 전환.")
-    @PostMapping("/api/feedbacks/{id}/messages")
+    @Operation(summary = "피드백 메시지 등록", description = "메시지를 추가합니다. 담당 전문가 답변 시 ANSWERED 전환. 이미지 첨부 가능(선택).")
+    @PostMapping(value = "/api/feedbacks/{id}/messages", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<FeedbackMessageResponse>> addMessage(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long id,
-            @RequestBody @Valid FeedbackMessageRequest request
+            @RequestPart("data") @Valid FeedbackMessageRequest request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images
     ) {
-        FeedbackMessageResponse response = feedbackService.addMessage(userDetails.getUser().getId(), id, request);
+        FeedbackMessageResponse response = feedbackService.addMessage(userDetails.getUser().getId(), id, request, images);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("메시지가 등록되었습니다.", response));
     }
