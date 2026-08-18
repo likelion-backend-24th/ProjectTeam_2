@@ -11,8 +11,9 @@ import java.util.List;
 
 public interface ReportRepository extends JpaRepository<Report, Long> {
 
-    boolean existsByTargetTypeAndTargetIdAndReporterId(
-            ReportTargetType targetType, Long targetId, Long reporterId);
+    // 반려/삭제 처리된 예전 신고는 무시하고, 아직 PENDING인 중복 신고만 막을 때 사용
+    boolean existsByTargetTypeAndTargetIdAndReporterIdAndStatus(
+            ReportTargetType targetType, Long targetId, Long reporterId, ReportStatus status);
 
     Page<Report> findAllByStatus(ReportStatus status, Pageable pageable);
 

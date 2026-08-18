@@ -38,8 +38,8 @@ public class ReportService {
         validateTargetExists(request.getTargetType(), request.getTargetId());
         validateReportPermission(request.getTargetType(), request.getTargetId(), reporter.getId());
 
-        if (reportRepository.existsByTargetTypeAndTargetIdAndReporterId(
-                request.getTargetType(), request.getTargetId(), reporter.getId())) {
+        if (reportRepository.existsByTargetTypeAndTargetIdAndReporterIdAndStatus(
+                request.getTargetType(), request.getTargetId(), reporter.getId(), ReportStatus.PENDING)) {
             throw new BusinessException(ReportErrorCode.REPORT_ALREADY_EXISTS);
         }
 
