@@ -182,6 +182,14 @@ public class FeedbackService {
                 .orElseThrow(() -> new BusinessException(ExpertErrorCode.FEEDBACK_NOT_FOUND));
     }
 
+    // report 패키지에서 피드백 스레드 신고 시 신고자가 당사자(요청자/담당 전문가)인지 확인할 때 사용
+    public boolean isParticipant(Long feedbackId, Long userId) {
+        return feedbackRepository.findById(feedbackId)
+                .map(feedback -> feedback.getRequester().getId().equals(userId)
+                        || feedback.getExpertProfile().getUser().getId().equals(userId))
+                .orElse(false);
+    }
+
     private void validateFeedbackAccess(Feedback feedback, Long callerId) {
         boolean isRequester = feedback.getRequester().getId().equals(callerId);
         boolean isExpert = feedback.getExpertProfile().getUser().getId().equals(callerId);

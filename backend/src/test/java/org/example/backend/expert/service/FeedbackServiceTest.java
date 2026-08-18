@@ -470,5 +470,47 @@ class FeedbackServiceTest {
         verify(emailService, never()).sendFeedbackAnswered(any(), any());
     }
 
+    @Test
+    void isParticipant_요청자면_true() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+
+        boolean result = feedbackService.isParticipant(1L, requester.getId());
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void isParticipant_담당전문가면_true() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+
+        boolean result = feedbackService.isParticipant(1L, expertUser.getId());
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void isParticipant_당사자가아니면_false() {
+        Feedback feedback = Feedback.builder()
+                .requester(requester).expertProfile(approvedExpertProfile).build();
+        when(feedbackRepository.findById(1L)).thenReturn(Optional.of(feedback));
+
+        boolean result = feedbackService.isParticipant(1L, 999L);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void isParticipant_존재하지않는스레드면_false() {
+        when(feedbackRepository.findById(999L)).thenReturn(Optional.empty());
+
+        boolean result = feedbackService.isParticipant(999L, 1L);
+
+        assertThat(result).isFalse();
+    }
+
 
 }
