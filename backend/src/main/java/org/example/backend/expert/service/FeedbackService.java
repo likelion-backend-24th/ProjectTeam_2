@@ -41,7 +41,7 @@ public class FeedbackService {
 
     @Transactional
     public FeedbackResponse createFeedback(Long requesterId, FeedbackCreateRequest request) {
-        User requester = userRepository.findById(requesterId)
+        User requester = userRepository.findByIdForUpdate(requesterId)
                 .orElseThrow(() -> new BusinessException(ExpertErrorCode.USER_NOT_FOUND));
         if (requester.getStatus() != AccountStatus.ACTIVE) {
             throw new BusinessException(ExpertErrorCode.FEEDBACK_USER_INACTIVE);
