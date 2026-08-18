@@ -118,6 +118,21 @@
   animation: fadeIn 0.2s ease;
 }
 
+.imageGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.imageThumb {
+  max-width: 320px;
+  max-height: 320px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  object-fit: cover;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
