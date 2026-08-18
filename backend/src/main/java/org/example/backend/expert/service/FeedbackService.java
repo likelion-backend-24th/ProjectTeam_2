@@ -21,8 +21,11 @@ import org.example.backend.user.entity.User;
 import org.example.backend.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.example.backend.notification.entity.NotificationTargetType;
+import org.example.backend.notification.service.NotificationService;
 
 import java.util.List;
+
 import org.example.backend.user.entity.AccountStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +41,7 @@ public class FeedbackService {
     private final ExpertProfileRepository expertProfileRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final NotificationService notificationService;
 
     @Transactional
     public FeedbackResponse createFeedback(Long requesterId, FeedbackCreateRequest request) {
@@ -72,12 +76,21 @@ public class FeedbackService {
                 .build();
         feedbackRepository.save(feedback);
 
-        feedbackMessageRepository.save(
+        FeedbackMessage firstMessage = feedbackMessageRepository.save(
                 FeedbackMessage.builder()
                         .feedback(feedback)
                         .sender(requester)
                         .content(request.getContent())
                         .build()
+        );
+
+        notificationService.notifyComment(
+                expertProfile.getUser(),   // 알림 받을 사람 = 전문가
+                requester,                   // 문의 보낸 사람
+                NotificationTargetType.FEEDBACK,
+                feedback.getId(),
+                firstMessage.getId(),
+                request.getContent()
         );
 
         return FeedbackResponse.from(feedback);
@@ -117,6 +130,15 @@ public class FeedbackService {
                         .sender(sender)
                         .content(request.getContent())
                         .build()
+        );
+        User receiver = isExpertAnswering ? feedback.getRequester() : feedback.getExpertProfile().getUser();
+        notificationService.notifyComment(
+                receiver,
+                sender,
+                NotificationTargetType.FEEDBACK,
+                feedback.getId(),
+                message.getId(),
+                request.getContent()
         );
 
         // 전문가가 지금 답변하고 있다면 → 답변완료 처리한다.
@@ -161,7 +183,8 @@ public class FeedbackService {
                 .map(MyFeedbackSummaryResponse::from);
         return MyFeedbackListResponse.from(page);
     }
-// 특정 전문가 1명에게 들어온 문의 스레드 리턴
+
+    // 특정 전문가 1명에게 들어온 문의 스레드 리턴
 //    전문가 프로필 id를 지정해서, 그 전문가에게 들어온 문의 스레드를 전부 조회하는 기능
     public ExpertFeedbackListResponse getExpertFeedbacks(Long expertProfileId, Pageable pageable) {
         Page<FeedbackResponse> page = feedbackRepository.findByExpertProfileId(expertProfileId, pageable)
@@ -175,7 +198,7 @@ public class FeedbackService {
         ExpertProfile expertProfile = expertProfileRepository.findByUserId(expertUserId)
                 .orElseThrow(() -> new BusinessException(ExpertErrorCode.EXPERT_PROFILE_NOT_FOUND));
         return getExpertFeedbacks(expertProfile.getId(), pageable);
-}
+    }
 
     private Feedback getFeedbackOrThrow(Long id) {
         return feedbackRepository.findById(id)

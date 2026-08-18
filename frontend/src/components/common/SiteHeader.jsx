@@ -1,22 +1,23 @@
-import { LogIn, LogOut, UserPlus } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../context/AuthContext'
-import styles from './SiteHeader.module.css'
+import { LogIn, LogOut, UserPlus } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import styles from "./SiteHeader.module.css";
+import NotificationBell from "./NotificationBell";
 
 const NAV_ITEMS = [
-  { label: '게시글', to: '/posts' },
-  { label: '스터디', to: '/studies' },
-  { label: '전문가 상담', to: '/experts' },
-  { label: '구독 플랜', to: '/subscription' },
-]
+  { label: "게시글", to: "/posts" },
+  { label: "스터디", to: "/studies" },
+  { label: "전문가 상담", to: "/experts" },
+  { label: "구독 플랜", to: "/subscription" },
+];
 
 export default function SiteHeader() {
-  const { user, isAuthenticated, isLoading, logout } = useAuth()
-  const navigate = useNavigate()
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const navigate = useNavigate();
 
   async function handleLogout() {
-    await logout()
-    navigate('/')
+    await logout();
+    navigate("/");
   }
 
   return (
@@ -43,13 +44,19 @@ export default function SiteHeader() {
           {!isLoading &&
             (isAuthenticated ? (
               <>
+                
                 <Link to="/mypage" className={styles.userGreeting}>
                   {user.nickname}님
                 </Link>
-                <button type="button" className={styles.logoutButton} onClick={handleLogout}>
+                <button
+                  type="button"
+                  className={styles.logoutButton}
+                  onClick={handleLogout}
+                >
                   <LogOut size={16} />
                   로그아웃
                 </button>
+                <NotificationBell />
               </>
             ) : (
               <>
@@ -66,5 +73,5 @@ export default function SiteHeader() {
         </div>
       </div>
     </header>
-  )
+  );
 }
