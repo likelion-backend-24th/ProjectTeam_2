@@ -86,7 +86,7 @@ class FeedbackServiceTest {
     void createFeedback_미승인전문가면_예외() {
         ExpertProfile pending = ExpertProfile.builder()
                 .user(expertUser).introduction("신입 지원자").build();
-        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
         when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(pending));
 
         FeedbackCreateRequest request = new FeedbackCreateRequest();
@@ -100,7 +100,7 @@ class FeedbackServiceTest {
     @Test
     void createFeedback_비구독자면_예외() {
         requester.setSubscribed(false);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
 
         FeedbackCreateRequest request = new FeedbackCreateRequest();
         request.setExpertProfileId(99L);
@@ -114,7 +114,7 @@ class FeedbackServiceTest {
 
     @Test
     void createFeedback_정상이면_스레드와첫메시지_저장() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
         when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
         when(feedbackRepository.save(any(Feedback.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -133,7 +133,7 @@ class FeedbackServiceTest {
     void createFeedback_박탈후재승인된전문가와_재개설_성공() {
         // 기존에 박탈로 닫힌 스레드가 있어도(existsByRequesterIdAndExpertProfileIdAndClosedAtIsNull은
         // 열린 스레드만 카운트하므로 false를 반환) 재승인된 전문가와는 새 스레드를 열 수 있어야 한다.
-        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
         when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
         when(feedbackRepository.existsByRequesterIdAndExpertProfileIdAndClosedAtIsNull(1L, 99L)).thenReturn(false);
         when(feedbackRepository.countByRequesterIdAndClosedAtIsNull(1L)).thenReturn(0L);
@@ -273,7 +273,7 @@ class FeedbackServiceTest {
 
     @Test
     void createFeedback_같은전문가와_열린스레드가있으면_예외() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
         when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
         when(feedbackRepository.existsByRequesterIdAndExpertProfileIdAndClosedAtIsNull(1L, 99L)).thenReturn(true);
 
@@ -289,7 +289,7 @@ class FeedbackServiceTest {
 
     @Test
     void createFeedback_열린스레드가5개면_예외() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
         when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
         when(feedbackRepository.countByRequesterIdAndClosedAtIsNull(1L)).thenReturn(5L);
 
@@ -374,7 +374,7 @@ class FeedbackServiceTest {
     @Test
     void createFeedback_요청자탈퇴시_예외() {
         requester.setStatus(AccountStatus.WITHDRAWN);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
 
         FeedbackCreateRequest request = new FeedbackCreateRequest();
         request.setExpertProfileId(99L);
@@ -389,7 +389,7 @@ class FeedbackServiceTest {
     @Test
     void createFeedback_전문가탈퇴시_예외() {
         expertUser.setStatus(AccountStatus.WITHDRAWN);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(requester));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(requester));
         when(expertProfileRepository.findById(99L)).thenReturn(Optional.of(approvedExpertProfile));
 
         FeedbackCreateRequest request = new FeedbackCreateRequest();
