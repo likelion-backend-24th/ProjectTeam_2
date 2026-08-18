@@ -38,6 +38,9 @@ public class StudyPostResponse {
     @Schema(description = "게시글 첨부 이미지 URL 목록")
     private List<String> imageUrls;
 
+    @Schema(description = "고정 게시글 여부", example = "false")
+    private boolean pinned;
+
     public static StudyPostResponse from(StudyPost studyPost, List<String> imageUrls) {
         return StudyPostResponse.builder()
                 .id(studyPost.getId())
@@ -49,6 +52,7 @@ public class StudyPostResponse {
                 .createdAt(studyPost.getCreatedAt())
                 .updatedAt(studyPost.getUpdatedAt())
                 .imageUrls(imageUrls)
+                .pinned(studyPost.isPinned())
                 .build();
     }
 }

@@ -42,18 +42,22 @@ public class StudyPostDetailResponse {
     @Schema(description = "게시글 첨부 이미지 URL 목록")
     private List<String> imageUrls;
 
-    public static StudyPostDetailResponse from(StudyPost post, List<StudyPostCommentResponse> comments, List<String> imageUrls) {
+    @Schema(description = "고정 게시글 여부", example = "false")
+    private boolean pinned;
+
+    public static StudyPostDetailResponse from(StudyPost studyPost, List<StudyPostCommentResponse> comments, List<String> imageUrls) {
         return StudyPostDetailResponse.builder()
-                .id(post.getId())
-                .studyId(post.getStudy().getId())
-                .title(post.getTitle())
-                .content(post.getContent())
-                .authorId(post.getUser().getId())
-                .authorNickname(post.getUser().getNickname())
-                .createdAt(post.getCreatedAt())
-                .updatedAt(post.getUpdatedAt())
+                .id(studyPost.getId())
+                .studyId(studyPost.getStudy().getId())
+                .title(studyPost.getTitle())
+                .content(studyPost.getContent())
+                .authorId(studyPost.getUser().getId())
+                .authorNickname(studyPost.getUser().getNickname())
+                .createdAt(studyPost.getCreatedAt())
+                .updatedAt(studyPost.getUpdatedAt())
                 .comments(comments)
                 .imageUrls(imageUrls)
+                .pinned(studyPost.isPinned())
                 .build();
     }
 }

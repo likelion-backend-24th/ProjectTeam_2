@@ -50,6 +50,9 @@ public class StudyPost {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(nullable = false)
+    private boolean pinned;
+
     public StudyPost(Study study, User user, String title, String content) {
         this.study = study;
         this.user = user;

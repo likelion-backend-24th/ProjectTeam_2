@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.common.dto.ApiResponse;
+import org.example.backend.study.dto.request.StudyPostPinRequest;
 import org.example.backend.study.dto.request.StudyPostRequest;
 import org.example.backend.study.dto.response.StudyPostDetailResponse;
 import org.example.backend.study.dto.response.StudyPostResponse;
@@ -71,6 +72,18 @@ public class StudyPostController {
         Long userId = user.getUser().getId();
         StudyPostResponse response = studyPostService.updateStudyPost(userId, id, postId, request);
         return ResponseEntity.ok(ApiResponse.success("스터디 게시글 수정 성공", response));
+    }
+
+    @Operation(summary = "스터디 게시글 고정/고정 해제", description = "방장이 게시글을 게시판 상단에 고정하거나 해제합니다.")
+    @PatchMapping("/posts/{postId}/pin")
+    public ResponseEntity<ApiResponse<StudyPostResponse>> updatePinStatus(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable Long id,
+            @PathVariable Long postId,
+            @Valid @RequestBody StudyPostPinRequest request){
+        Long userId = user.getUser().getId();
+        StudyPostResponse response = studyPostService.updatePinStatus(userId, id, postId, request.getPinned());
+        return ResponseEntity.ok(ApiResponse.success("게시글 고정 상태 변경 성공", response));
     }
 
     @Operation(summary = "스터디 게시판 삭제", description = "게시글 작성자 본인이 게시글을 삭제합니다.")
