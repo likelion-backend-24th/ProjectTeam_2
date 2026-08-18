@@ -4,5 +4,6 @@ public enum ReportTargetType{
     POST,
     COMMENT,
     STUDY_POST,
-    STUDY_POST_COMMENT
+    STUDY_POST_COMMENT,
+    FEEDBACK
 }
