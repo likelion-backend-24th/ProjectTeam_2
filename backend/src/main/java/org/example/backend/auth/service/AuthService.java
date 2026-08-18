@@ -118,6 +118,10 @@ public class AuthService {
 
         User user = savedRefreshToken.getUser();
 
+        if (user.getStatus() != AccountStatus.ACTIVE){
+            throw  new BusinessException(AuthErrorCode.INACTIVE_ACCOUNT);
+        }
+
         String newAccessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getUsername());
 
