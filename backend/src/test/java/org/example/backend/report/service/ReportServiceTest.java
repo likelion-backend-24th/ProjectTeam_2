@@ -6,6 +6,7 @@ import org.example.backend.post.repository.PostRepository;
 import org.example.backend.report.dto.ReportCreateRequest;
 import org.example.backend.report.entity.Report;
 import org.example.backend.report.entity.ReportReason;
+import org.example.backend.report.entity.ReportStatus;
 import org.example.backend.report.entity.ReportTargetType;
 import org.example.backend.report.exception.ReportErrorCode;
 import org.example.backend.report.repository.ReportRepository;
@@ -73,8 +74,8 @@ class ReportServiceTest {
     @Test
     void 이미_신고한_대상이면_예외가_발생한다() {
         when(commentRepository.existsById(12L)).thenReturn(true);
-        when(reportRepository.existsByTargetTypeAndTargetIdAndReporterId(
-                ReportTargetType.COMMENT, 12L, 1L)).thenReturn(true);
+        when(reportRepository.existsByTargetTypeAndTargetIdAndReporterIdAndStatus(
+                ReportTargetType.COMMENT, 12L, 1L, ReportStatus.PENDING)).thenReturn(true);
 
         User reporter = new User();
         reporter.setId(1L);
@@ -90,8 +91,8 @@ class ReportServiceTest {
     @Test
     void 정상적인_신고는_저장까지_이어진다() {
         when(commentRepository.existsById(12L)).thenReturn(true);
-        when(reportRepository.existsByTargetTypeAndTargetIdAndReporterId(
-                ReportTargetType.COMMENT, 12L, 1L)).thenReturn(false);
+        when(reportRepository.existsByTargetTypeAndTargetIdAndReporterIdAndStatus(
+                ReportTargetType.COMMENT, 12L, 1L, ReportStatus.PENDING)).thenReturn(false);
         when(reportRepository.save(any(Report.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -138,8 +139,8 @@ class ReportServiceTest {
     void 피드백_스레드_신고시_당사자면_정상처리된다() {
         when(feedbackRepository.existsById(5L)).thenReturn(true);
         when(feedbackService.isParticipant(5L, 1L)).thenReturn(true);
-        when(reportRepository.existsByTargetTypeAndTargetIdAndReporterId(
-                ReportTargetType.FEEDBACK, 5L, 1L)).thenReturn(false);
+        when(reportRepository.existsByTargetTypeAndTargetIdAndReporterIdAndStatus(
+                ReportTargetType.FEEDBACK, 5L, 1L, ReportStatus.PENDING)).thenReturn(false);
         when(reportRepository.save(any(Report.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
