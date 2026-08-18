@@ -83,7 +83,7 @@ export default function ExpertConsultPage() {
     if (!isExpert || !expertMode) return
     let ignore = false
     feedbackApi.getMyExpertFeedbacks().then(({ data }) => {
-      if (!ignore) setExpertFeedbacks(data.data)
+      if (!ignore) setExpertFeedbacks(data.data.feedbacks)
     })
     return () => {
       ignore = true
