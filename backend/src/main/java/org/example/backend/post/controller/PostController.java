@@ -18,9 +18,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 
 @RestController
@@ -31,13 +35,14 @@ public class PostController {
 
     private final PostService postService;
 
-    @Operation(summary = "게시글 작성", description = "로그인한 사용자가 카테고리를 선택하여 게시글을 작성합니다.")
-    @PostMapping
+    @Operation(summary = "게시글 등록", description = "로그인한 사용자가 카테고리를 선택하여 게시글을 작성합니다.")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<PostDetailResponse>> createPost(
-            @Valid @RequestBody PostCreateRequest request,
+            @Valid @RequestPart("data") PostCreateRequest request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        PostDetailResponse response = postService.createPost(request, userDetails.getUser());
+        PostDetailResponse response = postService.createPost(request, userDetails.getUser(), images);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("게시글이 등록되었습니다.", response));
     }

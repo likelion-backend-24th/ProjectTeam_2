@@ -31,7 +31,7 @@ Content-Type: {{contentType}}
 ### F-04. 게시글 등록
 ### =========================
 
-### 1. 게시글 등록 성공 (201 기대)
+### 1-1. 게시글 등록 성공 (201 기대)
 POST {{baseUrl}}/api/posts
 Content-Type: {{contentType}}
 Authorization: Bearer {{accessToken}}
@@ -41,6 +41,27 @@ Authorization: Bearer {{accessToken}}
   "content": "이번에 카카오 코테를 봤는데 생각보다 할만했어요.",
   "category": "INTERVIEW_REVIEW"
 }
+
+### 1-2. 게시글 등록 - 이미지 포함 (201 기대)
+POST {{baseUrl}}/api/posts
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="data"
+Content-Type: application/json
+
+{
+  "title": "이미지 테스트",
+  "content": "이미지 첨부 테스트입니다",
+  "category": "FREE"
+}
+--WebAppBoundary
+Content-Disposition: form-data; name="images"; filename="test.jpg"
+Content-Type: image/jpeg
+
+< ./test.jpg
+--WebAppBoundary--
 
 ### 2. 게시글 등록 실패 - 제목 빈값 (400 기대)
 POST {{baseUrl}}/api/posts
@@ -119,6 +140,10 @@ Authorization: Bearer {{accessToken}}
 GET {{baseUrl}}/api/posts/3
 Authorization: Bearer {{accessToken}}
 
+### 9-4. 게시글 상세 조회 - 방금 만든 이미지 첨부 게시글 확인
+GET {{baseUrl}}/api/posts/11
+Authorization: Bearer {{accessToken}}
+
 ### 10. 게시글 상세 조회 실패 - 없는 게시글 (404 + POST_NOT_FOUND 기대)
 GET {{baseUrl}}/api/posts/99999
 Authorization: Bearer {{accessToken}}
@@ -149,8 +174,12 @@ Authorization: Bearer {{accessToken}}
   "category": "FREE"
 }
 
-### 13. 게시글 삭제 성공 (본인 글, 200 기대 - 실행하면 1번 글이 삭제되니 맨 마지막에 실행 권장)
+### 13-1 . 게시글 삭제 성공 (본인 글, 200 기대 - 실행하면 1번 글이 삭제되니 맨 마지막에 실행 권장)
 DELETE {{baseUrl}}/api/posts/2
+Authorization: Bearer {{accessToken}}
+
+### 13-2 . 게시글 삭제 - 이미지도 같이 정리되는지 확인용
+DELETE {{baseUrl}}/api/posts/11
 Authorization: Bearer {{accessToken}}
 
 ### 14. 게시글 삭제 실패 - 없는 게시글 (404 + POST_NOT_FOUND 기대)
