@@ -1,7 +1,6 @@
 package org.example.backend.study.service;
 
 import lombok.RequiredArgsConstructor;
-import org.example.backend.auth.exception.AuthErrorCode;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.study.dto.response.StudyMemberResponse;
 import org.example.backend.study.entity.Study;
@@ -10,7 +9,6 @@ import org.example.backend.study.exception.StudyErrorCode;
 import org.example.backend.study.repository.StudyMemberRepository;
 import org.example.backend.study.repository.StudyRepository;
 import org.example.backend.user.entity.User;
-import org.example.backend.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,13 +20,13 @@ import java.util.List;
 public class StudyMemberService {
 
     private final StudyMemberRepository studyMemberRepository;
-    private final UserRepository userRepository;
     private final StudyRepository studyRepository;
+    private final StudyAccessValidator studyAccessValidator;
 
     @Transactional
     public StudyMemberResponse joinStudy(Long userId, Long id) {
-        User user = getUserOrThrow(userId);
-        Study study = getStudyOrThrow(id);
+        User user = studyAccessValidator.getUserOrThrow(userId);
+        Study study = studyAccessValidator.getStudyOrThrow(id);
 
         if (study.getLeader().getId().equals(userId)) {
             throw new BusinessException(StudyErrorCode.STUDY_LEADER_CANNOT_JOIN);
@@ -48,7 +46,7 @@ public class StudyMemberService {
             throw new BusinessException(StudyErrorCode.STUDY_CAPACITY_EXCEEDED);
         }
 
-        validateFreeTierLimit(user);
+        studyAccessValidator.validateFreeTierLimit(user);
 
         StudyMember member = new StudyMember(study, user);
         StudyMember saved = studyMemberRepository.save(member);
@@ -57,7 +55,7 @@ public class StudyMemberService {
     }
 
     public List<StudyMemberResponse> getStudyMembers(Long id) {
-        getStudyOrThrow(id);
+        studyAccessValidator.getStudyOrThrow(id);
         List<StudyMember> members = studyMemberRepository.findByStudyId(id);
         return members.stream()
                 .map(StudyMemberResponse::from)
@@ -66,9 +64,9 @@ public class StudyMemberService {
 
     @Transactional
     public void removeStudyMember(Long userId, Long id, Long memberId) {
-        getUserOrThrow(userId);
-        Study study = getStudyOrThrow(id);
-        validateStudyLeader(study, userId);
+        studyAccessValidator.getUserOrThrow(userId);
+        Study study = studyAccessValidator.getStudyOrThrow(id);
+        studyAccessValidator.validateStudyLeader(study, userId);
         StudyMember member = getStudyMemberOrThrow(id, memberId);
 
         if (member.getUser().getId().equals(study.getLeader().getId())) {
@@ -79,9 +77,9 @@ public class StudyMemberService {
 
     @Transactional
     public void delegateLeader(Long userId, Long id, Long newLeaderId) {
-        getUserOrThrow(userId);
-        Study study = getStudyOrThrow(id);
-        validateStudyLeader(study, userId);
+        studyAccessValidator.getUserOrThrow(userId);
+        Study study = studyAccessValidator.getStudyOrThrow(id);
+        studyAccessValidator.validateStudyLeader(study, userId);
 
         if (newLeaderId.equals(userId)) {
             throw new BusinessException(StudyErrorCode.STUDY_LEADER_DELEGATE_SELF);
@@ -94,8 +92,8 @@ public class StudyMemberService {
 
     @Transactional
     public void leaveStudy(Long userId, Long id) {
-        getUserOrThrow(userId);
-        Study study = getStudyOrThrow(id);
+        studyAccessValidator.getUserOrThrow(userId);
+        Study study = studyAccessValidator.getStudyOrThrow(id);
 
         if (study.getLeader().getId().equals(userId)) {
             int memberCount = studyMemberRepository.countByStudyId(id);
@@ -112,31 +110,9 @@ public class StudyMemberService {
         studyMemberRepository.delete(member);
     }
 
-    private User getUserOrThrow(Long userId) {
-        return userRepository.findById(userId).orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
-    }
-
-    private Study getStudyOrThrow(Long id) {
-        return studyRepository.findById(id).orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
-    }
-
     private StudyMember getStudyMemberOrThrow(Long id, Long memberId) {
         return studyMemberRepository.findByStudyIdAndUserId(id, memberId)
                 .orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_MEMBER_NOT_FOUND));
     }
 
-    private void validateStudyLeader(Study study, Long userId) {
-        if (!study.getLeader().getId().equals(userId)) {
-            throw new BusinessException(StudyErrorCode.STUDY_ACCESS_DENIED);
-        }
-    }
-
-    private void validateFreeTierLimit(User user) {
-        if (!user.isSubscribed()) {
-            int joinedStudyCount = studyMemberRepository.countByUserId(user.getId());
-            if (joinedStudyCount >= 2) {
-                throw new BusinessException(StudyErrorCode.STUDY_ALREADY_JOINED);
-            }
-        }
-    }
 }
