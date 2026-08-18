@@ -1,10 +1,13 @@
 import apiClient from './client'
-
-// POST /api/posts
-function createPost(payload) {
+// POST /api/posts (멀티파트: 백엔드가 @RequestPart("data")+images로 받음)
+function createPost(payload, images = []) {
+  const formData = new FormData()
+  formData.append('data', new Blob([JSON.stringify(payload)], { type: 'application/json' }))
+  images.forEach((file) => formData.append('images', file))
   // payload: { title, content, category }
-  return apiClient.post('/api/posts', payload)
+  return apiClient.post('/api/posts', formData)
 }
+
 
 // GET /api/posts (비로그인 접근 가능)
 function getPosts(params) {
