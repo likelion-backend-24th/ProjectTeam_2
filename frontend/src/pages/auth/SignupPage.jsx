@@ -48,7 +48,7 @@ export default function SignupPage() {
     setError('')
     setIsSubmitting(true)
     try {
-      await authApi.signup({ name, username, nickname, password })
+      await authApi.signup({ name, username, nickname, password, termsAgreed: agreed })
       navigate('/login')
     } catch (err) {
       setError(err.response?.data?.message ?? '회원가입에 실패했습니다.')
