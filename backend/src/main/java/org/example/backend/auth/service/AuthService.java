@@ -162,7 +162,7 @@ public class AuthService {
         User user = new User();
         user.setUsername("kakao_" + providerId + "@kakao.local");
         user.setName(kakaoUserInfo.getKakao_account().getProfile().getNickname());
-        user.setNickname(generateUniqueNickname(kakaoUserInfo.getKakao_account().getProfile().getNickname())); //뒤에 랜덤 숫자6자리 붙임
+        user.setNickname(generateUniqueNickname(kakaoUserInfo.getKakao_account().getProfile().getNickname())); //뒤에 랜덤 숫자4자리 붙임
         user.setPassword(null);  //카카오에서 실명을 주지 않아서 일단 닉네임으로 채우고
         user.setRole(Role.USER); // 나중에 마이페이지에서 닉네임 수정 유도
         user.setStatus(AccountStatus.ACTIVE);
@@ -237,7 +237,7 @@ public class AuthService {
         User user = new User();
         user.setUsername(googleUserInfo.getEmail());
         user.setName(googleUserInfo.getName());
-        user.setNickname(generateUniqueNickname(googleUserInfo.getName())); // 뒤에 랜덤 숫자 6자리 붙임
+        user.setNickname(generateUniqueNickname(googleUserInfo.getName())); // 뒤에 랜덤 숫자 4자리 붙임
         user.setPassword(null);
         user.setRole(Role.USER);
         user.setStatus(AccountStatus.ACTIVE);
@@ -300,7 +300,7 @@ public class AuthService {
         User user = new User();
         user.setUsername(naverUserInfo.getResponse().getEmail());
         user.setName(naverUserInfo.getResponse().getName());
-        user.setNickname(generateUniqueNickname(naverUserInfo.getResponse().getName())); // 뒤에 숫자 6자리 붙임
+        user.setNickname(generateUniqueNickname(naverUserInfo.getResponse().getName())); // 뒤에 숫자 4자리 붙임
         user.setPassword(null);
         user.setRole(Role.USER);
         user.setStatus(AccountStatus.ACTIVE);
@@ -344,13 +344,13 @@ public class AuthService {
     }
 
 
-    // 이름 뒤에 랜덤6자리 숫자 붙여서 닉네임 생성 메서드
+    // 이름 뒤에 랜덤4자리 숫자 붙여서 닉네임 생성 메서드
     private String generateUniqueNickname(String name){
         Random random = new Random();
         String nickname;
 
         do{
-            int randomNumber = random.nextInt(100000);
+            int randomNumber = random.nextInt(10000);
             nickname = name + "_" + randomNumber;
         }while (userRepository.existsByNickname(nickname));
 
