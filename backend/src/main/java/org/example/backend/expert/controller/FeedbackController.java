@@ -27,13 +27,14 @@ import org.springframework.data.web.PageableDefault;
 
 @Tag(name = "전문가 피드백", description = "구독자-전문가 1:1 문의 스레드를 개설하고, 구독자와 전문가가 메세지를 주고받는 API")
 @RestController
+@RequestMapping("/api/feedbacks")
 @RequiredArgsConstructor
 public class FeedbackController {
 
     private final FeedbackService feedbackService;
 
     @Operation(summary = "전문가 피드백 요청 등록", description = "구독자가 담당 전문가를 지정해 질문 스레드를 개설합니다. 이미지 첨부 가능(선택).")
-    @PostMapping(value = "/api/feedbacks", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<FeedbackResponse>> createFeedback(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestPart("data") @Valid FeedbackCreateRequest request,
@@ -45,7 +46,7 @@ public class FeedbackController {
     }
 
     @Operation(summary = "피드백 스레드 상세 조회", description = "요청자 또는 담당 전문가만 조회 가능.")
-    @GetMapping("/api/feedbacks/{id}")
+    @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<FeedbackResponse>> getFeedback(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long id
@@ -55,7 +56,7 @@ public class FeedbackController {
     }
 
     @Operation(summary = "피드백 메시지 등록", description = "메시지를 추가합니다. 담당 전문가 답변 시 ANSWERED 전환. 이미지 첨부 가능(선택).")
-    @PostMapping(value = "/api/feedbacks/{id}/messages", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/{id}/messages", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<FeedbackMessageResponse>> addMessage(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long id,
@@ -68,7 +69,7 @@ public class FeedbackController {
     }
 
     @Operation(summary = "피드백 메시지 목록 조회", description = "요청자 또는 담당 전문가만 조회 가능.")
-    @GetMapping("/api/feedbacks/{id}/messages")
+    @GetMapping("/{id}/messages")
     public ResponseEntity<ApiResponse<List<FeedbackMessageResponse>>> getMessages(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long id
@@ -78,7 +79,7 @@ public class FeedbackController {
     }
 
     @Operation(summary = "내 문의 스레드 목록 조회 (구독자용)", description = "구독자 본인이 개설한 문의 스레드 목록. 페이지네이션 지원 (예: ?page=0&size=20).")
-    @GetMapping("/api/feedbacks/me")
+    @GetMapping("/me")
     public ResponseEntity<ApiResponse<MyFeedbackListResponse>> getMyFeedbacks(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
@@ -88,7 +89,7 @@ public class FeedbackController {
     }
 
     @Operation(summary = "받은 문의 목록 조회 (전문가용)", description = "전문가로서 받은 문의 스레드 목록. 페이지네이션 지원 (예: ?page=0&size=20).")
-    @GetMapping("/api/feedbacks/expert")
+    @GetMapping("/expert")
     public ResponseEntity<ApiResponse<ExpertFeedbackListResponse>> getMyExpertFeedbacks(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
@@ -98,7 +99,7 @@ public class FeedbackController {
     }
 
     @Operation(summary = "피드백 스레드 종료", description = "요청자 본인이 진행 중인 문의 스레드를 종료합니다. 종료해도 스레드는 삭제되지 않으며, 같은 전문가와 새 스레드를 열려면 기존 스레드를 먼저 종료해야 합니다.")
-    @PatchMapping("/api/feedbacks/{id}/close")
+    @PatchMapping("/{id}/close")
     public ResponseEntity<ApiResponse<FeedbackResponse>> closeFeedback(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long id

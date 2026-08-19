@@ -27,6 +27,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.LinkedHashMap;
 
 import org.example.backend.user.entity.AccountStatus;
 import org.springframework.data.domain.Page;
@@ -186,8 +189,13 @@ public class FeedbackService {
     public List<FeedbackMessageResponse> getMessages(Long callerId, Long feedbackId) {
         Feedback feedback = getFeedbackOrThrow(feedbackId);
         validateFeedbackAccess(feedback, callerId);
-        return feedbackMessageRepository.findByFeedbackIdOrderByCreatedAtAsc(feedbackId)
-                .stream().map(message -> FeedbackMessageResponse.from(message, getImageUrls(message.getId()))).toList();    }
+        List<FeedbackMessage> messages = feedbackMessageRepository.findByFeedbackIdOrderByCreatedAtAsc(feedbackId);
+             Map<Long, List<String>> imageUrlsByMessageId = getImageUrlsByMessageIds(messages);
+             return messages.stream()
+                     .map(message -> FeedbackMessageResponse.from(message,
+                             imageUrlsByMessageId.getOrDefault(message.getId(), List.of())))
+                     .toList();
+    }
 
     public MyFeedbackListResponse getMyFeedbacks(Long requesterId, Pageable pageable) {
         Page<MyFeedbackSummaryResponse> page = feedbackRepository.findByRequesterId(requesterId, pageable)
@@ -239,8 +247,12 @@ public class FeedbackService {
         if (!reportRepository.existsByTargetTypeAndTargetId(ReportTargetType.FEEDBACK, feedbackId)) {
             throw new BusinessException(ExpertErrorCode.FEEDBACK_NOT_REPORTED);
         }
-        return feedbackMessageRepository.findByFeedbackIdOrderByCreatedAtAsc(feedbackId)
-                .stream().map(message -> FeedbackMessageResponse.from(message, getImageUrls(message.getId()))).toList();
+        List<FeedbackMessage> messages = feedbackMessageRepository.findByFeedbackIdOrderByCreatedAtAsc(feedbackId);
+        Map<Long, List<String>> imageUrlsByMessageId = getImageUrlsByMessageIds(messages);
+        return messages.stream()
+                .map(message -> FeedbackMessageResponse.from(message,
+                        imageUrlsByMessageId.getOrDefault(message.getId(), List.of())))
+                .toList();
     }
 
     private void validateFeedbackAccess(Feedback feedback, Long callerId) {
@@ -267,9 +279,18 @@ public class FeedbackService {
         return imageUrls;
     }
 
-    private List<String> getImageUrls(Long messageId) {
-        return feedbackMessageImageRepository.findAllByFeedbackMessageIdOrderByImageOrder(messageId).stream()
-                .map(FeedbackMessageImage::getImageUrl)
-                .toList();
+    // 메시지 목록 조회 시, 메시지마다 이미지를 개별 조회하지 않고 한 번에 배치로 가져와 messageId별로 묶는다 (N+1 방지)
+    private Map<Long, List<String>> getImageUrlsByMessageIds(List<FeedbackMessage> messages) {
+             List<Long> messageIds = messages.stream().map(FeedbackMessage::getId).toList();
+             if (messageIds.isEmpty()) {
+                     return Map.of();
+                 }
+             return feedbackMessageImageRepository.findAllByFeedbackMessageIdInOrderByImageOrder(messageIds).stream()
+                     .collect(Collectors.groupingBy(
+                             image -> image.getFeedbackMessage().getId(),
+                             LinkedHashMap::new,
+                             Collectors.mapping(FeedbackMessageImage::getImageUrl, Collectors.toList())
+                     ));
+
     }
 }
