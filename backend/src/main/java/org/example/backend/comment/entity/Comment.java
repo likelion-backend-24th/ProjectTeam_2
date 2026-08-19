@@ -30,7 +30,8 @@ public class Comment {
     @Column(columnDefinition = "Text", nullable = false)
     private String content;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    // Post에 @SoftDelete가 붙어있어서 LAZY 참조를 못 씀 (Hibernate 6.4+ 제약)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "post_id", nullable = false)
     private Post post;
 
