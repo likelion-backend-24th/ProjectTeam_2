@@ -14,6 +14,9 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     Page<Notification> findAllByReceiverIdOrderByCreatedAtDesc(Long receiverId, Pageable pageable);
 
+    // 추가: 확인 안 한 알림만 조회 (드롭다운에 표시할 목록용)
+    Page<Notification> findAllByReceiverIdAndIsReadFalseOrderByCreatedAtDesc(Long receiverId, Pageable pageable);
+
     @Modifying
     @Query("UPDATE Notification n SET n.isRead = true WHERE n.receiver.id = :receiverId AND n.isRead = false")
     void markAllAsReadByReceiverId(@Param("receiverId") Long receiverId);

@@ -35,10 +35,11 @@ public class NotificationService {
     @Transactional
     public Page<NotificationResponse> getNotifications(Long userId, Pageable pageable) {
         Page<NotificationResponse> notifications = notificationRepository
-                .findAllByReceiverIdOrderByCreatedAtDesc(userId, pageable)
+                .findAllByReceiverIdAndIsReadFalseOrderByCreatedAtDesc(userId, pageable)   // 여기만 변경
                 .map(NotificationResponse::from);
 
-        // 목록을 조회하는 이 시점에 안 읽은 알림을 전부 읽음 처리(=드롭다운을 여는 행위 자체가 "확인함"이 되는 방식)
+        // 목록을 조회하는 이 시점에 안 읽은 알림을 전부 읽음 처리
+        // -> 다음 번 조회부터는 방금 보여준 것들이 자동으로 목록에서 빠짐
         notificationRepository.markAllAsReadByReceiverId(userId);
 
         return notifications;
