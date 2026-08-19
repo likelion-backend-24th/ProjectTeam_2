@@ -24,12 +24,17 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { adminApi, expertApi, postApi, studyApi } from '../../api'
+import Pagination from '../../components/common/Pagination'
 import SiteHeader from '../../components/common/SiteHeader'
 import { getJobFieldLabel } from '../../constants/jobField'
 import { REPORT_REASONS } from '../../constants/reportReason'
 import { getAvatarColor } from '../../utils/avatarColor'
 import { formatDate } from '../../utils/formatDate'
 import styles from './AdminPanelPage.module.css'
+
+// 회원/전문가 심사 탭은 전체를 한 번에 불러와 화면에서 검색·필터링하므로, 페이지 이동도
+// 서버가 아니라 이 크기 단위로 화면에서 직접 나눈다.
+const ADMIN_PAGE_SIZE = 10
 
 const TABS = [
   { key: 'dashboard', label: '대시보드', icon: LayoutGrid },
@@ -379,6 +384,7 @@ function MembersTab() {
   const [keyword, setKeyword] = useState('')
   const [roleFilter, setRoleFilter] = useState('ALL')
   const [updatingId, setUpdatingId] = useState(null)
+  const [page, setPage] = useState(0)
 
   useEffect(() => {
     let ignore = false
@@ -420,6 +426,14 @@ function MembersTab() {
     const k = keyword.trim().toLowerCase()
     return u.nickname.toLowerCase().includes(k) || u.username.toLowerCase().includes(k)
   })
+
+  // 검색어/필터가 바뀌면 항상 1페이지부터 다시 보여준다.
+  useEffect(() => {
+    setPage(0)
+  }, [keyword, roleFilter])
+
+  const totalPages = Math.ceil(filtered.length / ADMIN_PAGE_SIZE)
+  const paged = filtered.slice(page * ADMIN_PAGE_SIZE, page * ADMIN_PAGE_SIZE + ADMIN_PAGE_SIZE)
 
   if (isLoading) return <p className={styles.state}>불러오는 중...</p>
   if (error) return <p className={styles.state}>{error}</p>
@@ -465,7 +479,7 @@ function MembersTab() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((u) => {
+              {paged.map((u) => {
                 const roleMeta = ROLE_META[u.role] ?? ROLE_META.USER
                 const isWithdrawn = u.status === 'WITHDRAWN'
                 return (
@@ -535,6 +549,8 @@ function MembersTab() {
           </table>
         </div>
       )}
+
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
     </>
   )
 }
@@ -546,13 +562,17 @@ function ExpertReviewTab({ onPendingCountChange }) {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedId, setSelectedId] = useState(null)
   const [actingId, setActingId] = useState(null)
+  const [pendingPage, setPendingPage] = useState(0)
+  const [donePage, setDonePage] = useState(0)
 
   const load = useCallback(() => {
-    // 다른 관리자 탭(회원/신고 관리)과 동일하게, 서버 페이지네이션 UI 없이 대량으로 한 번에 불러와
-    // "심사 대기"/"처리 완료" 두 섹션으로 화면에서 나눠 보여준다.
+    // 다른 관리자 탭(회원/신고 관리)과 동일하게, 서버 페이지네이션 없이 대량으로 한 번에 불러와
+    // "심사 대기"/"처리 완료" 두 섹션으로 나눈 뒤, 각각 화면에서 직접 페이지를 나눠 보여준다.
     return expertApi.getExperts(undefined, { size: 500 }).then(({ data }) => {
       const list = data.data
       setExperts(list)
+      setPendingPage(0)
+      setDonePage(0)
       onPendingCountChange?.(list.filter((e) => e.status === 'PENDING').length)
     })
   }, [onPendingCountChange])
@@ -572,6 +592,11 @@ function ExpertReviewTab({ onPendingCountChange }) {
   const pending = experts.filter((e) => e.status === 'PENDING')
   const done = experts.filter((e) => e.status !== 'PENDING')
   const selected = experts.find((e) => e.id === selectedId) ?? null
+
+  const pendingTotalPages = Math.ceil(pending.length / ADMIN_PAGE_SIZE)
+  const pagedPending = pending.slice(pendingPage * ADMIN_PAGE_SIZE, pendingPage * ADMIN_PAGE_SIZE + ADMIN_PAGE_SIZE)
+  const doneTotalPages = Math.ceil(done.length / ADMIN_PAGE_SIZE)
+  const pagedDone = done.slice(donePage * ADMIN_PAGE_SIZE, donePage * ADMIN_PAGE_SIZE + ADMIN_PAGE_SIZE)
 
   async function handleApprove(expert) {
     if (!window.confirm(`${expert.name}님을 전문가로 승인할까요?`)) return
@@ -610,7 +635,7 @@ function ExpertReviewTab({ onPendingCountChange }) {
           <p className={styles.emptyState}>대기 중인 신청이 없어요.</p>
         ) : (
           <div className={styles.list}>
-            {pending.map((expert) => (
+            {pagedPending.map((expert) => (
               <ExpertRow
                 key={expert.id}
                 expert={expert}
@@ -642,6 +667,7 @@ function ExpertReviewTab({ onPendingCountChange }) {
             ))}
           </div>
         )}
+        <Pagination page={pendingPage} totalPages={pendingTotalPages} onChange={setPendingPage} />
 
         <p className={styles.sectionTitle} style={{ marginTop: 32 }}>
           처리 완료 ({done.length}건)
@@ -650,7 +676,7 @@ function ExpertReviewTab({ onPendingCountChange }) {
           <p className={styles.emptyState}>처리된 신청이 없어요.</p>
         ) : (
           <div className={styles.list}>
-            {done.map((expert) => (
+            {pagedDone.map((expert) => (
               <ExpertRow
                 key={expert.id}
                 expert={expert}
@@ -661,6 +687,7 @@ function ExpertReviewTab({ onPendingCountChange }) {
             ))}
           </div>
         )}
+        <Pagination page={donePage} totalPages={doneTotalPages} onChange={setDonePage} />
       </div>
 
       {selected && (
