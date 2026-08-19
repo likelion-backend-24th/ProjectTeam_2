@@ -1,7 +1,22 @@
-import { ChevronRight, Crown, Eye, LayoutGrid, Pencil, Settings, Sparkles, Trash2, User as UserIcon, Users } from 'lucide-react'
+import {
+  ChevronRight,
+  Crown,
+  Eye,
+  LayoutGrid,
+  Lock,
+  MessageCircle,
+  MessageSquarePlus,
+  Pencil,
+  Settings,
+  Sparkles,
+  Star,
+  Trash2,
+  User as UserIcon,
+  Users,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { postApi, studyApi, userApi } from '../api'
+import { feedbackApi, postApi, studyApi, userApi } from '../api'
 import Pagination from '../components/common/Pagination'
 import SiteHeader from '../components/common/SiteHeader'
 import { getPostCategoryMeta } from '../constants/postCategory'
@@ -25,6 +40,7 @@ const TABS = [
   { key: 'activity', label: '내 활동', icon: UserIcon },
   { key: 'posts', label: '게시글', icon: LayoutGrid },
   { key: 'studies', label: '스터디', icon: Users },
+  { key: 'consults', label: '전문가 상담', icon: MessageCircle },
   { key: 'settings', label: '설정', icon: Settings },
 ]
 
@@ -135,6 +151,8 @@ export default function MyPage() {
         )}
 
         {activeTab === 'studies' && <StudiesTab />}
+
+        {activeTab === 'consults' && <ConsultsTab user={user} />}
 
         {activeTab === 'settings' && (
           <SettingsTab
@@ -450,6 +468,100 @@ function StudiesTab() {
                 탈퇴
               </button>
             </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ConsultStatusBadge({ status }) {
+  if (status === 'ANSWERED') {
+    return <span className={`${styles.consultStatusBadge} ${styles.consultStatusAnswered}`}>답변 완료</span>
+  }
+  return <span className={`${styles.consultStatusBadge} ${styles.consultStatusPending}`}>답변 대기</span>
+}
+
+function ConsultsTab({ user }) {
+  const navigate = useNavigate()
+  const [feedbacks, setFeedbacks] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!user.subscribed) return
+    let ignore = false
+    feedbackApi
+      .getMyFeedbacks()
+      .then(({ data }) => {
+        if (!ignore) setFeedbacks(data.data.feedbacks)
+      })
+      .catch(() => {
+        if (!ignore) setError('상담 목록을 불러오지 못했습니다.')
+      })
+    return () => {
+      ignore = true
+    }
+  }, [user.subscribed])
+
+  if (!user.subscribed) {
+    return (
+      <section className={styles.section}>
+        <div className={styles.consultLocked}>
+          <Lock size={20} />
+          <p className={styles.consultLockedTitle}>구독 후 전문가에게 1:1 상담을 받아보세요.</p>
+          <Link to="/subscription" className={styles.primaryButton}>
+            <Crown size={14} />
+            구독하고 시작하기
+          </Link>
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section className={styles.section}>
+      <div className={styles.sectionHeadingRow}>
+        <h2 className={styles.sectionHeading}>총 {feedbacks?.length ?? 0}개의 상담</h2>
+        <Link to="/experts" className={styles.newPostButton}>
+          <MessageSquarePlus size={13} style={{ marginRight: 4 }} />
+          새 상담 시작
+        </Link>
+      </div>
+
+      {feedbacks === null && !error && <p className={styles.emptyState}>불러오는 중...</p>}
+      {error && <p className={styles.emptyState}>{error}</p>}
+      {feedbacks?.length === 0 && (
+        <p className={styles.emptyState}>아직 진행 중인 상담이 없어요. 전문가에게 첫 질문을 남겨보세요.</p>
+      )}
+
+      {feedbacks?.length > 0 && (
+        <div className={styles.list}>
+          {feedbacks.map((feedback) => (
+            <button
+              key={feedback.feedbackId}
+              type="button"
+              className={styles.consultRow}
+              onClick={() => navigate(`/experts/consult/${feedback.feedbackId}`)}
+            >
+              <span className={styles.consultAvatar} style={{ backgroundColor: getAvatarColor(feedback.expertName) }}>
+                {feedback.expertName?.[0]}
+              </span>
+              <div className={styles.consultRowMain}>
+                <p className={styles.consultRowTitle}>
+                  {feedback.expertName}
+                  <span className={styles.expertBadge}>
+                    <Star size={11} />
+                    전문가
+                  </span>
+                </p>
+                <span className={styles.activityMeta}>{feedback.topic}</span>
+              </div>
+              <div className={styles.consultMeta}>
+                {feedback.answeredAt && <span className={styles.consultDate}>{formatDateTime(feedback.answeredAt)}</span>}
+                <ConsultStatusBadge status={feedback.status} />
+                <ChevronRight size={16} />
+              </div>
+            </button>
           ))}
         </div>
       )}
