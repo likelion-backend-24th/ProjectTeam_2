@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.common.dto.ApiResponse;
+import org.example.backend.payment.dto.PaymentCompleteRequest;
 import org.example.backend.payment.dto.PaymentPrepareRequest;
 import org.example.backend.payment.dto.PaymentPrepareResponse;
 import org.example.backend.payment.service.PaymentService;
@@ -30,5 +31,14 @@ public class PaymentController {
     ){
         PaymentPrepareResponse response = paymentService.preparePayment(user.getUser(), request.getPlanType());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("결제 준비가 완료되었습니다.", response));
+    }
+
+    @PostMapping("/complete")
+    public ResponseEntity<ApiResponse<Void>> completePayment(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @Valid @RequestBody PaymentCompleteRequest request
+    ) {
+        paymentService.completePayment(user.getUser(), request.getPaymentId());
+        return ResponseEntity.ok(ApiResponse.success("결제가 완료되었습니다.", null));
     }
 }
