@@ -16,9 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -48,5 +46,15 @@ public class NotificationController {
         Page<NotificationResponse> page = notificationService.getNotifications(userDetails.getUser().getId(), pageable);
         Meta meta = Meta.builder().pagination(PageMeta.from(page)).build();
         return ResponseEntity.ok(ApiResponse.success("알림 목록 조회 성공", page.getContent(), meta));
+    }
+
+    @Operation(summary = "알림 읽음 처리", description = "특정 알림 하나를 읽음 처리합니다. 본인 알림만 처리 가능합니다.")
+    @PatchMapping("/{id}/read")
+    public ResponseEntity<ApiResponse<Void>> markAsRead(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long id
+    ) {
+        notificationService.markAsRead(id, userDetails.getUser().getId());
+        return ResponseEntity.ok(ApiResponse.success("알림 읽음 처리 성공", null));
     }
 }
