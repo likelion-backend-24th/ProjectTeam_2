@@ -2,6 +2,7 @@ import { Clock, Crown, Lock, MessageSquarePlus, XCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { expertApi, feedbackApi } from '../../api'
+import Pagination from '../../components/common/Pagination'
 import ExpertCard from '../../components/experts/ExpertCard'
 import ExpertProfileModal from '../../components/experts/ExpertProfileModal'
 import NewConsultModal from '../../components/experts/NewConsultModal'
@@ -25,6 +26,9 @@ export default function ExpertConsultPage() {
 
   const [experts, setExperts] = useState([])
   const [isLoadingExperts, setIsLoadingExperts] = useState(true)
+  const [expertsPage, setExpertsPage] = useState(0)
+  const [expertsTotalPages, setExpertsTotalPages] = useState(0)
+  const [expertsTotalItems, setExpertsTotalItems] = useState(0)
 
   const [myFeedbacks, setMyFeedbacks] = useState(null) // null = 아직 안 불러옴/구독 아님
   const [expertFeedbacks, setExpertFeedbacks] = useState([])
@@ -55,10 +59,14 @@ export default function ExpertConsultPage() {
 
   useEffect(() => {
     let ignore = false
+    setIsLoadingExperts(true)
     expertApi
-      .getPublicExperts()
+      .getPublicExperts({ page: expertsPage })
       .then(({ data }) => {
-        if (!ignore) setExperts(data.data)
+        if (ignore) return
+        setExperts(data.data)
+        setExpertsTotalPages(data.meta.pagination.totalPages)
+        setExpertsTotalItems(data.meta.pagination.totalItems)
       })
       .finally(() => {
         if (!ignore) setIsLoadingExperts(false)
@@ -66,7 +74,7 @@ export default function ExpertConsultPage() {
     return () => {
       ignore = true
     }
-  }, [])
+  }, [expertsPage])
 
   useEffect(() => {
     if (!isAuthenticated || !user?.subscribed) return
@@ -238,16 +246,19 @@ export default function ExpertConsultPage() {
 
             <div className={styles.expertGridHeader}>
               <p className={styles.expertGridTitle}>활동 중인 전문가</p>
-              <span className={styles.expertGridCount}>{experts.length}명</span>
+              <span className={styles.expertGridCount}>{expertsTotalItems}명</span>
             </div>
             {isLoadingExperts && <p className={styles.state}>불러오는 중...</p>}
             {!isLoadingExperts && experts.length === 0 && <p className={styles.state}>아직 활동 중인 전문가가 없어요.</p>}
             {!isLoadingExperts && experts.length > 0 && (
-              <div className={styles.expertGrid}>
-                {experts.map((expert) => (
-                  <ExpertCard key={expert.expertId} expert={expert} onClick={openProfile} />
-                ))}
-              </div>
+              <>
+                <div className={styles.expertGrid}>
+                  {experts.map((expert) => (
+                    <ExpertCard key={expert.expertId} expert={expert} onClick={openProfile} />
+                  ))}
+                </div>
+                <Pagination page={expertsPage} totalPages={expertsTotalPages} onChange={setExpertsPage} />
+              </>
             )}
 
             {isAuthenticated && !isExpert && !applicationStatus && (

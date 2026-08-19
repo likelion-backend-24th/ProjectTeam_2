@@ -6,9 +6,9 @@ function signupExpert(payload) {
   return apiClient.post('/api/experts/signup', payload)
 }
 
-// GET /api/experts (비로그인 접근 가능, 승인된 전문가만)
-function getPublicExperts() {
-  return apiClient.get('/api/experts')
+// GET /api/experts (비로그인 접근 가능, 승인된 전문가만, 페이지당 12명)
+function getPublicExperts(params) {
+  return apiClient.get('/api/experts', { params })
 }
 
 // GET /api/experts/:id (비로그인 접근 가능, 승인된 전문가만)
@@ -28,9 +28,9 @@ function updateMyApplication(payload) {
 
 // ---- 관리자 전용 ----
 
-// GET /api/admin/experts?status=
-function getExperts(status) {
-  return apiClient.get('/api/admin/experts', { params: { status } })
+// GET /api/admin/experts?status=&page=&size= (페이지당 기본 10명)
+function getExperts(status, params) {
+  return apiClient.get('/api/admin/experts', { params: { status, ...params } })
 }
 
 // PATCH /api/admin/experts/:id/approve

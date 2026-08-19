@@ -167,7 +167,7 @@ function DashboardTab({ onGoToExperts, onGoToReports }) {
       studyApi.getStudies({ page: 0, size: 1 }),
       studyApi.getStudies({ page: 0, size: 4 }),
       postApi.getPosts({ page: 0, size: 4 }),
-      expertApi.getExperts(),
+      expertApi.getExperts(undefined, { size: 500 }),
       adminApi.getReports({ status: 'PENDING', size: 1 }),
     ])
       .then(([usersRes, allUsersRes, studyCountRes, studiesRes, postsRes, expertsRes, reportsRes]) => {
@@ -548,7 +548,9 @@ function ExpertReviewTab({ onPendingCountChange }) {
   const [actingId, setActingId] = useState(null)
 
   const load = useCallback(() => {
-    return expertApi.getExperts().then(({ data }) => {
+    // 다른 관리자 탭(회원/신고 관리)과 동일하게, 서버 페이지네이션 UI 없이 대량으로 한 번에 불러와
+    // "심사 대기"/"처리 완료" 두 섹션으로 화면에서 나눠 보여준다.
+    return expertApi.getExperts(undefined, { size: 500 }).then(({ data }) => {
       const list = data.data
       setExperts(list)
       onPendingCountChange?.(list.filter((e) => e.status === 'PENDING').length)
