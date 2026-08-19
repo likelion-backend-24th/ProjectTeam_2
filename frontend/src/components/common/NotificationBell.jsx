@@ -33,28 +33,33 @@ export default function NotificationBell() {
   }, []);
 
   async function handleToggle() {
-    const nextOpen = !isOpen;
-    setIsOpen(nextOpen);
+  const nextOpen = !isOpen;
+  setIsOpen(nextOpen);
 
-    if (nextOpen) {
-      // 목록 조회 자체가 서버에서 읽음 처리까지 함께 해준다(NotificationService.getNotifications).
-      const { data } = await notificationApi.getNotifications({
-        page: 0,
-        size: 10,
-      });
-      setNotifications(data.data);
-      setUnreadCount(0);
-    }
+  if (nextOpen) {
+    // 이제 조회만으로는 읽음 처리 안 됨 — 안 읽은 것만 그대로 받아옴
+    const { data } = await notificationApi.getNotifications({
+      page: 0,
+      size: 10,
+    });
+    setNotifications(data.data);
+    // setUnreadCount(0) 삭제 — 목록만 열었다고 뱃지가 줄면 안 됨
   }
+}
 
-  function handleItemClick(notification) {
-    setIsOpen(false);
-    if (notification.targetType === "POST") {
-      navigate(`/posts/${notification.targetId}`);
-    } else if (notification.targetType === "FEEDBACK") {
-      navigate(`/experts/consult/${notification.targetId}`);
-    }
+async function handleItemClick(notification) {
+  setIsOpen(false);
+
+  // 클릭한 알림 하나만 읽음 처리
+  await notificationApi.markAsRead(notification.id);
+  setUnreadCount((prev) => Math.max(prev - 1, 0));
+
+  if (notification.targetType === "POST") {
+    navigate(`/posts/${notification.targetId}`);
+  } else if (notification.targetType === "FEEDBACK") {
+    navigate(`/experts/consult/${notification.targetId}`);
   }
+}
 
   function getMessage(notification) {
   return notification.commentPreview
