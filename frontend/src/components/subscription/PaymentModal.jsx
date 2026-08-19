@@ -1,43 +1,67 @@
+import { requestPayment } from '@portone/browser-sdk/v2'
 import { CheckCircle2, X } from 'lucide-react'
 import { useState } from 'react'
-import { subscriptionApi } from '../../api'
+import { paymentApi, subscriptionApi } from '../../api'
 import styles from './PaymentModal.module.css'
 
-// F-UI-12: 실제 PG 연동 없이 프론트에서 카드 입력 폼만 흉내 낸 뒤, 성공하면 백엔드에
-// 구독 상태 반영(Mock)을 요청한다. 카드 정보는 어디에도 전송하지 않는다(입력값 검증만 함).
+// PortOne V2 결제창 연동.
+// 카드 정보는 PortOne이 띄우는 결제창(PG사 화면)에서만 입력되고 우리 서버·프론트는
+// 절대 다루지 않는다. 결제창의 응답(response)은 "단서"일 뿐이며, 최종 확정은 항상
+// 서버(complete API)가 PortOne 결제 결과를 다시 조회·검증한 뒤에만 이뤄진다.
 export default function PaymentModal({ onClose, onSubscribed }) {
-  const [cardNumber, setCardNumber] = useState('')
-  const [expiry, setExpiry] = useState('')
-  const [cvc, setCvc] = useState('')
-  const [stage, setStage] = useState('form') // 'form' | 'processing' | 'success' | 'error'
+  const [stage, setStage] = useState('idle') // 'idle' | 'processing' | 'success' | 'error'
   const [error, setError] = useState('')
-
-  const isFormValid = cardNumber.replace(/\s/g, '').length === 16 && /^\d{2}\/\d{2}$/.test(expiry) && cvc.length === 3
 
   function closeUnlessProcessing() {
     if (stage === 'processing') return
     onClose()
   }
 
-  async function handlePay(event) {
-    event.preventDefault()
-    if (!isFormValid) {
-      setError('카드 정보를 다시 확인해주세요.')
-      return
-    }
+  async function handlePay() {
     setError('')
     setStage('processing')
 
-    // 실제 결제창처럼 잠깐의 처리 시간을 흉내낸다.
-    await new Promise((resolve) => setTimeout(resolve, 700))
-
     try {
-      const { data } = await subscriptionApi.subscribe()
+      // 1. 결제 준비 — 서버가 planType으로 금액을 확정하고 paymentId를 발급한다.
+      const { data: prepareRes } = await paymentApi.prepare('BASIC')
+      const { paymentId, storeId, channelKey, amount, orderName } = prepareRes.data
+
+      // 2. PortOne 결제창 호출 — 카드 정보는 여기서만 입력된다.
+      const response = await requestPayment({
+        storeId,
+        channelKey,
+        paymentId,
+        orderName,
+        totalAmount: amount,
+        currency: 'KRW',
+        payMethod: 'CARD',
+      })
+
+      // response가 undefined면 결제창 자체가 뜨지 못한 것(설정 오류 등)
+      if (!response) {
+        throw new Error('결제창을 여는 데 실패했습니다.')
+      }
+
+      if (response.code != null) {
+        // 사용자가 결제창에서 취소했거나 PG 승인이 실패한 경우.
+        // 서버는 아직 아무 상태도 PAID로 바꾸지 않았으니 그대로 안내만 한다.
+        setStage('error')
+        setError(response.message ?? '결제가 취소되었거나 실패했습니다.')
+        return
+      }
+
+      // 3. 완료 API — 브라우저 응답을 신뢰하지 않고, 서버가 PortOne 결제를 다시 조회·검증한다.
+      await paymentApi.complete(paymentId)
+
+      // complete API는 결제 성공 여부만 알려줄 뿐 구독 정보를 내려주지 않으므로,
+      // 최신 구독 상태를 별도로 조회해서 상위 컴포넌트에 전달한다.
+      const { data: subscriptionRes } = await subscriptionApi.getMy()
+
       setStage('success')
-      setTimeout(() => onSubscribed(data.data), 900)
+      setTimeout(() => onSubscribed(subscriptionRes.data), 900)
     } catch (err) {
       setStage('error')
-      setError(err.response?.data?.message ?? '결제에 실패했습니다.')
+      setError(err.response?.data?.message ?? err.message ?? '결제에 실패했습니다.')
     }
   }
 
@@ -58,66 +82,16 @@ export default function PaymentModal({ onClose, onSubscribed }) {
           </div>
         ) : (
           <>
-            <p className={styles.eyebrow}>MOCK PAYMENT</p>
+            <p className={styles.eyebrow}>PORTONE PAYMENT</p>
             <h2 className={styles.title}>프리미엄 구독</h2>
             <p className={styles.price}>9,900원 / 월</p>
 
-            <form className={styles.form} onSubmit={handlePay}>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="cardNumber">
-                  카드 번호
-                </label>
-                <input
-                  id="cardNumber"
-                  className={styles.input}
-                  placeholder="0000 0000 0000 0000"
-                  inputMode="numeric"
-                  maxLength={19}
-                  value={cardNumber}
-                  onChange={(event) => setCardNumber(event.target.value.replace(/[^\d ]/g, ''))}
-                  disabled={stage === 'processing'}
-                />
-              </div>
+            {error && <p className={styles.error}>{error}</p>}
 
-              <div className={styles.row}>
-                <div className={styles.field}>
-                  <label className={styles.label} htmlFor="expiry">
-                    유효기간
-                  </label>
-                  <input
-                    id="expiry"
-                    className={styles.input}
-                    placeholder="MM/YY"
-                    maxLength={5}
-                    value={expiry}
-                    onChange={(event) => setExpiry(event.target.value)}
-                    disabled={stage === 'processing'}
-                  />
-                </div>
-                <div className={styles.field}>
-                  <label className={styles.label} htmlFor="cvc">
-                    CVC
-                  </label>
-                  <input
-                    id="cvc"
-                    className={styles.input}
-                    placeholder="000"
-                    inputMode="numeric"
-                    maxLength={3}
-                    value={cvc}
-                    onChange={(event) => setCvc(event.target.value.replace(/\D/g, ''))}
-                    disabled={stage === 'processing'}
-                  />
-                </div>
-              </div>
-
-              {error && <p className={styles.error}>{error}</p>}
-
-              <button type="submit" className={styles.payButton} disabled={stage === 'processing'}>
-                {stage === 'processing' ? '결제 처리 중...' : '9,900원 결제하기'}
-              </button>
-              <p className={styles.disclaimer}>* 실제 결제가 이뤄지지 않는 테스트 화면이에요.</p>
-            </form>
+            <button type="button" className={styles.payButton} onClick={handlePay} disabled={stage === 'processing'}>
+              {stage === 'processing' ? '결제 처리 중...' : '9,900원 결제하기'}
+            </button>
+            <p className={styles.disclaimer}>결제 버튼을 누르면 PortOne 결제창이 열려요.</p>
           </>
         )}
       </div>
