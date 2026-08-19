@@ -23,7 +23,8 @@ public class StudyImage {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    // Study에 @SoftDelete가 붙어있어서 LAZY 참조를 못 씀 (Hibernate 6.4+ 제약)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "study_id", nullable = false)
     private Study study;
 
