@@ -67,40 +67,57 @@ public class PaymentService {
 
     @Transactional
     public void completePayment(User user, String paymentId) {
+        // paymentId로 Payment 조회 (없으면 404)
         Payment payment = paymentRepository.findByPaymentId(paymentId)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
+        // 로그인한 user 소유 확인
         if (!payment.getUser().getId().equals(user.getId())) {
             throw new BusinessException(PaymentErrorCode.PAYMENT_ACCESS_DENIED);
         }
 
+        verifyAndFinalize(payment);
+    }
+
+    @Transactional
+    public void verifyAndFinalize(Payment payment) {
+
+        // 이미 PAID(완료)면 조용히 종료
         if (payment.getStatus() == PaymentStatus.PAID) {
-            return; // ① 이미 처리됨 — 조용히 종료
+            return;
         }
 
+        // 포트원에 실제 결제 조회
         io.portone.sdk.server.payment.Payment portOnePayment =
-                portOneClient.getPayment().getPayment(paymentId).join();
+                portOneClient.getPayment().getPayment(payment.getPaymentId()).join();
 
-        // FailedPayment는 실제 승인 시도가 있었던 경우라 transactionId를 남긴다.
-        // 그 외(READY/CANCELLED 등)는 애초에 승인 시도 자체가 없었던 상태라 PaymentTransaction을 남기지 않는다.
+        // 조회 결과가 '결제 실패' 타입이면 failed 변수로 실패 정보를 담음
         if (portOnePayment instanceof FailedPayment failed) {
+            // Payment 상태를 FAILED로 바꾸고
             payment.setStatus(PaymentStatus.FAILED);
+            // 실패한 거래 ID(failed.getTransactionId())를 꺼내서 PatmentTransaction 기록을 남김
             paymentTransactionRepository.save(new PaymentTransaction(
                     payment, failed.getTransactionId(), PaymentTransactionStatus.FAILED,
                     "PortOne 결제 실패"));
             throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
         }
 
+        // 우리가 사용하지 않는 Payment 타입이 들어왔을 때를 대비한 방어코드
         if (!(portOnePayment instanceof PaidPayment paid)) {
             payment.setStatus(PaymentStatus.FAILED);
             throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
         }
 
+        // 이 결제가 우리 상점 결제가 맞는지,
+        // prepare에서 지정한 결제 채널로 결제된 게 맞는지,
+        // 포트원에서 실제로 승인한 금액과 우리 DB에 저장한 금액이 같은지,
+        // 통화가 원화(KRW)가 맞는지 확인
         boolean valid = paid.getStoreId().equals(storeId)
                 && paid.getChannel().getKey().equals(channelKeyPayment)
                 && paid.getAmount().getTotal() == payment.getAmount()
                 && paid.getCurrency() instanceof Currency.Krw;
 
+        // 위 조건 중 하나라도 맞지 않다면 FAILED
         if (!valid) {
             payment.setStatus(PaymentStatus.FAILED);
             paymentTransactionRepository.save(new PaymentTransaction(
@@ -109,20 +126,24 @@ public class PaymentService {
             throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
         }
 
+        // 성공 후 로직
         payment.setStatus(PaymentStatus.PAID);
+
+        // 성공 거래 기록
         PaymentTransaction tx = new PaymentTransaction(payment, paid.getTransactionId(),
                 PaymentTransactionStatus.SUCCEEDED, null);
         tx.setOccurredAt(LocalDateTime.ofInstant(paid.getPaidAt(), ZoneId.systemDefault()));
         paymentTransactionRepository.save(tx);
 
+        // 결제 성공 = 구독 시작 로직
         Subscription subscription = Subscription.builder()
-                .user(user)
+                .user(payment.getUser())
                 .startedAt(LocalDateTime.now())
                 .expiredAt(LocalDateTime.now().plusMonths(1))
                 .build();
         subscriptionRepository.save(subscription);
 
         payment.setSubscription(subscription);
-        user.setSubscribed(true);
+        payment.getUser().setSubscribed(true);
     }
 }
