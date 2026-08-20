@@ -5,11 +5,6 @@ function subscribe() {
   return apiClient.post('/api/subscriptions')
 }
 
-// DELETE /api/subscriptions
-function cancel() {
-  return apiClient.delete('/api/subscriptions')
-}
-
 // GET /api/subscriptions/me — 구독 내역이 없으면 404(SUBSCRIPTION_NOT_FOUND)
 function getMy() {
   return apiClient.get('/api/subscriptions/me')
@@ -17,6 +12,5 @@ function getMy() {
 
 export const subscriptionApi = {
   subscribe,
-  cancel,
   getMy,
 }

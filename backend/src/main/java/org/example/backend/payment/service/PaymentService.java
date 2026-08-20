@@ -204,19 +204,4 @@ public class PaymentService {
         payment.setSubscription(subscription);
         payment.getUser().setSubscribed(true);
     }
-
-    @Transactional
-    public void cancelPayment(Subscription subscription, String reason){
-        Payment payment = paymentRepository.findBySubscriptionAndStatus(subscription, PaymentStatus.PAID)
-                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));
-
-        try {
-            portOneClient.getPayment()
-                    .cancelPayment(payment.getPaymentId(), null, null, null, reason, CancelRequester.Admin.INSTANCE, null, null, null).join();
-        } catch (RuntimeException e) {
-            throw new BusinessException(PaymentErrorCode.PAYMENT_CANCEL_FAILED);
-        }
-
-        payment.setStatus(PaymentStatus.CANCELLED);
-    }
 }

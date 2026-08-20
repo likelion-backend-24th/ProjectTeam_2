@@ -25,8 +25,6 @@ export default function SubscriptionPage() {
   // subscription: undefined(조회 전) | null(구독 없음) | { status, startedAt, expiredAt }
   const [subscription, setSubscription] = useState(undefined)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isCancelling, setIsCancelling] = useState(false)
-  const [cancelError, setCancelError] = useState('')
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -65,21 +63,6 @@ export default function SubscriptionPage() {
     setSubscription(newSubscription)
     setIsModalOpen(false)
     await refetchMe()
-  }
-
-  async function handleCancel() {
-    if (!window.confirm('구독을 해지할까요? 해지하면 프리미엄 기능을 바로 이용할 수 없어요.')) return
-    setCancelError('')
-    setIsCancelling(true)
-    try {
-      await subscriptionApi.cancel()
-      setSubscription(null)
-      await refetchMe()
-    } catch (err) {
-      setCancelError(err.response?.data?.message ?? '구독 해지에 실패했습니다.')
-    } finally {
-      setIsCancelling(false)
-    }
   }
 
   const isSubscribed = Boolean(subscription)
@@ -131,12 +114,8 @@ export default function SubscriptionPage() {
               <div className={styles.activeBox}>
                 <p className={styles.activeLabel}>✓ 구독 중이에요</p>
                 {subscription?.expiredAt && (
-                  <p className={styles.activeExpiry}>다음 결제일 {formatDate(subscription.expiredAt)}</p>
+                  <p className={styles.activeExpiry}>{formatDate(subscription.expiredAt)}까지 이용 가능</p>
                 )}
-                {cancelError && <p className={styles.cancelError}>{cancelError}</p>}
-                <button type="button" className={styles.cancelButton} onClick={handleCancel} disabled={isCancelling}>
-                  {isCancelling ? '해지 처리 중...' : '구독 해지'}
-                </button>
               </div>
             ) : (
               <button type="button" className={styles.premiumButton} onClick={handleSubscribeClick}>

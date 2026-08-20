@@ -1,7 +1,6 @@
 package org.example.backend.subscription.service;
 
 import org.example.backend.common.exception.BusinessException;
-import org.example.backend.payment.service.PaymentService;
 import org.example.backend.subscription.dto.response.SubscriptionResponse;
 import org.example.backend.subscription.entity.Subscription;
 import org.example.backend.subscription.entity.SubscriptionStatus;
@@ -36,8 +35,6 @@ class SubscriptionServiceTest {
     private UserRepository userRepository;
     @Mock
     private EmailService emailService;
-    @Mock
-    private PaymentService paymentService;
 
     @InjectMocks
     private SubscriptionService subscriptionService;
