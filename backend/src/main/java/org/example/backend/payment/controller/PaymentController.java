@@ -12,10 +12,7 @@ import org.example.backend.payment.service.PaymentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "결제", description = "PortOne 결제 준비/완료 API")
 @RestController
@@ -40,5 +37,16 @@ public class PaymentController {
     ) {
         paymentService.completePayment(user.getUser(), request.getPaymentId());
         return ResponseEntity.ok(ApiResponse.success("결제가 완료되었습니다.", null));
+    }
+
+    @PostMapping("/webhook")
+    public ResponseEntity<Void> handleWebhook(
+            @RequestBody String body,   // JSON을 DTO로 파싱했다 다시 만들면 바이트가 달라져 검증이 깨지기 쉬우므로 String 그대로 받아옴.
+            @RequestHeader("webhook-id") String webhookId,
+            @RequestHeader("webhook-signature") String signature,
+            @RequestHeader("webhook-timestamp") String timestamp
+    ) {
+        paymentService.handleWebhook(body, webhookId, signature, timestamp);
+        return ResponseEntity.ok().build();
     }
 }

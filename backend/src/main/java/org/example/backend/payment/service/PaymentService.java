@@ -2,8 +2,12 @@ package org.example.backend.payment.service;
 
 import io.portone.sdk.server.PortOneClient;
 import io.portone.sdk.server.common.Currency;
+import io.portone.sdk.server.errors.WebhookVerificationException;
 import io.portone.sdk.server.payment.FailedPayment;
 import io.portone.sdk.server.payment.PaidPayment;
+import io.portone.sdk.server.webhook.Webhook;
+import io.portone.sdk.server.webhook.WebhookTransaction;
+import io.portone.sdk.server.webhook.WebhookVerifier;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.payment.entity.*;
 import org.example.backend.payment.exception.PaymentErrorCode;
@@ -33,6 +37,7 @@ public class PaymentService {
     private final PaymentTransactionRepository paymentTransactionRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final PortOneClient portOneClient;
+    private final WebhookVerifier webhookVerifier;
 
     @Value("${portone.store-id}")
     private String storeId;
@@ -145,5 +150,29 @@ public class PaymentService {
 
         payment.setSubscription(subscription);
         payment.getUser().setSubscribed(true);
+    }
+
+    @Transactional
+    public void handleWebhook(String body, String webhookId, String signature, String timestamp) {
+        Webhook webhook;
+        try {
+            // 서명 검증
+            webhook = webhookVerifier.verify(body, webhookId, signature, timestamp);
+        } catch(WebhookVerificationException e){
+            throw new BusinessException(PaymentErrorCode.WEBHOOK_VERIFICATION_FAILED);
+        }
+
+        if (!(webhook instanceof WebhookTransaction transaction)) {
+            return;
+        }
+
+        String paymentId = transaction.getData().getPaymentId();
+        paymentRepository.findByPaymentId(paymentId).ifPresent(payment -> {
+            try {
+                verifyAndFinalize(payment);
+            } catch (BusinessException e) {
+
+            }
+        });
     }
 }
