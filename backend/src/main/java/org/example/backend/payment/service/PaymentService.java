@@ -9,9 +9,11 @@ import io.portone.sdk.server.webhook.Webhook;
 import io.portone.sdk.server.webhook.WebhookTransaction;
 import io.portone.sdk.server.webhook.WebhookVerifier;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.backend.payment.entity.*;
 import org.example.backend.payment.exception.PaymentErrorCode;
 import org.example.backend.payment.repository.PaymentTransactionRepository;
+import org.example.backend.payment.repository.WebhookEventRepository;
 import org.example.backend.subscription.entity.Subscription;
 import org.springframework.beans.factory.annotation.Value;
 import org.example.backend.common.exception.BusinessException;
@@ -28,6 +30,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -38,6 +41,7 @@ public class PaymentService {
     private final SubscriptionRepository subscriptionRepository;
     private final PortOneClient portOneClient;
     private final WebhookVerifier webhookVerifier;
+    private final WebhookEventRepository webhookEventRepository;
 
     @Value("${portone.store-id}")
     private String storeId;
@@ -162,6 +166,12 @@ public class PaymentService {
             throw new BusinessException(PaymentErrorCode.WEBHOOK_VERIFICATION_FAILED);
         }
 
+        if (webhookEventRepository.existsByWebhookId(webhookId)) {
+            log.info("이미 처리한 웹훅이라 스킵 (webhookId={})", webhookId);
+            return;
+        }
+        webhookEventRepository.save(new WebhookEvent(webhookId));
+
         if (!(webhook instanceof WebhookTransaction transaction)) {
             return;
         }
@@ -171,7 +181,7 @@ public class PaymentService {
             try {
                 verifyAndFinalize(payment);
             } catch (BusinessException e) {
-
+                log.warn("웹훅 처리 중 결제 검증 실패 (paymentId={}, reason={})", paymentId, e.getMessage());
             }
         });
     }
