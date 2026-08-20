@@ -3,16 +3,16 @@ package org.example.backend.payment.service;
 import io.portone.sdk.server.PortOneClient;
 import io.portone.sdk.server.common.Currency;
 import io.portone.sdk.server.errors.WebhookVerificationException;
-import io.portone.sdk.server.payment.FailedPayment;
-import io.portone.sdk.server.payment.PaidPayment;
-import io.portone.sdk.server.payment.PayPendingPayment;
-import io.portone.sdk.server.payment.ReadyPayment;
+import io.portone.sdk.server.payment.*;
 import io.portone.sdk.server.webhook.Webhook;
 import io.portone.sdk.server.webhook.WebhookTransaction;
 import io.portone.sdk.server.webhook.WebhookVerifier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.backend.payment.entity.*;
+import org.example.backend.payment.entity.Payment;
+import org.example.backend.payment.entity.PaymentStatus;
+import org.example.backend.payment.entity.PaymentTransaction;
 import org.example.backend.payment.exception.PaymentErrorCode;
 import org.example.backend.payment.repository.PaymentTransactionRepository;
 import org.example.backend.payment.repository.WebhookEventRepository;
@@ -203,5 +203,20 @@ public class PaymentService {
 
         payment.setSubscription(subscription);
         payment.getUser().setSubscribed(true);
+    }
+
+    @Transactional
+    public void cancelPayment(Subscription subscription, String reason){
+        Payment payment = paymentRepository.findBySubscriptionAndStatus(subscription, PaymentStatus.PAID)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+
+        try {
+            portOneClient.getPayment()
+                    .cancelPayment(payment.getPaymentId(), null, null, null, reason, CancelRequester.Admin.INSTANCE, null, null, null).join();
+        } catch (RuntimeException e) {
+            throw new BusinessException(PaymentErrorCode.PAYMENT_CANCEL_FAILED);
+        }
+
+        payment.setStatus(PaymentStatus.CANCELLED);
     }
 }

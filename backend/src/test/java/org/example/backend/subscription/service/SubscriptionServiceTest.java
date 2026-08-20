@@ -1,6 +1,7 @@
 package org.example.backend.subscription.service;
 
 import org.example.backend.common.exception.BusinessException;
+import org.example.backend.payment.service.PaymentService;
 import org.example.backend.subscription.dto.response.SubscriptionResponse;
 import org.example.backend.subscription.entity.Subscription;
 import org.example.backend.subscription.entity.SubscriptionStatus;
@@ -35,6 +36,8 @@ class SubscriptionServiceTest {
     private UserRepository userRepository;
     @Mock
     private EmailService emailService;
+    @Mock
+    private PaymentService paymentService;
 
     @InjectMocks
     private SubscriptionService subscriptionService;
@@ -50,42 +53,6 @@ class SubscriptionServiceTest {
         user.setRole(Role.USER);
         user.setSubscribed(false);
         user.setStatus(AccountStatus.ACTIVE);
-    }
-
-    @Test
-    void subscribe_정상이면_ACTIVE구독생성_및_유저플래그갱신() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
-                .thenReturn(Optional.empty());
-        when(subscriptionRepository.save(any(Subscription.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        SubscriptionResponse response = subscriptionService.subscribe(1L);
-
-        assertThat(response.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
-        assertThat(response.getExpiredAt()).isEqualTo(response.getStartedAt().plusMonths(1));
-        assertThat(user.isSubscribed()).isTrue();
-        verify(emailService).sendSubscriptionStarted(user.getUsername());
-    }
-
-    @Test
-    void subscribe_이미ACTIVE구독있으면_예외() {
-        Subscription existing = Subscription.builder().user(user).startedAt(null).expiredAt(null).build();
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
-                .thenReturn(Optional.of(existing));
-
-        BusinessException e = assertThrows(BusinessException.class,
-                () -> subscriptionService.subscribe(1L));
-        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.SUBSCRIPTION_ALREADY_ACTIVE);
-    }
-
-    @Test
-    void subscribe_존재하지않는유저면_예외() {
-        when(userRepository.findById(999L)).thenReturn(Optional.empty());
-
-        BusinessException e = assertThrows(BusinessException.class,
-                () -> subscriptionService.subscribe(999L));
-        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.USER_NOT_FOUND);
     }
 
     @Test
@@ -132,17 +99,5 @@ class SubscriptionServiceTest {
         BusinessException e = assertThrows(BusinessException.class,
                 () -> subscriptionService.getMy(1L));
         assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND);
-    }
-
-    @Test
-    void subscribe_탈퇴회원이면_예외() {
-        user.setStatus(AccountStatus.WITHDRAWN);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-
-        BusinessException e = assertThrows(BusinessException.class,
-                () -> subscriptionService.subscribe(1L));
-        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.USER_INACTIVE);
-
-        verify(subscriptionRepository, never()).findByUserIdAndStatus(any(), any());
     }
 }

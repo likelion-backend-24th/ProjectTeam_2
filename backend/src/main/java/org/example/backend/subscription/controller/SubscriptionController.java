@@ -7,10 +7,11 @@ import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.common.dto.ApiResponse;
 import org.example.backend.subscription.dto.response.SubscriptionResponse;
 import org.example.backend.subscription.service.SubscriptionService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "구독", description = "유료 구독 신청/취소/조회 API")
 @RestController
@@ -18,16 +19,6 @@ import org.springframework.web.bind.annotation.*;
 public class SubscriptionController {
 
     private final SubscriptionService subscriptionService;
-
-    @Operation(summary = "구독 신청", description = "프론트에서 결제 성공 처리 후 호출. 현재는 실제 PG 연동 없이 상태만 반영함.")
-    @PostMapping("/api/subscriptions")
-    public ResponseEntity<ApiResponse<SubscriptionResponse>> subscribe(
-            @AuthenticationPrincipal CustomUserDetails userDetails
-    ) {
-        SubscriptionResponse response = subscriptionService.subscribe(userDetails.getUser().getId());
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("구독이 시작되었습니다.", response));
-    }
 
     @Operation(summary = "구독 취소")
     @DeleteMapping("/api/subscriptions")
