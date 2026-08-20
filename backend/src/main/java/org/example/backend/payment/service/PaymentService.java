@@ -5,6 +5,8 @@ import io.portone.sdk.server.common.Currency;
 import io.portone.sdk.server.errors.WebhookVerificationException;
 import io.portone.sdk.server.payment.FailedPayment;
 import io.portone.sdk.server.payment.PaidPayment;
+import io.portone.sdk.server.payment.PayPendingPayment;
+import io.portone.sdk.server.payment.ReadyPayment;
 import io.portone.sdk.server.webhook.Webhook;
 import io.portone.sdk.server.webhook.WebhookTransaction;
 import io.portone.sdk.server.webhook.WebhookVerifier;
@@ -99,6 +101,11 @@ public class PaymentService {
         // 포트원에 실제 결제 조회
         io.portone.sdk.server.payment.Payment portOnePayment =
                 portOneClient.getPayment().getPayment(payment.getPaymentId()).join();
+
+        // 아직 결제 진행 중(Ready/PayPending)이면 판단 보류 - 결제 완료 전 웹훅이 먼저 도착하는 경우 대비
+        if (portOnePayment instanceof ReadyPayment || portOnePayment instanceof PayPendingPayment) {
+            return;
+        }
 
         // 조회 결과가 '결제 실패' 타입이면 failed 변수로 실패 정보를 담음
         if (portOnePayment instanceof FailedPayment failed) {
