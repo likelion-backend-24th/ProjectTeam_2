@@ -25,6 +25,9 @@ public class Subscription {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    // Payment에도 planType이 있어서 중복 저장이지만 의도한 트레이드오프.
+    // "지금 이 구독이 무슨 플랜인가"는 Subscription 자체의 속성으로 보는 게 맞고(Payment는 결제 시도 기록일 뿐),
+    // 갱신 스케줄러가 매번 "가장 최근 결제 내역"을 뒤져서 알아내는 것보다 여기서 바로 읽는 게 단순함.
     @Enumerated(EnumType.STRING)
     @Column(name = "plan_type", nullable = false, length = 20)
     private SubscriptionPlanType planType;
@@ -52,6 +55,10 @@ public class Subscription {
         this.status = SubscriptionStatus.CANCELLED;
     }
 
+    // 기존 expiredAt 기준으로 한 달 연장 (LocalDateTime.now() 기준이 아님).
+    // 원래 정해진 결제 주기(예: 매달 21일)를 그대로 유지하기 위한 선택.
+    // 스케줄러가 정각보다 늦게 돌거나(서버 지연), 심지어 몇 시간 밀려서 실행돼도
+    // 다음 만료일이 그만큼 밀리지 않게 하려는 의도.
     public void extend() {
         this.expiredAt = this.expiredAt.plusMonths(1);
     }

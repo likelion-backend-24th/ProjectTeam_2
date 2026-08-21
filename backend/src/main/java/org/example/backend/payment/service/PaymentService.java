@@ -12,6 +12,7 @@ import io.portone.sdk.server.webhook.WebhookTransaction;
 import io.portone.sdk.server.webhook.WebhookVerifier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.backend.auth.service.EmailService;
 import org.example.backend.payment.entity.*;
 import org.example.backend.payment.entity.Payment;
 import org.example.backend.payment.entity.PaymentStatus;
@@ -21,6 +22,7 @@ import org.example.backend.payment.repository.BillingKeyRepository;
 import org.example.backend.payment.repository.PaymentTransactionRepository;
 import org.example.backend.payment.repository.WebhookEventRepository;
 import org.example.backend.subscription.entity.Subscription;
+import org.example.backend.user.entity.AccountStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.payment.dto.PaymentPrepareResponse;
@@ -49,6 +51,7 @@ public class PaymentService {
     private final WebhookVerifier webhookVerifier;
     private final WebhookEventRepository webhookEventRepository;
     private final BillingKeyRepository billingKeyRepository;
+    private final EmailService emailService;
 
     @Value("${portone.store-id}")
     private String storeId;
@@ -58,6 +61,10 @@ public class PaymentService {
 
     // 빌링키 발급에 필요한 값만 내려줌 (금액이 발생하는 액션이 아니라 PortOne 사전등록/DB 저장 없이 바로 응답)
     public PaymentPrepareResponse preparePayment(User user, SubscriptionPlanType planType) {
+        if (user.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessException(SubscriptionErrorCode.USER_INACTIVE);
+        }
+
         if (subscriptionRepository.findByUserIdAndStatus(user.getId(), SubscriptionStatus.ACTIVE).isPresent()) {
             throw new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_ALREADY_ACTIVE);
         }
@@ -76,6 +83,10 @@ public class PaymentService {
     // 검증 -> 빌링키 저장 -> 그 빌링키로 첫 결제까지 서버가 직접 수행
     @Transactional
     public void completePayment(User user, String billingKey, SubscriptionPlanType planType) {
+        if (user.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessException(SubscriptionErrorCode.USER_INACTIVE);
+        }
+        
         if (subscriptionRepository.findByUserIdAndStatus(user.getId(), SubscriptionStatus.ACTIVE).isPresent()) {
             throw new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_ALREADY_ACTIVE);
         }
@@ -112,8 +123,10 @@ public class PaymentService {
                     null, null, null, null,
                     null, null, null, null
             ).join();
-        }catch (RuntimeException e) {
-            payment.setStatus(PaymentStatus.FAILED);
+        } catch (RuntimeException e) {
+            markPaymentFailed(payment);
+            Throwable cause = e.getCause() != null ? e.getCause() : e; // .join()이 CompletionException으로 감싸므로 원인 예외를 꺼냄
+            log.warn("빌링키 결제 실패 (paymentId={}, reason={})", paymentId, cause.getMessage());
             throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
         }
 
@@ -122,7 +135,9 @@ public class PaymentService {
     }
 
     // 스케줄러가 만료된 구독을 넘겨주면, 저장된 빌링키로 재결제를 시도해서 연장
-    // 빌링키가 없거나 결제가 실패하면 재시도 없이 그 자리에서 구독 취소
+    // 빌링키가 없거나 결제가 실패하면 재시도 없이 그 자리에서 구독 취소.
+    // (트레이드오프) 카드 한도초과 같은 일시적 실패도 재시도 없이 바로 취소됨 -> 단순함을 우선한 MVP 정책.
+    // 유예기간을 두고 N일 후 재시도하는 로직은 나중에 필요해지면 이 메서드 안에 추가하면 됨.
     @Transactional
     public void renewSubscription(Subscription subscription) {
         User user = subscription.getUser();
@@ -217,7 +232,9 @@ public class PaymentService {
         });
     }
 
-    // 결제 실패 시 공통 처리: Payment를 FAILED로 바꾸고, 갱신 시도였다면(payment.getSubscription() != null) 구독도 취소
+    // 결제 실패 시 공통 처리: Payment를 FAILED로 바꾸고, 갱신 시도였다면(payment.getSubscription() != null) 구독도 취소.
+    // completePayment(신규)에서 실패하면 payment.getSubscription()이 애초에 null이라 구독 취소 분기는 자연히 스킵됨
+    // -> 신규/갱신 실패 처리를 이 메서드 하나로 통일할 수 있는 이유.
     private void markPaymentFailed(Payment payment) {
         payment.setStatus(PaymentStatus.FAILED);
         if (payment.getSubscription() != null) {
@@ -297,7 +314,11 @@ public class PaymentService {
         tx.setOccurredAt(LocalDateTime.ofInstant(paid.getPaidAt(), ZoneId.systemDefault()));
         paymentTransactionRepository.save(tx);
 
-        // 결제 성공 = 갱신이면 기존 구독 연장, 신규면 구독 생성
+        // 결제 성공 = 갱신이면 기존 구독 연장, 신규면 구독 생성.
+        // (설계) 신규/갱신을 별도 파라미터나 메서드로 안 나누고, payment.getSubscription()이 미리 세팅돼 있는지로 구분함.
+        //   - completePayment: Payment 생성 시 subscription을 안 세팅 -> 여기서 새로 만듦
+        //   - renewSubscription: Payment 생성 시 갱신 대상 subscription을 미리 세팅해둠 -> 여기서 연장만 함
+        // 이렇게 하면 검증 로직(포트원 재조회, 상점/채널/금액 확인, 중복 방지 등)을 신규/갱신 양쪽에서 통째로 재사용할 수 있음.
         if (payment.getSubscription() != null) {
             payment.getSubscription().extend();
         } else {
@@ -311,6 +332,7 @@ public class PaymentService {
 
             payment.setSubscription(subscription);
             payment.getUser().setSubscribed(true);
+            emailService.sendSubscriptionStarted(payment.getUser().getUsername()); // 최초 구독만 해당, 갱신(extend)은 스킵
         }
     }
 }
