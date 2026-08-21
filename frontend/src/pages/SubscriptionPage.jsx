@@ -6,6 +6,8 @@ import PaymentModal from '../components/subscription/PaymentModal'
 import { useAuth } from '../context/AuthContext'
 import { formatDate } from '../utils/formatDate'
 import styles from './SubscriptionPage.module.css'
+import * as PortOne from '@portone/browser-sdk/v2' //결제추가 여기서부터
+import { billingKeyApi } from '../api'
 
 const FREE_FEATURES = ['게시글 조회·작성·댓글', '스터디 신청·참여 (최대 2개)', '커뮤니티 모든 기본 기능']
 
@@ -82,6 +84,35 @@ export default function SubscriptionPage() {
     }
   }
 
+  // 임시 테스트용: 빌링키 발급 전체 흐름 테스트
+async function handleTestBillingKey() {
+  try {
+    // 1. 백엔드에 발급 준비 요청
+    const { data: prepareRes } = await billingKeyApi.prepare()
+    const { storeId, channelKey, issueId } = prepareRes.data
+
+    // 2. PortOne 카드 등록창 호출
+    const issueResponse = await PortOne.requestIssueBillingKey({
+      storeId,
+      channelKey,
+      billingKeyMethod: 'CARD',
+      issueId,
+      issueName: 'prep2gether 정기결제 카드 등록',
+    })
+
+    if (issueResponse.code !== undefined) {
+      alert('카드 등록 실패: ' + issueResponse.message)
+      return
+    }
+
+    // 3. 백엔드에 검증 요청
+    await billingKeyApi.verify(issueId, issueResponse.billingKey)
+    alert('빌링키 등록 성공!')
+  } catch (err) {
+    alert('에러 발생: ' + (err.response?.data?.message ?? err.message))
+  }
+}
+
   const isSubscribed = Boolean(subscription)
 
   return (
@@ -139,9 +170,14 @@ export default function SubscriptionPage() {
                 </button>
               </div>
             ) : (
+              <>
               <button type="button" className={styles.premiumButton} onClick={handleSubscribeClick}>
                 지금 구독
               </button>
+              <button type="button" onClick={handleTestBillingKey} style={{ marginTop: '8px' }}>
+                  [테스트] 빌링키 등록
+                </button>
+                </>
             )}
           </section>
         </div>

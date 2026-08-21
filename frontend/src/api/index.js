@@ -11,3 +11,4 @@ export { reportApi } from './reportApi'
 export { subscriptionApi } from './subscriptionApi'
 export { adminApi } from './adminApi'
 export { notificationApi } from './notificationApi'
+export { billingKeyApi } from './billingKeyApi'//결제추가
