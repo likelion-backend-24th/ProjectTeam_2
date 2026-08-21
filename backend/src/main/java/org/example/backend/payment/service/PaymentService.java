@@ -227,6 +227,7 @@ public class PaymentService {
         // 결제 성공 = 구독 시작 로직
         Subscription subscription = Subscription.builder()
                 .user(payment.getUser())
+                .planType(payment.getPlanType())
                 .startedAt(LocalDateTime.now())
                 .expiredAt(LocalDateTime.now().plusMonths(1))
                 .build();

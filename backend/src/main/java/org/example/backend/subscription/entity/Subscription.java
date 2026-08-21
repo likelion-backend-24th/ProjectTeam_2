@@ -1,5 +1,6 @@
 package org.example.backend.subscription.entity;
 
+import org.example.backend.payment.entity.SubscriptionPlanType;
 import org.example.backend.user.entity.User;
 
 import jakarta.persistence.*;
@@ -25,6 +26,10 @@ public class Subscription {
     private User user;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "plan_type", nullable = false, length = 20)
+    private SubscriptionPlanType planType;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private SubscriptionStatus status;
 
@@ -35,8 +40,9 @@ public class Subscription {
     private LocalDateTime expiredAt;
 
     @Builder
-    public Subscription(User user, LocalDateTime startedAt, LocalDateTime expiredAt) {
+    public Subscription(User user, SubscriptionPlanType planType, LocalDateTime startedAt, LocalDateTime expiredAt) {
         this.user = user;
+        this.planType = planType;
         this.status = SubscriptionStatus.ACTIVE;
         this.startedAt = startedAt;
         this.expiredAt = expiredAt;
