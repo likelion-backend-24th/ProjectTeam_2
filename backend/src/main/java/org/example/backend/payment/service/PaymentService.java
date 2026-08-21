@@ -246,6 +246,16 @@ public class PaymentService {
         if (payment.getSubscription() != null) {
             payment.getSubscription().cancel();
             payment.getUser().setSubscribed(false);
+
+            // 갱신 실패 = 이 빌링키로 다시 시도할 일이 없음 -> 로컬 상태도 정리해서
+            // hasActiveBillingKey가 계속 true를 반환하지 않게 함.
+            // PortOne 쪽 실제 삭제(deleteBillingKey)는 일부러 안 함: 실패 처리 흐름 안에서
+            // 외부 API를 하나 더 호출했다가 그마저 실패하면 원래 실패 원인이 가려질 수 있어서.
+            billingKeyRepository.findByUserAndStatus(payment.getUser(), BillingKeyStatus.ACTIVE)
+                    .ifPresent(billingKey -> {
+                        billingKey.setStatus(BillingKeyStatus.DELETED);
+                        billingKey.setDeletedAt(LocalDateTime.now());
+                    });
         }
     }
 
