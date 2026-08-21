@@ -71,6 +71,7 @@ public class PaymentService {
                 .build();
     }
 
+    // 최초 구독
     // 프론트가 requestIssueBillingKey로 발급받은 billingKey를 넘겨주면
     // 검증 -> 빌링키 저장 -> 그 빌링키로 첫 결제까지 서버가 직접 수행
     @Transactional
@@ -113,12 +114,55 @@ public class PaymentService {
             ).join();
         }catch (RuntimeException e) {
             payment.setStatus(PaymentStatus.FAILED);
-            Throwable cause = e.getCause() != null ? e.getCause() : e; // .join()이 CompletionException으로 감싸므로 원인 예외를 꺼냄
-            log.warn("빌링키 결제 실패 (paymentId={}, reason={})", paymentId, cause.getMessage());
             throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
         }
 
         verifyAndFinalize(payment);
+
+    }
+
+    // 스케줄러가 만료된 구독을 넘겨주면, 저장된 빌링키로 재결제를 시도해서 연장
+    // 빌링키가 없거나 결제가 실패하면 재시도 없이 그 자리에서 구독 취소
+    @Transactional
+    public void renewSubscription(Subscription subscription) {
+        User user = subscription.getUser();
+
+        BillingKey billingKey = billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE).orElse(null);
+        if (billingKey == null) {
+            log.info("갱신 실패 - 활성 빌링키 없음 (subscriptionId={})", subscription.getId());
+            subscription.cancel();
+            user.setSubscribed(false);
+            return;
+        }
+
+        SubscriptionPlanType planType = subscription.getPlanType();
+        String paymentId = "p2g-kjs_" + UUID.randomUUID();
+        int amount = planType.getAmount();
+        Payment payment = new Payment(paymentId, user, planType, amount);
+        payment.setSubscription(subscription);
+        paymentRepository.save(payment);
+
+        try {
+            portOneClient.getPayment().payWithBillingKey(
+                    paymentId, billingKey.getBillingKey(), channelKeyBilling, planType.getOrderName(),
+                    null, null,
+                    new PaymentAmountInput(amount, null, null), Currency.Krw.INSTANCE,
+                    null, null, null, null, null, null,
+                    null, null, null, null,
+                    null, null, null, null
+            ).join();
+        }catch (RuntimeException e) {
+            markPaymentFailed(payment);
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            log.warn("갱신 결제 실패 (paymentId={}, reason={})", paymentId, cause.getMessage());
+            return;
+        }
+
+        try {
+            verifyAndFinalize(payment);
+        } catch (BusinessException e) {
+            log.warn("갱신 결제 검증 실패 (paymentId={}, reason={})", paymentId, e.getMessage());
+        }
 
     }
 
@@ -153,6 +197,15 @@ public class PaymentService {
         });
     }
 
+    // 결제 실패 시 공통 처리: Payment를 FAILED로 바꾸고, 갱신 시도였다면(payment.getSubscription() != null) 구독도 취소
+    private void markPaymentFailed(Payment payment) {
+        payment.setStatus(PaymentStatus.FAILED);
+        if (payment.getSubscription() != null) {
+            payment.getSubscription().cancel();
+            payment.getUser().setSubscribed(false);
+        }
+    }
+
     @Transactional
     public void verifyAndFinalize(Payment payment) {
 
@@ -173,7 +226,7 @@ public class PaymentService {
         // 조회 결과가 '결제 실패' 타입이면 failed 변수로 실패 정보를 담음
         if (portOnePayment instanceof FailedPayment failed) {
             // Payment 상태를 FAILED로 바꾸고
-            payment.setStatus(PaymentStatus.FAILED);
+            markPaymentFailed(payment);
             // 해당 트랜잭션ID가 이미 존재하는지 확인 후
             if (!paymentTransactionRepository.existsByTransactionId(failed.getTransactionId())){
                 // 실패한 거래 ID(failed.getTransactionId())를 꺼내서 PatmentTransaction 기록을 남김
@@ -186,7 +239,7 @@ public class PaymentService {
 
         // 우리가 사용하지 않는 Payment 타입이 들어왔을 때를 대비한 방어코드
         if (!(portOnePayment instanceof PaidPayment paid)) {
-            payment.setStatus(PaymentStatus.FAILED);
+            markPaymentFailed(payment);
             throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
         }
 
@@ -201,7 +254,7 @@ public class PaymentService {
 
         // 위 조건 중 하나라도 맞지 않다면 FAILED
         if (!valid) {
-            payment.setStatus(PaymentStatus.FAILED);
+            markPaymentFailed(payment);
             // 해당 트랜잭션ID가 이미 존재하는지 확인 후
             if (!paymentTransactionRepository.existsByTransactionId(paid.getTransactionId())) {
                 paymentTransactionRepository.save(new PaymentTransaction(
@@ -224,16 +277,20 @@ public class PaymentService {
         tx.setOccurredAt(LocalDateTime.ofInstant(paid.getPaidAt(), ZoneId.systemDefault()));
         paymentTransactionRepository.save(tx);
 
-        // 결제 성공 = 구독 시작 로직
-        Subscription subscription = Subscription.builder()
-                .user(payment.getUser())
-                .planType(payment.getPlanType())
-                .startedAt(LocalDateTime.now())
-                .expiredAt(LocalDateTime.now().plusMonths(1))
-                .build();
-        subscriptionRepository.save(subscription);
+        // 결제 성공 = 갱신이면 기존 구독 연장, 신규면 구독 생성
+        if (payment.getSubscription() != null) {
+            payment.getSubscription().extend();
+        } else {
+            Subscription subscription = Subscription.builder()
+                    .user(payment.getUser())
+                    .planType(payment.getPlanType())
+                    .startedAt(LocalDateTime.now())
+                    .expiredAt(LocalDateTime.now().plusMonths(1))
+                    .build();
+            subscriptionRepository.save(subscription);
 
-        payment.setSubscription(subscription);
-        payment.getUser().setSubscribed(true);
+            payment.setSubscription(subscription);
+            payment.getUser().setSubscribed(true);
+        }
     }
 }

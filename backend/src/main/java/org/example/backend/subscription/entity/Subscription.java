@@ -51,4 +51,8 @@ public class Subscription {
     public void cancel() {
         this.status = SubscriptionStatus.CANCELLED;
     }
+
+    public void extend() {
+        this.expiredAt = this.expiredAt.plusMonths(1);
+    }
 }
