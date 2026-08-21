@@ -78,13 +78,7 @@ public class PaymentService {
                 paymentId, billingKey.getBillingKey(), "prep2gether 구독 ", subscriptionPrice);
 
         PortOnePaymentResponse verified = portOnePaymentClient.getPayment(paymentId);
-
-        System.out.println("=== 결제 검증 디버그 ===");
-        System.out.println("우리 storeId: " + storeId + " / PortOne storeId: " + verified.getStoreId());
-        System.out.println("우리 channelKey: " + billingChannelKey + " / PortOne channelKey: " + verified.getChannel().getKey());
-        System.out.println("우리 currency: KRW / PortOne currency: " + verified.getCurrency());
-        System.out.println("우리 amount: " + payment.getAmount() + " / PortOne amount: " + verified.getAmount().getTotal());
-        System.out.println("PortOne status: " + verified.getStatus());
+        
         // 상점, 결제 채널, 통화 원화, 내 금액=포트원이 알려준 실제 금액, 상태가 PAID 5개 다맞아야됨
         boolean valid = storeId.equals(verified.getStoreId())
                 && billingChannelKey.equals(verified.getChannel().getKey())
