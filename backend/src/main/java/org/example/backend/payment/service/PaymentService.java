@@ -86,7 +86,7 @@ public class PaymentService {
         if (user.getStatus() != AccountStatus.ACTIVE) {
             throw new BusinessException(SubscriptionErrorCode.USER_INACTIVE);
         }
-        
+
         if (subscriptionRepository.findByUserIdAndStatus(user.getId(), SubscriptionStatus.ACTIVE).isPresent()) {
             throw new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_ALREADY_ACTIVE);
         }
@@ -139,7 +139,13 @@ public class PaymentService {
     // (트레이드오프) 카드 한도초과 같은 일시적 실패도 재시도 없이 바로 취소됨 -> 단순함을 우선한 MVP 정책.
     // 유예기간을 두고 N일 후 재시도하는 로직은 나중에 필요해지면 이 메서드 안에 추가하면 됨.
     @Transactional
-    public void renewSubscription(Subscription subscription) {
+    public void renewSubscription(Subscription detachedSubscription) {
+        // 스케줄러가 트랜잭션 밖에서 조회해 넘겨준 detached 엔티티라 그대로 쓰면 안 됨.
+        // (1) subscription.getUser() 접근 시 LazyInitializationException 남
+        // (2) 설령 안 터지더라도 detached 엔티티 수정은 이 트랜잭션에 반영이 안 됨(Hibernate가 추적을 안 함)
+        // 그래서 이 트랜잭션 안에서 다시 조회해 managed 상태로 만든 뒤 사용해야 실제로 DB에 반영됨.
+        Subscription subscription = subscriptionRepository.findById(detachedSubscription.getId())
+                .orElseThrow(() -> new IllegalStateException("구독을 찾을 수 없음: id=" + detachedSubscription.getId()));
         User user = subscription.getUser();
 
         BillingKey billingKey = billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE).orElse(null);

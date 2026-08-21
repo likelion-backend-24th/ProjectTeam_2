@@ -22,9 +22,11 @@ export default function SubscriptionPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  // subscription: undefined(조회 전) | null(구독 없음) | { status, startedAt, expiredAt }
+  // subscription: undefined(조회 전) | null(구독 없음) | { status, startedAt, expiredAt, autoRenew }
   const [subscription, setSubscription] = useState(undefined)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState('')
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -63,6 +65,23 @@ export default function SubscriptionPage() {
     setSubscription(newSubscription)
     setIsModalOpen(false)
     await refetchMe()
+  }
+
+  // 해지 = "다음 자동갱신 예약 취소". 즉시 끊기는 게 아니라 이미 결제한 기간까지는 그대로 이용 가능.
+  async function handleCancel() {
+    if (!window.confirm('구독을 해지할까요? 이미 결제한 기간까지는 계속 이용할 수 있어요.')) return
+
+    setCancelError('')
+    setIsCancelling(true)
+    try {
+      const { data } = await subscriptionApi.cancel()
+      setSubscription(data.data)
+      await refetchMe()
+    } catch (err) {
+      setCancelError(err.response?.data?.message ?? err.message ?? '구독 해지에 실패했어요.')
+    } finally {
+      setIsCancelling(false)
+    }
   }
 
   const isSubscribed = Boolean(subscription)
@@ -112,9 +131,19 @@ export default function SubscriptionPage() {
 
             {isSubscribed ? (
               <div className={styles.activeBox}>
-                <p className={styles.activeLabel}>✓ 구독 중이에요</p>
+                <p className={styles.activeLabel}>{subscription.autoRenew ? '✓ 구독 중이에요' : '해지 예약됨'}</p>
                 {subscription?.expiredAt && (
-                  <p className={styles.activeExpiry}>{formatDate(subscription.expiredAt)}까지 이용 가능</p>
+                  <p className={styles.activeExpiry}>
+                    {subscription.autoRenew
+                      ? `${formatDate(subscription.expiredAt)}에 자동 갱신돼요`
+                      : `${formatDate(subscription.expiredAt)}까지 이용 가능 (이후 자동 갱신 안 됨)`}
+                  </p>
+                )}
+                {cancelError && <p className={styles.cancelError}>{cancelError}</p>}
+                {subscription.autoRenew && (
+                  <button type="button" className={styles.cancelButton} onClick={handleCancel} disabled={isCancelling}>
+                    {isCancelling ? '처리 중...' : '구독 해지'}
+                  </button>
                 )}
               </div>
             ) : (
