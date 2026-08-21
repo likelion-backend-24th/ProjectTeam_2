@@ -42,6 +42,12 @@ public class Subscription {
     @Column(name = "expired_at")
     private LocalDateTime expiredAt;
 
+    @Column(name = "grace_ends_at")
+    private LocalDateTime graceEndsAt; // 유예기간 마감 시점 (=최초 만료일 + 3일). 이걸 지나면 재시도 포기.
+
+    @Column(name = "last_retry_at")
+    private LocalDateTime lastRetryAt; // 마지막 재시도 시각. 스케줄러가 하루에 한 번만 재시도하게 걸러내는 용도.
+
     @Builder
     public Subscription(User user, SubscriptionPlanType planType, LocalDateTime startedAt, LocalDateTime expiredAt) {
         this.user = user;
@@ -53,6 +59,29 @@ public class Subscription {
 
     public void cancel() {
         this.status = SubscriptionStatus.CANCELLED;
+    }
+
+    // 만료일에 첫 재결제 시도가 실패하면 여기로. 접근 권한은 바로 꺼지지만
+    // 완전히 취소하지 않고, graceEndsAt까지 하루 한 번씩 재시도할 기회를 줌.
+    public void markPastDue(LocalDateTime graceEndsAt) {
+        this.status = SubscriptionStatus.PAST_DUE;
+        this.graceEndsAt = graceEndsAt;
+        this.lastRetryAt = LocalDateTime.now();
+    }
+
+    // 유예기간 중 재시도했는데 또 실패한 경우(아직 graceEndsAt 전) - 상태는 PAST_DUE 그대로,
+    // "오늘 이미 시도했다"만 기록해서 스케줄러가 같은 날 또 시도하지 않게 함.
+    public void recordRetryAttempt() {
+        this.lastRetryAt = LocalDateTime.now();
+    }
+
+    // 유예기간 중 재결제 성공 - "낸 만큼 정확히 쓴다" 원칙으로,
+    // 원래 만료일이 아니라 실제로 결제된 지금 시점부터 한 달을 새로 잡음 (extend()와 기준이 다름).
+    public void recoverFromPastDue() {
+        this.status = SubscriptionStatus.ACTIVE;
+        this.expiredAt = LocalDateTime.now().plusMonths(1);
+        this.graceEndsAt = null;
+        this.lastRetryAt = null;
     }
 
     // 기존 expiredAt 기준으로 한 달 연장 (LocalDateTime.now() 기준이 아님).
