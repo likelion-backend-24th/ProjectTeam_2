@@ -166,6 +166,26 @@ public class PaymentService {
 
     }
 
+    @Transactional
+    public void deleteBillingKey(User user, String reason) {
+        BillingKey billingKey = billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.BILLING_KEY_NOT_FOUND));
+
+        try {
+            portOneClient.getPayment().getBillingKey().deleteBillingKey(billingKey.getBillingKey(), reason, null, null).join();
+        } catch (RuntimeException e) {
+            throw new BusinessException(PaymentErrorCode.BILLING_KEY_DELETE_FAILED);
+        }
+
+        billingKey.setStatus(BillingKeyStatus.DELETED);
+        billingKey.setDeletedAt(LocalDateTime.now());
+    }
+
+    // 활성 빌링키(=다음 자동갱신 예정) 여부. 프론트에 "해지 예약" 상태를 보여줄 때 씀.
+    public boolean hasActiveBillingKey(User user) {
+        return billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE).isPresent();
+    }
+
     // 웹훅
     @Transactional
     public void handleWebhook(String body, String webhookId, String signature, String timestamp) {
