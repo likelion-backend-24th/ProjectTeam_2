@@ -10,7 +10,6 @@ import io.portone.sdk.server.payment.PaidPayment;
 import io.portone.sdk.server.payment.PayWithBillingKeyResponse;
 import io.portone.sdk.server.payment.PaymentAmount;
 import io.portone.sdk.server.payment.ReadyPayment;
-import io.portone.sdk.server.payment.billingkey.BillingKeyClient;
 import io.portone.sdk.server.payment.billingkey.BillingKeyInfo;
 import io.portone.sdk.server.payment.billingkey.DeleteBillingKeyResponse;
 import io.portone.sdk.server.payment.billingkey.IssuedBillingKeyInfo;
@@ -62,10 +61,10 @@ import static org.mockito.Mockito.*;
 // 필요한 getter만 스텁하는 mock(...)으로 대체함.
 //
 // 주의: 이 테스트들은 리포지토리를 전부 목으로 대체한 순수 유닛테스트라,
-// 오늘 발견했던 detached 엔티티(Hibernate 세션 문제)류 버그는 못 잡는다.
+// detached 엔티티(Hibernate 세션 문제)류 버그는 못 잡는다.
 // (Mockito가 만든 목 엔티티엔 세션/영속성 컨텍스트라는 개념 자체가 없음)
-// renewSubscription이 subscriptionRepository.findById(...)를 실제로 호출하는지만
-// verify로 확인해서, "재조회 코드를 실수로 지워버리는" 회귀는 잡을 수 있게 해둠.
+// renewSubscription/processPastDueSubscription이 subscriptionRepository.findById(...)를
+// 실제로 호출하는지만 verify로 확인해서, "재조회 코드를 실수로 지워버리는" 회귀는 잡을 수 있게 해둠.
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
 
@@ -214,18 +213,49 @@ class PaymentServiceTest {
         assertThat(user.isSubscribed()).isTrue();
     }
 
+    @Test
+    void completePayment_유예기간중이던예전구독은_조용히정리() {
+        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+        Subscription oldPastDue = pastDueSubscription(LocalDateTime.now().plusDays(1), null);
+        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.PAST_DUE))
+                .thenReturn(Optional.of(oldPastDue));
+        when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+
+        IssuedBillingKeyInfo issued = mock(IssuedBillingKeyInfo.class);
+        when(issued.getStoreId()).thenReturn(STORE_ID);
+        SelectedChannel channel = mock(SelectedChannel.class);
+        when(channel.getKey()).thenReturn(CHANNEL_KEY);
+        when(issued.getChannels()).thenReturn(List.of(channel));
+        when(portOneClient.getPayment().getBillingKey().getBillingKeyInfo(anyString()))
+                .thenReturn(CompletableFuture.<BillingKeyInfo>completedFuture(issued));
+
+        stubPayWithBillingKey(CompletableFuture.completedFuture(mock(PayWithBillingKeyResponse.class)));
+        stubGetPayment(paidPaymentMock(9900L));
+        when(paymentTransactionRepository.existsByTransactionId(anyString())).thenReturn(false);
+
+        paymentService.completePayment(user, "billing-key-new", SubscriptionPlanType.BASIC);
+
+        // 새로 만든 새 구독이 아니라, 옛날 PAST_DUE 구독이 CANCELLED로 정리됐는지 확인
+        // (안 지우면 나중에 스케줄러가 새 빌링키로 옛날 구독까지 같이 살려버릴 위험이 있었음)
+        assertThat(oldPastDue.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
+        verify(emailService, never()).sendSubscriptionRenewalFailed(anyString()); // 실패로 정리된 게 아니라 조용히 넘어감
+    }
+
     // ------------------------------------------------------------------
-    // renewSubscription (오늘 detached 엔티티 버그가 났던 메서드)
+    // renewSubscription (ACTIVE 구독의 첫 재결제 시도)
     // ------------------------------------------------------------------
 
     @Test
-    void renewSubscription_빌링키없으면_구독취소하고_PortOne호출안함() {
+    void renewSubscription_빌링키없으면_유예기간없이_바로최종취소() {
         Subscription subscription = dueSubscription();
         when(subscriptionRepository.findById(nullable(Long.class))).thenReturn(Optional.of(subscription));
         when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE)).thenReturn(Optional.empty());
 
         paymentService.renewSubscription(subscription);
 
+        // 빌링키가 아예 없으면 재시도해봤자 의미가 없으니 유예기간 없이 바로 취소
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
         assertThat(user.isSubscribed()).isFalse();
         verify(subscriptionRepository).findById(nullable(Long.class)); // 트랜잭션 안에서 재조회하는지(버그 재발 방지 가드)
@@ -234,8 +264,9 @@ class PaymentServiceTest {
     }
 
     @Test
-    void renewSubscription_결제요청이예외터지면_결제FAILED_구독취소() {
+    void renewSubscription_결제요청이예외터지면_바로취소하지않고_유예기간시작() {
         Subscription subscription = dueSubscription();
+        LocalDateTime originalExpiredAt = subscription.getExpiredAt();
         when(subscriptionRepository.findById(nullable(Long.class))).thenReturn(Optional.of(subscription));
         when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
                 .thenReturn(Optional.of(new BillingKey(user, "billing-key-abc")));
@@ -243,9 +274,11 @@ class PaymentServiceTest {
 
         paymentService.renewSubscription(subscription);
 
-        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
-        assertThat(user.isSubscribed()).isFalse();
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.PAST_DUE); // 바로 CANCELLED 아님
+        assertThat(subscription.getGraceEndsAt()).isEqualTo(originalExpiredAt.plusDays(3));
+        assertThat(user.isSubscribed()).isFalse(); // 접근 권한은 즉시 꺼짐 (유예기간 = 재시도 기회일 뿐, 이용 기간 연장 아님)
         verify(paymentRepository).save(argThat(p -> p.getStatus() == PaymentStatus.FAILED));
+        verify(emailService, never()).sendSubscriptionRenewalFailed(anyString()); // 아직 최종 취소가 아니라 메일 안 감
     }
 
     @Test
@@ -264,6 +297,62 @@ class PaymentServiceTest {
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
         assertThat(subscription.getExpiredAt()).isEqualTo(oldExpiry.plusMonths(1));
         verify(emailService, never()).sendSubscriptionStarted(anyString()); // 갱신은 "시작" 메일 대상 아님
+    }
+
+    // ------------------------------------------------------------------
+    // processPastDueSubscription (유예기간 중 재시도/최종 취소 판단)
+    // ------------------------------------------------------------------
+
+    @Test
+    void processPastDueSubscription_유예기간끝났으면_재시도없이_바로최종취소() {
+        Subscription subscription = pastDueSubscription(LocalDateTime.now().minusHours(1), LocalDateTime.now().minusDays(1));
+        when(subscriptionRepository.findById(nullable(Long.class))).thenReturn(Optional.of(subscription));
+        when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
+                .thenReturn(Optional.of(new BillingKey(user, "billing-key-abc")));
+
+        paymentService.processPastDueSubscription(subscription);
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
+        verify(emailService).sendSubscriptionRenewalFailed(user.getUsername());
+        verifyNoInteractions(portOneClient); // 결제 시도 자체를 안 함 (유예기간이 이미 끝났으므로)
+    }
+
+    @Test
+    void processPastDueSubscription_오늘이미재시도했으면_스킵() {
+        Subscription subscription = pastDueSubscription(LocalDateTime.now().plusDays(1), LocalDateTime.now());
+        when(subscriptionRepository.findById(nullable(Long.class))).thenReturn(Optional.of(subscription));
+
+        paymentService.processPastDueSubscription(subscription);
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.PAST_DUE); // 상태 그대로
+        verifyNoInteractions(billingKeyRepository);
+        verifyNoInteractions(portOneClient);
+    }
+
+    @Test
+    void processPastDueSubscription_재시도대상이면_결제를시도하고_성공하면복구() {
+        Subscription subscription = pastDueSubscription(LocalDateTime.now().plusDays(1), LocalDateTime.now().minusDays(1));
+        when(subscriptionRepository.findById(nullable(Long.class))).thenReturn(Optional.of(subscription));
+        when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
+                .thenReturn(Optional.of(new BillingKey(user, "billing-key-abc")));
+        stubPayWithBillingKey(CompletableFuture.completedFuture(mock(PayWithBillingKeyResponse.class)));
+        stubGetPayment(paidPaymentMock(9900L));
+        when(paymentTransactionRepository.existsByTransactionId(anyString())).thenReturn(false);
+
+        paymentService.processPastDueSubscription(subscription);
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+    }
+
+    @Test
+    void processPastDueSubscription_이미다른상태로바뀐경우_아무것도안함() {
+        Subscription subscription = dueSubscription(); // ACTIVE (PAST_DUE 아님)
+        when(subscriptionRepository.findById(nullable(Long.class))).thenReturn(Optional.of(subscription));
+
+        paymentService.processPastDueSubscription(subscription);
+
+        verifyNoInteractions(billingKeyRepository);
+        verifyNoInteractions(portOneClient);
     }
 
     // ------------------------------------------------------------------
@@ -384,8 +473,8 @@ class PaymentServiceTest {
     }
 
     @Test
-    void verifyAndFinalize_갱신결제실패면_구독도같이취소() {
-        Subscription subscription = dueSubscription();
+    void verifyAndFinalize_ACTIVE구독의첫실패면_유예기간시작하고_빌링키는안지움() {
+        Subscription subscription = dueSubscription(); // ACTIVE
         Payment payment = new Payment("pid", user, SubscriptionPlanType.BASIC, 9900);
         payment.setSubscription(subscription); // 갱신 표시
         FailedPayment failed = mock(FailedPayment.class);
@@ -394,28 +483,49 @@ class PaymentServiceTest {
 
         assertThrows(BusinessException.class, () -> paymentService.verifyAndFinalize(payment));
 
-        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.PAST_DUE); // 바로 CANCELLED 아님
         assertThat(user.isSubscribed()).isFalse();
+        // 유예기간 동안 같은 빌링키로 재시도해야 하니, 이 시점엔 빌링키를 건드리면 안 됨
+        verifyNoInteractions(billingKeyRepository);
+        verify(emailService, never()).sendSubscriptionRenewalFailed(anyString());
     }
 
     @Test
-    void verifyAndFinalize_갱신결제실패면_빌링키도_로컬DELETED로_정리() {
-        Subscription subscription = dueSubscription();
+    void verifyAndFinalize_유예기간중_재시도실패하면_상태유지하고_재시도시각만기록() {
+        Subscription subscription = pastDueSubscription(LocalDateTime.now().plusDays(1), LocalDateTime.now().minusDays(1));
         Payment payment = new Payment("pid", user, SubscriptionPlanType.BASIC, 9900);
         payment.setSubscription(subscription);
-        BillingKey billingKey = new BillingKey(user, "billing-key-abc");
-        when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE)).thenReturn(Optional.of(billingKey));
         FailedPayment failed = mock(FailedPayment.class);
-        when(failed.getTransactionId()).thenReturn("tx-failed-3");
+        when(failed.getTransactionId()).thenReturn("tx-failed-4");
         stubGetPayment(failed);
-        BillingKeyClient billingKeyClient = portOneClient.getPayment().getBillingKey(); // deep stub이 만든 mock의 안정적인 참조
 
         assertThrows(BusinessException.class, () -> paymentService.verifyAndFinalize(payment));
 
-        assertThat(billingKey.getStatus()).isEqualTo(BillingKeyStatus.DELETED);
-        assertThat(billingKey.getDeletedAt()).isNotNull();
-        verify(billingKeyClient, never()).deleteBillingKey(any(), any(), any(), any()); // PortOne 호출은 안 함(로컬 정리만)
-        verify(emailService).sendSubscriptionRenewalFailed(user.getUsername());
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.PAST_DUE); // 여전히 유예기간 중
+        assertThat(subscription.getLastRetryAt().toLocalDate()).isEqualTo(LocalDateTime.now().toLocalDate());
+        verify(emailService, never()).sendSubscriptionRenewalFailed(anyString());
+        verifyNoInteractions(billingKeyRepository);
+    }
+
+    @Test
+    void verifyAndFinalize_유예기간중_재결제성공하면_지금시점기준으로복구() {
+        Subscription subscription = pastDueSubscription(LocalDateTime.now().plusDays(1), LocalDateTime.now().minusDays(1));
+        Payment payment = new Payment("pid", user, SubscriptionPlanType.BASIC, 9900);
+        payment.setSubscription(subscription);
+        stubGetPayment(paidPaymentMock(9900L));
+        when(paymentTransactionRepository.existsByTransactionId(anyString())).thenReturn(false);
+
+        LocalDateTime before = LocalDateTime.now();
+        paymentService.verifyAndFinalize(payment);
+        LocalDateTime after = LocalDateTime.now();
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(subscription.getGraceEndsAt()).isNull();
+        assertThat(subscription.getLastRetryAt()).isNull();
+        // 원래 만료일이 아니라 "지금(재결제 성공 시점)" 기준으로 한 달 - extend()와 기준이 다름
+        assertThat(subscription.getExpiredAt()).isAfterOrEqualTo(before.plusMonths(1));
+        assertThat(subscription.getExpiredAt()).isBeforeOrEqualTo(after.plusMonths(1));
+        assertThat(user.isSubscribed()).isTrue();
     }
 
     @Test
@@ -458,7 +568,7 @@ class PaymentServiceTest {
     }
 
     @Test
-    void verifyAndFinalize_갱신결제성공하면_기존구독연장하고_메일안보냄() {
+    void verifyAndFinalize_정상주기갱신성공하면_기존만료일기준으로연장하고_메일안보냄() {
         Subscription subscription = dueSubscription();
         LocalDateTime oldExpiry = subscription.getExpiredAt();
         Payment payment = new Payment("pid", user, SubscriptionPlanType.BASIC, 9900);
@@ -485,6 +595,21 @@ class PaymentServiceTest {
                 .startedAt(LocalDateTime.now().minusMonths(1))
                 .expiredAt(LocalDateTime.now().minusDays(1))
                 .build();
+    }
+
+    // PAST_DUE(유예기간 중) 구독을 만드는 헬퍼. graceEndsAt/lastRetryAt을 정확히 통제해야 해서
+    // Subscription에 별도 setter가 없는 필드는 ReflectionTestUtils로 직접 꽂아넣음.
+    private Subscription pastDueSubscription(LocalDateTime graceEndsAt, LocalDateTime lastRetryAt) {
+        Subscription subscription = Subscription.builder()
+                .user(user)
+                .planType(SubscriptionPlanType.BASIC)
+                .startedAt(LocalDateTime.now().minusMonths(1))
+                .expiredAt(LocalDateTime.now().minusDays(2))
+                .build();
+        ReflectionTestUtils.setField(subscription, "status", SubscriptionStatus.PAST_DUE);
+        ReflectionTestUtils.setField(subscription, "graceEndsAt", graceEndsAt);
+        ReflectionTestUtils.setField(subscription, "lastRetryAt", lastRetryAt);
+        return subscription;
     }
 
     // 이 헬퍼가 스텁해두는 필드를 모든 호출 지점이 다 쓰는 건 아님

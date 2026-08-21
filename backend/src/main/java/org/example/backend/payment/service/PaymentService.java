@@ -92,6 +92,12 @@ public class PaymentService {
             throw new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_ALREADY_ACTIVE);
         }
 
+        // 유예기간(PAST_DUE) 중이던 예전 구독이 있으면 조용히 정리하고 새로 시작.
+        // 안 지우면: 이번에 새로 저장하는 빌링키를 나중에 스케줄러가 "옛날 유예기간 구독" 갱신에도 써버려서
+        // 구독이 2개(새로 만든 것 + 옛날 것) 동시에 ACTIVE가 되는 사고가 날 수 있음.
+        subscriptionRepository.findByUserIdAndStatus(user.getId(), SubscriptionStatus.PAST_DUE)
+                .ifPresent(Subscription::cancel);
+
         // PortOne에 실제로 발급된 빌링키가 맞는지, 우리 상점/채널의 빌링키가 맞는지 조회 및 검증
         BillingKeyInfo billingKeyInfo = portOneClient.getPayment().getBillingKey().getBillingKeyInfo(billingKey).join();
 
@@ -135,10 +141,7 @@ public class PaymentService {
 
     }
 
-    // 스케줄러가 만료된 구독을 넘겨주면, 저장된 빌링키로 재결제를 시도해서 연장
-    // 빌링키가 없거나 결제가 실패하면 재시도 없이 그 자리에서 구독 취소.
-    // (트레이드오프) 카드 한도초과 같은 일시적 실패도 재시도 없이 바로 취소됨 -> 단순함을 우선한 MVP 정책.
-    // 유예기간을 두고 N일 후 재시도하는 로직은 나중에 필요해지면 이 메서드 안에 추가하면 됨.
+    // 스케줄러가 만료된 ACTIVE 구독을 넘겨주면 첫 재결제를 시도.
     @Transactional
     public void renewSubscription(Subscription detachedSubscription) {
         // 스케줄러가 트랜잭션 밖에서 조회해 넘겨준 detached 엔티티라 그대로 쓰면 안 됨.
@@ -147,14 +150,45 @@ public class PaymentService {
         // 그래서 이 트랜잭션 안에서 다시 조회해 managed 상태로 만든 뒤 사용해야 실제로 DB에 반영됨.
         Subscription subscription = subscriptionRepository.findById(detachedSubscription.getId())
                 .orElseThrow(() -> new IllegalStateException("구독을 찾을 수 없음: id=" + detachedSubscription.getId()));
+        attemptRenewalCharge(subscription);
+    }
+
+    // 스케줄러가 PAST_DUE(유예기간 중) 구독을 넘겨주면, 유예기간이 끝났는지/오늘 이미 시도했는지 확인 후
+    // 필요하면 재시도하거나 최종 취소한다. 하루에 한 번만 시도하도록 lastRetryAt으로 걸러냄.
+    @Transactional
+    public void processPastDueSubscription(Subscription detachedSubscription) {
+        Subscription subscription = subscriptionRepository.findById(detachedSubscription.getId())
+                .orElseThrow(() -> new IllegalStateException("구독을 찾을 수 없음: id=" + detachedSubscription.getId()));
+
+        if (subscription.getStatus() != SubscriptionStatus.PAST_DUE) {
+            return; // 그 사이 다른 경로로 이미 처리된 경우 대비
+        }
+
+        // 유예기간(만료일+3일)이 이미 지났으면 더 시도하지 않고 바로 최종 취소
+        if (!LocalDateTime.now().isBefore(subscription.getGraceEndsAt())) {
+            finalizeCancellation(subscription, subscription.getUser());
+            return;
+        }
+
+        // 오늘 이미 재시도했으면 스킵 (하루 한 번만)
+        if (subscription.getLastRetryAt() != null
+                && subscription.getLastRetryAt().toLocalDate().isEqual(LocalDateTime.now().toLocalDate())) {
+            return;
+        }
+
+        attemptRenewalCharge(subscription);
+    }
+
+    // renewSubscription과 processPastDueSubscription이 공유하는 실제 결제 시도 로직.
+    // 빌링키로 결제해보고, 성공/실패에 따라 이후 상태 전환은 verifyAndFinalize / markPaymentFailed가 맡는다.
+    private void attemptRenewalCharge(Subscription subscription) {
         User user = subscription.getUser();
 
         BillingKey billingKey = billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE).orElse(null);
         if (billingKey == null) {
+            // 빌링키가 아예 없으면 재시도해봤자 의미가 없으니 유예기간 없이 바로 최종 취소
             log.info("갱신 실패 - 활성 빌링키 없음 (subscriptionId={})", subscription.getId());
-            subscription.cancel();
-            user.setSubscribed(false);
-            emailService.sendSubscriptionRenewalFailed(user.getUsername());
+            finalizeCancellation(subscription, user);
             return;
         }
 
@@ -174,7 +208,7 @@ public class PaymentService {
                     null, null, null, null,
                     null, null, null, null
             ).join();
-        }catch (RuntimeException e) {
+        } catch (RuntimeException e) {
             markPaymentFailed(payment);
             Throwable cause = e.getCause() != null ? e.getCause() : e;
             log.warn("갱신 결제 실패 (paymentId={}, reason={})", paymentId, cause.getMessage());
@@ -186,7 +220,6 @@ public class PaymentService {
         } catch (BusinessException e) {
             log.warn("갱신 결제 검증 실패 (paymentId={}, reason={})", paymentId, e.getMessage());
         }
-
     }
 
     @Transactional
@@ -245,26 +278,40 @@ public class PaymentService {
         });
     }
 
-    // 결제 실패 시 공통 처리: Payment를 FAILED로 바꾸고, 갱신 시도였다면(payment.getSubscription() != null) 구독도 취소.
-    // completePayment(신규)에서 실패하면 payment.getSubscription()이 애초에 null이라 구독 취소 분기는 자연히 스킵됨
-    // -> 신규/갱신 실패 처리를 이 메서드 하나로 통일할 수 있는 이유.
+    // 결제 실패 시 공통 처리: Payment를 FAILED로 바꾸고, 갱신 시도였다면(payment.getSubscription() != null) 구독도 처리.
+    // completePayment(신규)에서 실패하면 payment.getSubscription()이 애초에 null이라 이 분기 자체가 스킵됨.
+    //
+    // 갱신 실패는 두 갈래로 나뉜다:
+    //  - 지금 ACTIVE인 구독의 첫 실패(만료일에 막 걸림) -> 바로 취소하지 않고 유예기간(PAST_DUE) 시작
+    //  - 이미 PAST_DUE인 구독의 재시도 실패 -> 유예기간이 아직 남았으면 "오늘 시도했다"만 기록(상태 유지)
+    //    (유예기간이 끝났는지 여부는 processPastDueSubscription이 재시도 전에 미리 걸러주므로 여기선 안 봐도 됨)
     private void markPaymentFailed(Payment payment) {
         payment.setStatus(PaymentStatus.FAILED);
-        if (payment.getSubscription() != null) {
-            payment.getSubscription().cancel();
-            payment.getUser().setSubscribed(false);
-            emailService.sendSubscriptionRenewalFailed(payment.getUser().getUsername());
-
-            // 갱신 실패 = 이 빌링키로 다시 시도할 일이 없음 -> 로컬 상태도 정리해서
-            // hasActiveBillingKey가 계속 true를 반환하지 않게 함.
-            // PortOne 쪽 실제 삭제(deleteBillingKey)는 일부러 안 함: 실패 처리 흐름 안에서
-            // 외부 API를 하나 더 호출했다가 그마저 실패하면 원래 실패 원인이 가려질 수 있어서.
-            billingKeyRepository.findByUserAndStatus(payment.getUser(), BillingKeyStatus.ACTIVE)
-                    .ifPresent(billingKey -> {
-                        billingKey.setStatus(BillingKeyStatus.DELETED);
-                        billingKey.setDeletedAt(LocalDateTime.now());
-                    });
+        Subscription subscription = payment.getSubscription();
+        if (subscription == null) {
+            return;
         }
+
+        if (subscription.getStatus() == SubscriptionStatus.PAST_DUE) {
+            subscription.recordRetryAttempt();
+        } else {
+            subscription.markPastDue(subscription.getExpiredAt().plusDays(3));
+            payment.getUser().setSubscribed(false);
+        }
+    }
+
+    // 유예기간을 다 썼거나(재시도 소진) 애초에 빌링키가 없을 때의 최종 취소 처리.
+    // 구독 취소 + 접근 권한 해제 + 알림 메일 + 빌링키 로컬 정리까지 한 번에.
+    private void finalizeCancellation(Subscription subscription, User user) {
+        subscription.cancel();
+        user.setSubscribed(false);
+        emailService.sendSubscriptionRenewalFailed(user.getUsername());
+
+        billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE)
+                .ifPresent(billingKey -> {
+                    billingKey.setStatus(BillingKeyStatus.DELETED);
+                    billingKey.setDeletedAt(LocalDateTime.now());
+                });
     }
 
     @Transactional
@@ -344,7 +391,15 @@ public class PaymentService {
         //   - renewSubscription: Payment 생성 시 갱신 대상 subscription을 미리 세팅해둠 -> 여기서 연장만 함
         // 이렇게 하면 검증 로직(포트원 재조회, 상점/채널/금액 확인, 중복 방지 등)을 신규/갱신 양쪽에서 통째로 재사용할 수 있음.
         if (payment.getSubscription() != null) {
-            payment.getSubscription().extend();
+            Subscription subscription = payment.getSubscription();
+            if (subscription.getStatus() == SubscriptionStatus.PAST_DUE) {
+                // 유예기간 중 재결제 성공 -> "낸 만큼 정확히 쓴다" 원칙으로 지금 시점부터 한 달
+                subscription.recoverFromPastDue();
+                payment.getUser().setSubscribed(true);
+            } else {
+                // 정상 주기 갱신 -> 원래 만료일 기준으로 한 달 연장 (접근 끊긴 적 없으니 그대로)
+                subscription.extend();
+            }
         } else {
             Subscription subscription = Subscription.builder()
                     .user(payment.getUser())

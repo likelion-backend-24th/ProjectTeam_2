@@ -26,5 +26,11 @@ public class SubscriptionExpirationScheduler {
         List<Subscription> due = subscriptionRepository
                 .findByStatusAndExpiredAtBefore(SubscriptionStatus.ACTIVE, LocalDateTime.now());
         due.forEach(paymentService::renewSubscription);
+
+        // 유예기간(PAST_DUE) 중인 구독들 - 재시도가 필요한지/유예기간이 끝났는지는 메서드 안에서 개별 판단
+        List<Subscription> pastDue = subscriptionRepository.findByStatus(SubscriptionStatus.PAST_DUE);
+        pastDue.forEach(paymentService::processPastDueSubscription);
     }
+
+
 }
