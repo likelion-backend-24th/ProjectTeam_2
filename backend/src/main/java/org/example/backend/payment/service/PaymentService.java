@@ -2,8 +2,11 @@ package org.example.backend.payment.service;
 
 import io.portone.sdk.server.PortOneClient;
 import io.portone.sdk.server.common.Currency;
+import io.portone.sdk.server.common.PaymentAmountInput;
 import io.portone.sdk.server.errors.WebhookVerificationException;
 import io.portone.sdk.server.payment.*;
+import io.portone.sdk.server.payment.billingkey.BillingKeyInfo;
+import io.portone.sdk.server.payment.billingkey.IssuedBillingKeyInfo;
 import io.portone.sdk.server.webhook.Webhook;
 import io.portone.sdk.server.webhook.WebhookTransaction;
 import io.portone.sdk.server.webhook.WebhookVerifier;
@@ -14,6 +17,7 @@ import org.example.backend.payment.entity.Payment;
 import org.example.backend.payment.entity.PaymentStatus;
 import org.example.backend.payment.entity.PaymentTransaction;
 import org.example.backend.payment.exception.PaymentErrorCode;
+import org.example.backend.payment.repository.BillingKeyRepository;
 import org.example.backend.payment.repository.PaymentTransactionRepository;
 import org.example.backend.payment.repository.WebhookEventRepository;
 import org.example.backend.subscription.entity.Subscription;
@@ -44,51 +48,77 @@ public class PaymentService {
     private final PortOneClient portOneClient;
     private final WebhookVerifier webhookVerifier;
     private final WebhookEventRepository webhookEventRepository;
+    private final BillingKeyRepository billingKeyRepository;
 
     @Value("${portone.store-id}")
     private String storeId;
 
-    @Value("${portone.channel-key.payment}")
-    private String channelKeyPayment;
+    @Value("${portone.channel-key.billing}")
+    private String channelKeyBilling;
 
-    @Transactional
+    // 빌링키 발급에 필요한 값만 내려줌 (금액이 발생하는 액션이 아니라 PortOne 사전등록/DB 저장 없이 바로 응답)
     public PaymentPrepareResponse preparePayment(User user, SubscriptionPlanType planType) {
         if (subscriptionRepository.findByUserIdAndStatus(user.getId(), SubscriptionStatus.ACTIVE).isPresent()) {
             throw new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_ALREADY_ACTIVE);
         }
 
-        int amount = planType.getAmount();
-        String paymentId = "p2g-kjs_" + UUID.randomUUID();
-
-        Payment payment = new Payment(paymentId, user, planType, amount);
-        paymentRepository.save(payment);
-
-        portOneClient.getPayment()
-                .preRegisterPayment(paymentId, (long) amount, 0L, Currency.Krw.INSTANCE)
-                .join();
-
         return PaymentPrepareResponse.builder()
-                .paymentId(paymentId)
+                .issueId("p2g-kjs_" + UUID.randomUUID())
                 .storeId(storeId)
-                .channelKey(channelKeyPayment)
-                .amount(amount)
+                .channelKey(channelKeyBilling)
+                .amount(planType.getAmount())
                 .orderName(planType.getOrderName())
                 .build();
     }
 
-    // 프론트 콜백
+    // 프론트가 requestIssueBillingKey로 발급받은 billingKey를 넘겨주면
+    // 검증 -> 빌링키 저장 -> 그 빌링키로 첫 결제까지 서버가 직접 수행
     @Transactional
-    public void completePayment(User user, String paymentId) {
-        // paymentId로 Payment 조회 (없으면 404)
-        Payment payment = paymentRepository.findByPaymentId(paymentId)
-                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+    public void completePayment(User user, String billingKey, SubscriptionPlanType planType) {
+        if (subscriptionRepository.findByUserIdAndStatus(user.getId(), SubscriptionStatus.ACTIVE).isPresent()) {
+            throw new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_ALREADY_ACTIVE);
+        }
 
-        // 로그인한 user 소유 확인
-        if (!payment.getUser().getId().equals(user.getId())) {
-            throw new BusinessException(PaymentErrorCode.PAYMENT_ACCESS_DENIED);
+        // PortOne에 실제로 발급된 빌링키가 맞는지, 우리 상점/채널의 빌링키가 맞는지 조회 및 검증
+        BillingKeyInfo billingKeyInfo = portOneClient.getPayment().getBillingKey().getBillingKeyInfo(billingKey).join();
+
+        if (!(billingKeyInfo instanceof IssuedBillingKeyInfo issue)
+                || !issue.getStoreId().equals(storeId)
+                || issue.getChannels().stream().noneMatch(c -> c.getKey().equals(channelKeyBilling))) {
+            throw new BusinessException(PaymentErrorCode.BILLING_KEY_VERIFICATION_FAILED);
+        }
+
+        // 이전에 남아있던 활성 빌링키가 있으면 정리하고 새로 저장 (결제 실패로 끊긴 경우 등)
+        billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE)
+                .ifPresent(old -> {
+                    old.setStatus(BillingKeyStatus.DELETED);
+                    old.setDeletedAt(LocalDateTime.now());
+                });
+        billingKeyRepository.save(new BillingKey(user, billingKey));
+
+        // 저장된 빌링키로 첫 결제 시도
+        String paymentId = "p2g-kjs_" + UUID.randomUUID();
+        int amount = planType.getAmount();
+        Payment payment = new Payment(paymentId, user, planType, amount);
+        paymentRepository.save(payment);
+
+        try {
+            portOneClient.getPayment().payWithBillingKey(
+                    paymentId, billingKey, channelKeyBilling, planType.getOrderName(),
+                    null, null,
+                    new PaymentAmountInput(amount, null, null), Currency.Krw.INSTANCE,
+                    null, null, null, null, null, null,
+                    null, null, null, null, null, null
+            ).join();
+        }catch (RuntimeException e) {
+            payment.setStatus(PaymentStatus.FAILED);
+            Throwable cause = e.getCause() != null ? e.getCause() : e; // .join()이 CompletionException으로 감싸므로 원인 예외를 꺼냄
+            log.warn("빌링키 결제 실패 (paymentId={}, reason={})", paymentId, cause.getMessage());
+            throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
         }
 
         verifyAndFinalize(payment);
+
     }
 
     // 웹훅
@@ -164,7 +194,7 @@ public class PaymentService {
         // 포트원에서 실제로 승인한 금액과 우리 DB에 저장한 금액이 같은지,
         // 통화가 원화(KRW)가 맞는지 확인
         boolean valid = paid.getStoreId().equals(storeId)
-                && paid.getChannel().getKey().equals(channelKeyPayment)
+                && paid.getChannel().getKey().equals(channelKeyBilling)
                 && paid.getAmount().getTotal() == payment.getAmount()
                 && paid.getCurrency() instanceof Currency.Krw;
 

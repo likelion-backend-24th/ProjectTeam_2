@@ -35,7 +35,7 @@ public class PaymentController {
             @AuthenticationPrincipal CustomUserDetails user,
             @Valid @RequestBody PaymentCompleteRequest request
     ) {
-        paymentService.completePayment(user.getUser(), request.getPaymentId());
+        paymentService.completePayment(user.getUser(), request.getBillingKey(), request.getPlanType());
         return ResponseEntity.ok(ApiResponse.success("결제가 완료되었습니다.", null));
     }
 
