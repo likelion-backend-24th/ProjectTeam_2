@@ -227,6 +227,7 @@ class PaymentServiceTest {
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
         assertThat(user.isSubscribed()).isFalse();
         verify(subscriptionRepository).findById(nullable(Long.class)); // 트랜잭션 안에서 재조회하는지(버그 재발 방지 가드)
+        verify(emailService).sendSubscriptionRenewalFailed(user.getUsername());
         verifyNoInteractions(portOneClient);
     }
 
@@ -397,6 +398,7 @@ class PaymentServiceTest {
         assertThat(billingKey.getStatus()).isEqualTo(BillingKeyStatus.DELETED);
         assertThat(billingKey.getDeletedAt()).isNotNull();
         verify(billingKeyClient, never()).deleteBillingKey(any(), any(), any(), any()); // PortOne 호출은 안 함(로컬 정리만)
+        verify(emailService).sendSubscriptionRenewalFailed(user.getUsername());
     }
 
     @Test

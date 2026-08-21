@@ -102,4 +102,17 @@ public class EmailService {
         int number = random.nextInt(1000000); // 0 ~ 999999
         return String.format("%06d", number);
     }
+
+    // 자동갱신 실패로 구독이 종료됐을 때 알림 (사용자가 직접 해지한 게 아니라 카드 문제 등으로 끊긴 경우)
+    public void sendSubscriptionRenewalFailed(String toEmail) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom("prep2gether <" + fromEmail + ">");
+        message.setTo(toEmail);
+        message.setSubject("[prep2gether] 정기결제 실패로 프리미엄 구독이 종료되었습니다.");
+        message.setText("안녕하세요, prep2gether입니다.\n등록된 결제수단으로 정기결제를 진행했지만 승인에 실패해 프리미엄 구독이 종료되었습니다.\n" +
+                "카드 한도, 유효기간 등을 확인하신 후 다시 구독해주시면 프리미엄 혜택을 계속 이용하실 수 있어요.\n" +
+                "-------------------------------------------------------\n ▽prep2gether 홈페이지\n http://www.prep2gether.duckdns.org");
+
+        javaMailSender.send(message);
+    }
 }

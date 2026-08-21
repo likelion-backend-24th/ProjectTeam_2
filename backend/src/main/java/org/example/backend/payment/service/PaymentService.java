@@ -153,6 +153,7 @@ public class PaymentService {
             log.info("갱신 실패 - 활성 빌링키 없음 (subscriptionId={})", subscription.getId());
             subscription.cancel();
             user.setSubscribed(false);
+            emailService.sendSubscriptionRenewalFailed(user.getUsername());
             return;
         }
 
@@ -246,6 +247,7 @@ public class PaymentService {
         if (payment.getSubscription() != null) {
             payment.getSubscription().cancel();
             payment.getUser().setSubscribed(false);
+            emailService.sendSubscriptionRenewalFailed(payment.getUser().getUsername());
 
             // 갱신 실패 = 이 빌링키로 다시 시도할 일이 없음 -> 로컬 상태도 정리해서
             // hasActiveBillingKey가 계속 true를 반환하지 않게 함.
