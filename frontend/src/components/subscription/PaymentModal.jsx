@@ -1,13 +1,15 @@
-import { requestPayment } from '@portone/browser-sdk/v2'
+import { requestIssueBillingKey } from '@portone/browser-sdk/v2'
 import { CheckCircle2, X } from 'lucide-react'
 import { useState } from 'react'
 import { paymentApi, subscriptionApi } from '../../api'
 import styles from './PaymentModal.module.css'
 
-// PortOne V2 결제창 연동.
-// 카드 정보는 PortOne이 띄우는 결제창(PG사 화면)에서만 입력되고 우리 서버·프론트는
-// 절대 다루지 않는다. 결제창의 응답(response)은 "단서"일 뿐이며, 최종 확정은 항상
-// 서버(complete API)가 PortOne 결제 결과를 다시 조회·검증한 뒤에만 이뤄진다.
+const PLAN_TYPE = 'BASIC'
+
+// PortOne V2 빌링키 발급 연동.
+// 카드 정보는 PortOne이 띄우는 빌링키 발급 창(PG사 화면)에서만 입력되고 우리 서버·프론트는
+// 절대 다루지 않는다. 발급 창의 응답(response)은 "단서"일 뿐이며, 최종 확정(빌링키 검증 +
+// 첫 결제 실행)은 항상 서버(complete API)가 PortOne에 다시 조회·요청한 뒤에만 이뤄진다.
 export default function PaymentModal({ onClose, onSubscribed }) {
   const [stage, setStage] = useState('idle') // 'idle' | 'processing' | 'success' | 'error'
   const [error, setError] = useState('')
@@ -22,36 +24,36 @@ export default function PaymentModal({ onClose, onSubscribed }) {
     setStage('processing')
 
     try {
-      // 1. 결제 준비 — 서버가 planType으로 금액을 확정하고 paymentId를 발급한다.
-      const { data: prepareRes } = await paymentApi.prepare('BASIC')
-      const { paymentId, storeId, channelKey, amount, orderName } = prepareRes.data
+      // 1. 발급 준비 — 서버가 planType으로 금액을 확정하고 issueId(발급 식별자)를 내려준다.
+      const { data: prepareRes } = await paymentApi.prepare(PLAN_TYPE)
+      const { issueId, storeId, channelKey, amount, orderName } = prepareRes.data
 
-      // 2. PortOne 결제창 호출 — 카드 정보는 여기서만 입력된다.
-      const response = await requestPayment({
+      // 2. PortOne 빌링키 발급 창 호출 — 카드 정보는 여기서만 입력된다. 결제는 아직 일어나지 않는다.
+      const response = await requestIssueBillingKey({
         storeId,
         channelKey,
-        paymentId,
-        orderName,
-        totalAmount: amount,
+        billingKeyMethod: 'CARD',
+        issueId,
+        issueName: orderName,
+        displayAmount: amount,
         currency: 'KRW',
-        payMethod: 'CARD',
       })
 
-      // response가 undefined면 결제창 자체가 뜨지 못한 것(설정 오류 등)
+      // response가 undefined면 발급 창 자체가 뜨지 못한 것(설정 오류 등)
       if (!response) {
         throw new Error('결제창을 여는 데 실패했습니다.')
       }
 
       if (response.code != null) {
-        // 사용자가 결제창에서 취소했거나 PG 승인이 실패한 경우.
-        // 서버는 아직 아무 상태도 PAID로 바꾸지 않았으니 그대로 안내만 한다.
+        // 사용자가 발급 창에서 취소했거나 PG 승인이 실패한 경우.
+        // 서버는 아직 빌링키를 저장하지도, 결제를 시도하지도 않았으니 그대로 안내만 한다.
         setStage('error')
         setError(response.message ?? '결제가 취소되었거나 실패했습니다.')
         return
       }
 
-      // 3. 완료 API — 브라우저 응답을 신뢰하지 않고, 서버가 PortOne 결제를 다시 조회·검증한다.
-      await paymentApi.complete(paymentId)
+      // 3. 완료 API — 발급받은 billingKey를 서버가 검증·저장하고, 그 빌링키로 첫 결제까지 직접 수행한다.
+      await paymentApi.complete(response.billingKey, PLAN_TYPE)
 
       // complete API는 결제 성공 여부만 알려줄 뿐 구독 정보를 내려주지 않으므로,
       // 최신 구독 상태를 별도로 조회해서 상위 컴포넌트에 전달한다.

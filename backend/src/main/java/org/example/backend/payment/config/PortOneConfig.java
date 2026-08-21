@@ -19,7 +19,7 @@ public class PortOneConfig {
 
     @Bean
     public PortOneClient portOneClient(){
-        return new PortOneClient(apiSecret, storeId, "https://api.portone.io" );
+        return new PortOneClient(apiSecret, "https://api.portone.io", storeId);
     }
 
     @Bean

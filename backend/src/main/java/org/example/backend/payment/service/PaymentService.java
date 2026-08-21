@@ -108,7 +108,8 @@ public class PaymentService {
                     null, null,
                     new PaymentAmountInput(amount, null, null), Currency.Krw.INSTANCE,
                     null, null, null, null, null, null,
-                    null, null, null, null, null, null
+                    null, null, null, null,
+                    null, null, null, null
             ).join();
         }catch (RuntimeException e) {
             payment.setStatus(PaymentStatus.FAILED);
