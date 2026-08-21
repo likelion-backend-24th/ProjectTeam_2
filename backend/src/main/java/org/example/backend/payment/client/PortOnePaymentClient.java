@@ -12,9 +12,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-
 /**
  * PortOne V2 REST API 중 "결제 단건 조회"만 다룬다.
  * (io.portone:server-sdk 는 Kotlin suspend 기반이라 Java에서 다루기 번거로워
@@ -26,9 +23,11 @@ public class PortOnePaymentClient {
 
     private final RestClient restClient;
     private final String apiSecret;
+    private final boolean testMode;
 
     public PortOnePaymentClient(PortOneProperties properties) {
         this.apiSecret = properties.getApiSecret();
+        this.testMode = properties.isTestMode();
 
         ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         MappingJackson2HttpMessageConverter jacksonConverter = new MappingJackson2HttpMessageConverter(objectMapper);
@@ -43,19 +42,26 @@ public class PortOnePaymentClient {
     }
 
     /**
-     * 결제 단건 조회
+     * 결제 단건 조회.
+     * test 쿼리 파라미터를 같이 보내면, 조회하려는 결제의 실제 테스트/실거래 여부가
+     * 우리가 기대하는 것과 다를 때 PortOne이 400으로 거부해준다. (환경 오반영 방지)
      * @param paymentId 우리 서버가 발급한 paymentId
      */
     public PortOnePaymentResponse getPayment(String paymentId) {
-        String encodedPaymentId = URLEncoder.encode(paymentId, StandardCharsets.UTF_8);
         try {
             return restClient.get()
-                    .uri("/payments/{paymentId}", encodedPaymentId)
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/payments/{paymentId}")
+                            .queryParam("test", testMode)
+                            .build(paymentId))
                     .header("Authorization", "PortOne " + apiSecret)
                     .retrieve()
                     .body(PortOnePaymentResponse.class);
         } catch (HttpClientErrorException.NotFound e) {
             log.warn("PortOne 결제 단건 조회 실패 - 존재하지 않는 결제 건: paymentId={}", paymentId);
+            throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
+        } catch (HttpClientErrorException.BadRequest e) {
+            log.error("PortOne 결제 환경(테스트/실연동) 불일치: paymentId={}", paymentId);
             throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
         } catch (Exception e) {
             log.error("PortOne API 통신 오류: paymentId={}", paymentId, e);

@@ -9,6 +9,7 @@ import org.example.backend.payment.config.PortOneProperties;
 import org.example.backend.payment.dto.response.PaymentReadyResponse;
 import org.example.backend.payment.entity.Payment;
 import org.example.backend.payment.entity.PaymentPurpose;
+import org.example.backend.payment.entity.PaymentStatus;
 import org.example.backend.payment.exception.PaymentErrorCode;
 import org.example.backend.payment.repository.PaymentRepository;
 import org.example.backend.subscription.dto.response.SubscriptionResponse;
@@ -73,6 +74,13 @@ public class PaymentService {
 
         if (!payment.belongsTo(userId)) {
             throw new BusinessException(PaymentErrorCode.PAYMENT_FORBIDDEN);
+        }
+
+        if (payment.getStatus() == PaymentStatus.PAID) {
+            // 이미 성공 처리된 결제에 완료 API가 다시 호출된 경우(새로고침, 네트워크 재시도 등)
+            // 에러 대신 현재 구독 상태를 그대로 돌려준다. (가이드 5.3 완료 API 계약 - 멱등성)
+            log.info("이미 처리된 결제에 대한 완료 요청 - 현재 상태 반환: paymentId={}", paymentId);
+            return subscriptionService.getMy(userId);
         }
 
         if (!payment.isReady()) {

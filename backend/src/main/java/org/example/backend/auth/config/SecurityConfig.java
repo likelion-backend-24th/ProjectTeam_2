@@ -63,7 +63,8 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:3000",
-                "http://prep2gether.duckdns.org")); // 프론트 실제 주소로 변경!!
+                "http://prep2gether.duckdns.org", // 프론트 실제 주소로 변경!!
+                "http://localhost:5500"));  // ← 로컬 PortOne 테스트용, 테스트 끝나면 삭제
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

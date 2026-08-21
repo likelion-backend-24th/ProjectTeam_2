@@ -37,6 +37,12 @@ public class PortOneProperties {
      */
     private String paymentIdPrefix;
 
+    /**
+     * 테스트 채널 여부. 학생 프로젝트는 항상 true — 이 값과 실제 결제의 테스트 여부가
+     * 다르면 PortOne이 조회 자체를 거부한다 (실거래 오반영 방지).
+     */
+    private boolean testMode = true;
+
     @NestedConfigurationProperty
     private Subscription subscription = new Subscription();
 
