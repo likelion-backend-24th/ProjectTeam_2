@@ -9,6 +9,7 @@ import org.example.backend.payment.exception.PaymentErrorCode;
 import org.example.backend.payment.repository.BillingKeyRepository;
 import org.example.backend.payment.repository.OrderRepository;
 import org.example.backend.payment.repository.PaymentRepository;
+import org.example.backend.payment.repository.SubscriptionScheduleRepository;
 import org.example.backend.subscription.entity.Subscription;
 import org.example.backend.subscription.entity.SubscriptionStatus;
 import org.example.backend.subscription.repository.SubscriptionRepository;
@@ -19,6 +20,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 // 정기결제(빌링키 기반) 관련 서비스
@@ -33,6 +37,7 @@ public class PaymentService {
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionService subscriptionService;
     private final PortOnePaymentClient portOnePaymentClient;
+    private final SubscriptionScheduleRepository subscriptionScheduleRepository;
 
     @Value("${payment.subscription.price}")
     private int subscriptionPrice;
@@ -78,7 +83,7 @@ public class PaymentService {
                 paymentId, billingKey.getBillingKey(), "prep2gether 구독 ", subscriptionPrice);
 
         PortOnePaymentResponse verified = portOnePaymentClient.getPayment(paymentId);
-        
+
         // 상점, 결제 채널, 통화 원화, 내 금액=포트원이 알려준 실제 금액, 상태가 PAID 5개 다맞아야됨
         boolean valid = storeId.equals(verified.getStoreId())
                 && billingChannelKey.equals(verified.getChannel().getKey())
@@ -100,5 +105,26 @@ public class PaymentService {
         Subscription subscription = subscriptionRepository.findByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.BILLING_KEY_NOT_FOUND));
         payment.setSubscription(subscription);
+
+        scheduleNextPayment(user, billingKey, subscription.getExpiredAt());
+    }
+
+    // 다음 회차 결제를 포트원에 예약하고, 우리 DB에도 예약 기록을 남김
+    private void scheduleNextPayment(User user, BillingKey billingKey, LocalDateTime nextChargeAt) {
+        String nextPaymentId = "p2g-csh-" + UUID.randomUUID().toString().replace("-", "");
+
+        String timeToPay = nextChargeAt.atOffset(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
+        portOnePaymentClient.schedule(
+                nextPaymentId, billingKey.getBillingKey(), "prep2gether 구독 (정기결제)", subscriptionPrice, timeToPay);
+
+        SubscriptionSchedule schedule = new SubscriptionSchedule();
+        schedule.setUser(user);
+        schedule.setBillingKey(billingKey);
+        schedule.setNextPaymentId(nextPaymentId);
+        schedule.setNextChargeAt(nextChargeAt);
+        schedule.setAutoRenew(true);
+        subscriptionScheduleRepository.save(schedule);
     }
 }

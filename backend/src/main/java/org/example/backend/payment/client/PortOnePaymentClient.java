@@ -2,6 +2,7 @@ package org.example.backend.payment.client;
 
 import org.example.backend.payment.dto.PortOneBillingKeyChargeRequest;
 import org.example.backend.payment.dto.PortOnePaymentResponse;
+import org.example.backend.payment.dto.PortOneScheduleRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -40,5 +41,18 @@ public class PortOnePaymentClient {
                 .body(request)
                 .retrieve()
                 .body(PortOnePaymentResponse.class);
+    }
+
+    // 다음 회차 결제 예약
+    public void schedule(String paymentId, String billingKey, String orderName, Integer amount, String timeToPay) {
+        PortOneScheduleRequest request =
+                new PortOneScheduleRequest(storeId,billingKey, orderName, amount, "KRW", timeToPay);
+
+        restClient.post()
+                .uri(PORTONE_PAYMENT_URL + paymentId + "/schedule")
+                .header("Authorization", "PortOne " + apiSecret)
+                .body(request)
+                .retrieve()
+                .toBodilessEntity();
     }
 }
