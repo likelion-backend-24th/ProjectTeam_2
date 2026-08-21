@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { subscriptionApi } from '../api'
+import { billingKeyApi, paymentApi, subscriptionApi } from '../api'
 import SiteHeader from '../components/common/SiteHeader'
-import PaymentModal from '../components/subscription/PaymentModal'
 import { useAuth } from '../context/AuthContext'
 import { formatDate } from '../utils/formatDate'
 import styles from './SubscriptionPage.module.css'
-import * as PortOne from '@portone/browser-sdk/v2' //결제추가 여기서부터
-import { billingKeyApi } from '../api'
+import * as PortOne from '@portone/browser-sdk/v2'
 
 const FREE_FEATURES = ['게시글 조회·작성·댓글', '스터디 신청·참여 (최대 2개)', '커뮤니티 모든 기본 기능']
 
@@ -26,9 +24,10 @@ export default function SubscriptionPage() {
 
   // subscription: undefined(조회 전) | null(구독 없음) | { status, startedAt, expiredAt }
   const [subscription, setSubscription] = useState(undefined)
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [cancelError, setCancelError] = useState('')
+  const [isSubscribing, setIsSubscribing] = useState(false)
+  const [subscribeError, setSubscribeError] = useState('')
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -45,8 +44,6 @@ export default function SubscriptionPage() {
       .catch(() => {
         if (ignore) return
         // 구독 내역이 없으면 404(SUBSCRIPTION_NOT_FOUND) — 정상적인 "무료 회원" 상태라 에러로 취급하지 않는다.
-        // 그 밖의 예기치 못한 실패도 일단 "무료 회원"으로 보여주고, 실제 구독 중이었다면
-        // 구독 시도 시 서버가 SUBSCRIPTION_ALREADY_ACTIVE로 알려준다.
         setSubscription(null)
       })
 
@@ -55,18 +52,62 @@ export default function SubscriptionPage() {
     }
   }, [isAuthenticated])
 
-  function handleSubscribeClick() {
+  // "지금 구독" 클릭: 빌링키 있으면 결제 진행, 없으면 카드 등록부터 진행
+  async function handleSubscribeClick() {
     if (!isAuthenticated) {
       navigate('/login', { state: { from: location } })
       return
     }
-    setIsModalOpen(true)
+
+    setSubscribeError('')
+    setIsSubscribing(true)
+
+    try {
+      await paymentApi.subscribe()
+      const { data } = await subscriptionApi.getMy()
+      setSubscription(data.data)
+      await refetchMe()
+      alert('구독이 시작됐어요!')
+    } catch (err) {
+      const errorCode = err.response?.data?.errorCode
+
+      if (errorCode === 'BILLING_KEY_NOT_FOUND') {
+        await handleRegisterBillingKey()
+        return
+      }
+
+      setSubscribeError(err.response?.data?.message ?? '구독에 실패했습니다.')
+    } finally {
+      setIsSubscribing(false)
+    }
   }
 
-  async function handleSubscribed(newSubscription) {
-    setSubscription(newSubscription)
-    setIsModalOpen(false)
-    await refetchMe()
+  // 빌링키(카드) 등록만 진행 (결제는 안 함, 등록 후 사용자가 구독 버튼을 다시 눌러야 함)
+  async function handleRegisterBillingKey() {
+    try {
+      const { data: prepareRes } = await billingKeyApi.prepare()
+      const { storeId, channelKey, issueId } = prepareRes.data
+
+      const issueResponse = await PortOne.requestIssueBillingKey({
+        storeId,
+        channelKey,
+        billingKeyMethod: 'CARD',
+        issueId,
+        issueName: 'prep2gether 정기결제 카드 등록',
+      })
+
+      if (issueResponse.code !== undefined) {
+        setSubscribeError('카드 등록 실패: ' + issueResponse.message)
+        return
+      }
+
+      await billingKeyApi.verify(issueId, issueResponse.billingKey)
+      alert('카드 등록이 완료됐어요. 구독 버튼을 다시 눌러주세요.')
+    } catch (err) {
+      setSubscribeError(err.response?.data?.message ?? '카드 등록에 실패했습니다.')
+    } finally {
+      setIsSubscribing(false)
+    }
   }
 
   async function handleCancel() {
@@ -83,35 +124,6 @@ export default function SubscriptionPage() {
       setIsCancelling(false)
     }
   }
-
-  // 임시 테스트용: 빌링키 발급 전체 흐름 테스트
-async function handleTestBillingKey() {
-  try {
-    // 1. 백엔드에 발급 준비 요청
-    const { data: prepareRes } = await billingKeyApi.prepare()
-    const { storeId, channelKey, issueId } = prepareRes.data
-
-    // 2. PortOne 카드 등록창 호출
-    const issueResponse = await PortOne.requestIssueBillingKey({
-      storeId,
-      channelKey,
-      billingKeyMethod: 'CARD',
-      issueId,
-      issueName: 'prep2gether 정기결제 카드 등록',
-    })
-
-    if (issueResponse.code !== undefined) {
-      alert('카드 등록 실패: ' + issueResponse.message)
-      return
-    }
-
-    // 3. 백엔드에 검증 요청
-    await billingKeyApi.verify(issueId, issueResponse.billingKey)
-    alert('빌링키 등록 성공!')
-  } catch (err) {
-    alert('에러 발생: ' + (err.response?.data?.message ?? err.message))
-  }
-}
 
   const isSubscribed = Boolean(subscription)
 
@@ -171,19 +183,20 @@ async function handleTestBillingKey() {
               </div>
             ) : (
               <>
-              <button type="button" className={styles.premiumButton} onClick={handleSubscribeClick}>
-                지금 구독
-              </button>
-              <button type="button" onClick={handleTestBillingKey} style={{ marginTop: '8px' }}>
-                  [테스트] 빌링키 등록
+                <button
+                  type="button"
+                  className={styles.premiumButton}
+                  onClick={handleSubscribeClick}
+                  disabled={isSubscribing}
+                >
+                  {isSubscribing ? '처리 중...' : '지금 구독'}
                 </button>
-                </>
+                {subscribeError && <p className={styles.cancelError}>{subscribeError}</p>}
+              </>
             )}
           </section>
         </div>
       </main>
-
-      {isModalOpen && <PaymentModal onClose={() => setIsModalOpen(false)} onSubscribed={handleSubscribed} />}
     </>
   )
 }
