@@ -3,6 +3,7 @@ package org.example.backend.payment.service;
 import io.portone.sdk.server.PortOneClient;
 import io.portone.sdk.server.common.Currency;
 import io.portone.sdk.server.common.PaymentAmountInput;
+import io.portone.sdk.server.errors.BillingKeyAlreadyDeletedException;
 import io.portone.sdk.server.errors.WebhookVerificationException;
 import io.portone.sdk.server.payment.*;
 import io.portone.sdk.server.payment.billingkey.BillingKeyInfo;
@@ -196,7 +197,12 @@ public class PaymentService {
         try {
             portOneClient.getPayment().getBillingKey().deleteBillingKey(billingKey.getBillingKey(), reason, null, null).join();
         } catch (RuntimeException e) {
-            throw new BusinessException(PaymentErrorCode.BILLING_KEY_DELETE_FAILED);
+            // PortOne 쪽에 이미 삭제된 빌링키면(관리자 콘솔에서 미리 지웠거나 중복 요청 등)
+            // 원하는 상태(빌링키 없음)는 이미 달성된 거라 에러가 아니라 성공으로 취급함.
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            if (!(cause instanceof BillingKeyAlreadyDeletedException)) {
+                throw new BusinessException(PaymentErrorCode.BILLING_KEY_DELETE_FAILED);
+            }
         }
 
         billingKey.setStatus(BillingKeyStatus.DELETED);

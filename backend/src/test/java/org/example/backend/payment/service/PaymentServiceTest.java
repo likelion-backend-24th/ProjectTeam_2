@@ -3,6 +3,8 @@ package org.example.backend.payment.service;
 import io.portone.sdk.server.PortOneClient;
 import io.portone.sdk.server.common.Currency;
 import io.portone.sdk.server.common.SelectedChannel;
+import io.portone.sdk.server.errors.BillingKeyAlreadyDeletedError;
+import io.portone.sdk.server.errors.BillingKeyAlreadyDeletedException;
 import io.portone.sdk.server.payment.FailedPayment;
 import io.portone.sdk.server.payment.PaidPayment;
 import io.portone.sdk.server.payment.PayWithBillingKeyResponse;
@@ -304,6 +306,21 @@ class PaymentServiceTest {
 
         assertThat(e.getErrorCode()).isEqualTo(PaymentErrorCode.BILLING_KEY_DELETE_FAILED);
         assertThat(billingKey.getStatus()).isEqualTo(BillingKeyStatus.ACTIVE); // 실패했으니 그대로
+    }
+
+    @Test
+    void deleteBillingKey_PortOne에서_이미삭제된빌링키라고하면_에러아니라_성공취급() {
+        BillingKey billingKey = new BillingKey(user, "billing-key-abc");
+        when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE)).thenReturn(Optional.of(billingKey));
+        BillingKeyAlreadyDeletedException alreadyDeleted =
+                new BillingKeyAlreadyDeletedException(new BillingKeyAlreadyDeletedError());
+        when(portOneClient.getPayment().getBillingKey().deleteBillingKey(any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.failedFuture(alreadyDeleted));
+
+        paymentService.deleteBillingKey(user, "테스트 사유"); // 예외 없이 끝나야 함
+
+        assertThat(billingKey.getStatus()).isEqualTo(BillingKeyStatus.DELETED);
+        assertThat(billingKey.getDeletedAt()).isNotNull();
     }
 
     // ------------------------------------------------------------------
