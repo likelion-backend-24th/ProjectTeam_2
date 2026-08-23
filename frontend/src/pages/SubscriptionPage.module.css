@@ -214,6 +214,21 @@
   cursor: not-allowed;
 }
 
+.resumeButton {
+  margin-top: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-accent);
+  background: none;
+  color: var(--color-accent);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.resumeButton:hover {
+  background-color: rgba(198, 255, 61, 0.08);
+}
+
 @media (max-width: 720px) {
   .plans {
     grid-template-columns: 1fr;

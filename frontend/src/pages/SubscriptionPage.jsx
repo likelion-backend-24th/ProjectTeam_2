@@ -24,9 +24,11 @@ export default function SubscriptionPage() {
 
   // subscription: undefined(조회 전) | null(구독 없음) | { status, startedAt, expiredAt, autoRenew }
   const [subscription, setSubscription] = useState(undefined)
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalMode, setModalMode] = useState(null) // null(닫힘) | 'subscribe' | 'resume'
   const [isCancelling, setIsCancelling] = useState(false)
   const [cancelError, setCancelError] = useState('')
+  const [isRetrying, setIsRetrying] = useState(false)
+  const [retryError, setRetryError] = useState('')
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -58,13 +60,40 @@ export default function SubscriptionPage() {
       navigate('/login', { state: { from: location } })
       return
     }
-    setIsModalOpen(true)
+    setModalMode('subscribe')
+  }
+
+  // 해지 예약 취소(자동갱신 재개). 로그인 안 된 상태로는 애초에 이 버튼이 보일 일이 없어서
+  // handleSubscribeClick과 달리 인증 체크는 안 함.
+  function handleResumeClick() {
+    setModalMode('resume')
   }
 
   async function handleSubscribed(newSubscription) {
     setSubscription(newSubscription)
-    setIsModalOpen(false)
+    setModalMode(null)
     await refetchMe()
+  }
+
+  // 유예기간(PAST_DUE) 중 스케줄러(최대 하루 1회)를 기다리지 않고 등록된 카드로 지금 바로 재시도.
+  // 서버는 실패해도 에러가 아니라 200으로 응답하므로(재시도 기회가 남아있는 정상 케이스), catch가
+  // 아니라 응답의 status로 성공/실패를 판단해야 한다.
+  async function handleRetryNow() {
+    setRetryError('')
+    setIsRetrying(true)
+    try {
+      const { data } = await subscriptionApi.retryPastDueNow()
+      setSubscription(data.data)
+      if (data.data.status === 'ACTIVE') {
+        await refetchMe() // 복구됐으니 헤더 등 상위 화면의 구독 상태도 같이 갱신
+      } else {
+        setRetryError('다시 시도했지만 결제에 실패했어요. 카드 상태를 확인해주세요.')
+      }
+    } catch (err) {
+      setRetryError(err.response?.data?.message ?? err.message ?? '재시도에 실패했어요.')
+    } finally {
+      setIsRetrying(false)
+    }
   }
 
   // 해지 = "다음 자동갱신 예약 취소". 즉시 끊기는 게 아니라 이미 결제한 기간까지는 그대로 이용 가능.
@@ -137,15 +166,32 @@ export default function SubscriptionPage() {
                 <p className={styles.activeExpiry}>
                   {subscription.autoRenew
                     ? subscription.graceEndsAt
-                      ? `${formatDate(subscription.graceEndsAt)}까지 결제수단을 업데이트하면 자동으로 재시도해 복구돼요`
-                      : '결제수단을 업데이트하면 자동으로 재시도해 복구돼요'
+                      ? `${formatDate(subscription.graceEndsAt)}까지 등록된 카드로 매일 자동 재시도돼요. 지금 바로 다시 시도할 수도 있어요.`
+                      : '등록된 카드로 자동 재시도돼요. 지금 바로 다시 시도할 수도 있어요.'
                     : '이용 권한이 중단됐어요. 다시 구독하시려면 새로 결제해주세요.'}
                 </p>
                 {cancelError && <p className={styles.cancelError}>{cancelError}</p>}
+                {retryError && <p className={styles.cancelError}>{retryError}</p>}
                 {subscription.autoRenew ? (
-                  <button type="button" className={styles.cancelButton} onClick={handleCancel} disabled={isCancelling}>
-                    {isCancelling ? '처리 중...' : '재시도 중단(구독 해지)'}
-                  </button>
+                  <>
+                    {/* 스케줄러(최대 하루 1회)를 안 기다리고 등록된 카드로 바로 재시도 */}
+                    <button
+                      type="button"
+                      className={styles.premiumButton}
+                      onClick={handleRetryNow}
+                      disabled={isRetrying || isCancelling}
+                    >
+                      {isRetrying ? '재시도 중...' : '지금 재시도'}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.cancelButton}
+                      onClick={handleCancel}
+                      disabled={isCancelling || isRetrying}
+                    >
+                      {isCancelling ? '처리 중...' : '재시도 중단(구독 해지)'}
+                    </button>
+                  </>
                 ) : (
                   // 이미 재시도용 결제수단도 없는 상태(직접 해지했거나 카드가 지워짐) -> 새로 구독해야 함.
                   // 완료 API는 PAST_DUE 구독을 자동으로 정리하고 새로 시작해준다(서버 PaymentService.completePayment 참고).
@@ -165,9 +211,15 @@ export default function SubscriptionPage() {
                   </p>
                 )}
                 {cancelError && <p className={styles.cancelError}>{cancelError}</p>}
-                {subscription.autoRenew && (
+                {subscription.autoRenew ? (
                   <button type="button" className={styles.cancelButton} onClick={handleCancel} disabled={isCancelling}>
                     {isCancelling ? '처리 중...' : '구독 해지'}
+                  </button>
+                ) : (
+                  // 해지 예약된 상태(빌링키 없음) - 이미 결제한 기간은 그대로 살아있으니 새로 결제할
+                  // 필요 없이 카드만 다시 등록하면 됨(PaymentModal mode="resume" 참고).
+                  <button type="button" className={styles.resumeButton} onClick={handleResumeClick}>
+                    해지 예약 취소
                   </button>
                 )}
               </div>
@@ -180,7 +232,9 @@ export default function SubscriptionPage() {
         </div>
       </main>
 
-      {isModalOpen && <PaymentModal onClose={() => setIsModalOpen(false)} onSubscribed={handleSubscribed} />}
+      {modalMode && (
+        <PaymentModal mode={modalMode} onClose={() => setModalMode(null)} onSubscribed={handleSubscribed} />
+      )}
     </>
   )
 }

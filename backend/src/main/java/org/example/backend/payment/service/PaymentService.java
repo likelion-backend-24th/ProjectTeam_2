@@ -56,6 +56,10 @@ public class PaymentService {
     private final EmailService emailService;
     private final UserRepository userRepository;
 
+    // retryPastDueChargeNow(수동 재시도)의 연타 방지 쿨다운. 값 자체보다 "방금 시도했으면 잠깐 막는다"가
+    // 목적이라 정밀하게 튜닝할 값은 아님.
+    private static final long RETRY_COOLDOWN_SECONDS = 60;
+
     @Value("${portone.store-id}")
     private String storeId;
 
@@ -72,6 +76,29 @@ public class PaymentService {
             throw new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_ALREADY_ACTIVE);
         }
 
+        return buildBillingKeyIssueParams(planType);
+    }
+
+    // 해지 예약 취소(자동갱신 재개) 시 새 빌링키 발급에 필요한 값만 내려줌.
+    // preparePayment와 다르게 "ACTIVE 구독 없음"을 요구하지 않음 - 여기선 반대로 ACTIVE 구독이
+    // 있어야 정상 케이스(해지 예약된 구독을 되살리는 것)이고, 그 상태 검증은 호출자(SubscriptionService)가 한다.
+    public PaymentPrepareResponse prepareBillingKeyReissue(User user, SubscriptionPlanType planType) {
+        if (user.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessException(SubscriptionErrorCode.USER_INACTIVE);
+        }
+
+        if (planType == null) {
+            // planType 컬럼은 나중에 추가된 필드라, 이 컬럼이 생기기 전부터 있던 레거시 ACTIVE 구독
+            // 행은 NULL일 수 있다(ddl-auto: update는 NOT NULL 제약을 소급 적용/백필해주지 않음).
+            // attemptRenewalCharge와 동일하게 BASIC으로 보정해서 진행하되, 로그로 남긴다.
+            log.error("구독의 planType이 NULL - 레거시 데이터로 추정, BASIC으로 보정 후 진행 (userId={})", user.getId());
+            planType = SubscriptionPlanType.BASIC;
+        }
+
+        return buildBillingKeyIssueParams(planType);
+    }
+
+    private PaymentPrepareResponse buildBillingKeyIssueParams(SubscriptionPlanType planType) {
         return PaymentPrepareResponse.builder()
                 .issueId("p2g-kjs_" + UUID.randomUUID())
                 .storeId(storeId)
@@ -111,13 +138,7 @@ public class PaymentService {
         // 검증/청구/검증재확인 중 어디서 실패하든 여기까지 아무것도 안 바뀐 채로 예외만 던져야 한다.
         // (안 그러면, 예를 들어 유예기간 중이던 사용자가 재구독을 시도했다가 카드 승인이 거절된 것뿐인데도
         // noRollbackFor 때문에 옛날 PAST_DUE 구독이 영구 취소되는 사고가 남 - 재시도 기회를 뺏는 셈)
-        BillingKeyInfo billingKeyInfo = portOneClient.getPayment().getBillingKey().getBillingKeyInfo(billingKey).join();
-
-        if (!(billingKeyInfo instanceof IssuedBillingKeyInfo issue)
-                || !issue.getStoreId().equals(storeId)
-                || issue.getChannels().stream().noneMatch(c -> c.getKey().equals(channelKeyBilling))) {
-            throw new BusinessException(PaymentErrorCode.BILLING_KEY_VERIFICATION_FAILED);
-        }
+        verifyBillingKeyOwnership(billingKey);
 
         // 이전에 남아있던 활성 빌링키가 있으면 정리하고 새로 저장 (결제 실패로 끊긴 경우 등)
         billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE)
@@ -148,8 +169,19 @@ public class PaymentService {
         // (1) subscription.getUser() 접근 시 LazyInitializationException 남
         // (2) 설령 안 터지더라도 detached 엔티티 수정은 이 트랜잭션에 반영이 안 됨(Hibernate가 추적을 안 함)
         // 그래서 이 트랜잭션 안에서 다시 조회해 managed 상태로 만든 뒤 사용해야 실제로 DB에 반영됨.
-        Subscription subscription = subscriptionRepository.findById(detachedSubscription.getId())
+        //
+        // findById가 아니라 findByIdForUpdate(락 조회)를 쓰는 이유: 이게 이 트랜잭션에서 이 구독을
+        // "제일 처음" 읽는 지점이어야 락이 의미가 있다(SubscriptionRepository.findByIdForUpdate 주석
+        // 참고). 락을 걸어야 이 갱신 시도와 사용자의 수동 재시도(retryPastDueChargeNow)가 같은
+        // 구독에 동시에 들어와도 순서대로 처리되고, 뒤에 처리되는 쪽은 앞쪽이 이미 상태를 바꿔놓은
+        // 걸 정확히 보고 중복 청구하지 않을 수 있다.
+        Subscription subscription = subscriptionRepository.findByIdForUpdate(detachedSubscription.getId())
                 .orElseThrow(() -> new IllegalStateException("구독을 찾을 수 없음: id=" + detachedSubscription.getId()));
+
+        if (subscription.getStatus() != SubscriptionStatus.ACTIVE) {
+            return; // 락을 기다리는 동안 다른 동시 처리가 이미 상태를 바꿔놓은 경우 - 중복 청구 방지
+        }
+
         attemptRenewalCharge(subscription);
     }
 
@@ -157,11 +189,13 @@ public class PaymentService {
     // 필요하면 재시도하거나 최종 취소한다. 하루에 한 번만 시도하도록 lastRetryAt으로 걸러냄.
     @Transactional
     public void processPastDueSubscription(Subscription detachedSubscription) {
-        Subscription subscription = subscriptionRepository.findById(detachedSubscription.getId())
+        // findByIdForUpdate(락 조회)를 쓰는 이유는 renewSubscription과 동일 - 이 갱신 시도와
+        // 사용자의 수동 재시도가 동시에 들어와도 순서대로 처리되게 하기 위함.
+        Subscription subscription = subscriptionRepository.findByIdForUpdate(detachedSubscription.getId())
                 .orElseThrow(() -> new IllegalStateException("구독을 찾을 수 없음: id=" + detachedSubscription.getId()));
 
         if (subscription.getStatus() != SubscriptionStatus.PAST_DUE) {
-            return; // 그 사이 다른 경로로 이미 처리된 경우 대비
+            return; // 그 사이 다른 경로로 이미 처리된 경우 대비 (락을 기다리다 뒤늦게 여기 온 경우 포함)
         }
 
         // 유예기간(만료일+3일)이 이미 지났으면 더 시도하지 않고 바로 최종 취소
@@ -179,10 +213,50 @@ public class PaymentService {
         attemptRenewalCharge(subscription);
     }
 
-    // renewSubscription과 processPastDueSubscription이 공유하는 실제 결제 시도 로직.
-    // 빌링키로 결제해보고, 성공/실패에 따라 이후 상태 전환은 verifyAndFinalize / markPaymentFailed가 맡는다.
+    // 유예기간(PAST_DUE) 중 사용자가 스케줄러(최대 하루 1회)를 기다리지 않고, 이미 등록된 카드로
+    // 지금 바로 재시도하고 싶을 때 쓴다. 카드를 새로 등록하지 않고 기존 활성 빌링키를 그대로
+    // 재사용한다는 점에서, 카드를 다시 등록하며 완전히 새 구독을 만드는 completePayment와 다르다.
+    // processPastDueSubscription과 달리 "오늘 이미 시도했는지"(하루 단위)는 안 본다 - 사용자가 직접
+    // 누른 명시적 요청이라 하루 1회 제한을 걸 이유는 없지만, 대신 아래 RETRY_COOLDOWN으로 아주
+    // 짧은 연타(새로고침 후 다시 클릭, 두 탭에서 거의 동시 클릭 등)만 막는다.
+    @Transactional
+    public Subscription retryPastDueChargeNow(Long userId) {
+        // findByUserIdAndStatusForUpdate(락 조회)를 쓰는 이유는 renewSubscription/
+        // processPastDueSubscription과 동일 - 이 수동 재시도와 스케줄러(또는 다른 탭의 수동 재시도)가
+        // 같은 구독에 동시에 들어와도 순서대로 처리되고, 뒤에 처리되는 쪽은 앞쪽이 이미 바꿔놓은
+        // 최신 상태를 정확히 보게 하기 위함 (SubscriptionRepository.findByIdForUpdate 주석 참고).
+        Subscription subscription = subscriptionRepository
+                .findByUserIdAndStatusForUpdate(userId, SubscriptionStatus.PAST_DUE)
+                .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND));
+
+        // 유예기간이 이미 끝났으면 재시도해봤자 의미 없음 - 곧 스케줄러가 최종 취소로 정리할 것이므로
+        if (!LocalDateTime.now().isBefore(subscription.getGraceEndsAt())) {
+            throw new BusinessException(SubscriptionErrorCode.GRACE_PERIOD_ENDED);
+        }
+
+        // 연타 방지: 실패든 성공이든 시도할 때마다 lastRetryAt이 지금 시각으로 갱신되므로(markPastDue/
+        // recordRetryAttempt 참고), 방금 시도한 지 얼마 안 됐으면 또 시도하지 않고 막는다.
+        // (위 락 덕분에 두 요청이 동시에 여기 도달할 수는 없지만, 순서대로는 둘 다 통과할 수 있어서
+        // - 락은 "동시 실행"만 막지 "짧은 시간 내 연속 실행" 자체를 막지는 않음 - 이 체크가 필요함)
+        if (subscription.getLastRetryAt() != null
+                && subscription.getLastRetryAt().isAfter(LocalDateTime.now().minusSeconds(RETRY_COOLDOWN_SECONDS))) {
+            throw new BusinessException(SubscriptionErrorCode.RETRY_TOO_SOON);
+        }
+
+        attemptRenewalCharge(subscription); // 성공/실패에 따른 상태 전환은 이 안에서 다 처리됨
+        return subscription; // 같은 트랜잭션 안이라 attemptRenewalCharge가 바꾼 상태가 그대로 반영돼 있음
+    }
+
+    // renewSubscription/processPastDueSubscription(스케줄러)과 retryPastDueChargeNow(사용자 수동
+    // 재시도)가 공유하는 실제 결제 시도 로직. 빌링키로 결제해보고, 성공/실패에 따라 이후 상태 전환은
+    // verifyAndFinalize / markPaymentFailed가 맡는다.
     private void attemptRenewalCharge(Subscription subscription) {
         User user = subscription.getUser();
+
+        // 동시성 가드: 스케줄러(하루 1회)와 사용자의 수동 재시도(retryPastDueChargeNow)가 같은
+        // 유저에 대해 거의 동시에 들어와도 순서대로 처리되게 유저 행에 락을 검. 안 걸면 두 시도가
+        // 동시에 같은 빌링키로 이중 결제를 시도할 수 있음 (completePayment/attachBillingKey와 동일한 이유).
+        userRepository.findByIdForUpdate(user.getId());
 
         BillingKey billingKey = billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE).orElse(null);
         if (billingKey == null) {
@@ -195,6 +269,18 @@ public class PaymentService {
         }
 
         SubscriptionPlanType planType = subscription.getPlanType();
+        if (planType == null) {
+            // planType 컬럼은 나중에 추가된 필드라, 이 컬럼이 생기기 전부터 있던 레거시 ACTIVE 구독
+            // 행은 NULL일 수 있다(ddl-auto: update는 NOT NULL 제약을 소급 적용/백필해주지 않음).
+            // 이걸 그냥 두면 바로 아래 chargeWithBillingKey()의 planType.getAmount()에서 NPE가 나는데,
+            // 이 메서드를 부르는 스케줄러 쪽 catch(RuntimeException)가 조용히 삼켜버려서 이 구독은
+            // 청구도 PAST_DUE 전환도 안 된 채 영원히 ACTIVE로 남는 사고가 난다.
+            // 지금은 플랜이 BASIC 하나뿐이라 안전하게 기본값으로 보정해서 정상 흐름은 이어가되,
+            // 이런 레거시 데이터가 실제로 있었다는 걸 알아채고 DB에서 직접 백필할 수 있게 크게 로그를 남긴다.
+            log.error("구독의 planType이 NULL - 레거시 데이터로 추정, BASIC으로 보정 후 갱신 진행 (subscriptionId={})",
+                    subscription.getId());
+            planType = SubscriptionPlanType.BASIC;
+        }
         Payment payment = chargeWithBillingKey(user, billingKey.getBillingKey(), planType, subscription, "갱신 결제 실패");
         if (payment == null) {
             return;
@@ -289,6 +375,41 @@ public class PaymentService {
     // 활성 빌링키(=다음 자동갱신 예정) 여부. 프론트에 "해지 예약" 상태를 보여줄 때 씀.
     public boolean hasActiveBillingKey(User user) {
         return billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE).isPresent();
+    }
+
+    // PortOne에 실제로 발급된 빌링키가 맞는지, 우리 상점/채널의 빌링키가 맞는지 검증.
+    // completePayment/attachBillingKey가 공유 (원래 completePayment 안에 있던 로직을 그대로 분리한 것).
+    private void verifyBillingKeyOwnership(String billingKey) {
+        BillingKeyInfo billingKeyInfo = portOneClient.getPayment().getBillingKey().getBillingKeyInfo(billingKey).join();
+
+        if (!(billingKeyInfo instanceof IssuedBillingKeyInfo issue)
+                || !issue.getStoreId().equals(storeId)
+                || issue.getChannels().stream().noneMatch(c -> c.getKey().equals(channelKeyBilling))) {
+            throw new BusinessException(PaymentErrorCode.BILLING_KEY_VERIFICATION_FAILED);
+        }
+    }
+
+    // 해지 예약 취소(자동갱신 재개) - 새 결제 없이 빌링키만 다시 등록한다.
+    // completePayment와 달리 기존 빌링키를 교체하지 않고, 이미 활성 빌링키가 있으면(중복 요청/이미
+    // 재개된 상태) 그대로 조용히 종료한다 - SubscriptionService.cancel()의 멱등성 처리와 대칭되는 설계.
+    // (그 사이 새로 발급된 billingKey는 그냥 버려짐: PortOne 쪽엔 남지만 우리 쪽에 등록되지 않으므로
+    //  실사용되지 않음 - completePayment의 중복 클릭 케이스에서도 동일한 트레이드오프를 이미 감수하고 있음)
+    @Transactional
+    public void attachBillingKey(User user, String billingKey) {
+        // completePayment와 동일한 이유로 동시성 가드 - 중복 요청이 동시에 "활성 빌링키 없음"을
+        // 통과해서 같은 유저에게 빌링키가 두 번 저장되는 걸 방지.
+        userRepository.findByIdForUpdate(user.getId());
+
+        if (user.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessException(SubscriptionErrorCode.USER_INACTIVE);
+        }
+
+        if (billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE).isPresent()) {
+            return;
+        }
+
+        verifyBillingKeyOwnership(billingKey);
+        billingKeyRepository.save(new BillingKey(user, billingKey));
     }
 
     // 웹훅

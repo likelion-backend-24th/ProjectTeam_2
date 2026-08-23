@@ -1,8 +1,10 @@
 package org.example.backend.subscription.service;
 
 import org.example.backend.common.exception.BusinessException;
+import org.example.backend.payment.dto.PaymentPrepareResponse;
 import org.example.backend.payment.entity.BillingKey;
 import org.example.backend.payment.entity.BillingKeyStatus;
+import org.example.backend.payment.entity.SubscriptionPlanType;
 import org.example.backend.payment.exception.PaymentErrorCode;
 import org.example.backend.payment.repository.BillingKeyRepository;
 import org.example.backend.payment.service.PaymentService;
@@ -184,5 +186,143 @@ class SubscriptionServiceTest {
         BusinessException e = assertThrows(BusinessException.class,
                 () -> subscriptionService.getMy(1L));
         assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND);
+    }
+
+    // ------------------------------------------------------------------
+    // hasLiveSubscription (UserService.withdrawAccount가 구독 정리 필요 여부 판단할 때 씀)
+    // ------------------------------------------------------------------
+
+    @Test
+    void hasLiveSubscription_ACTIVE나PAST_DUE있으면_true() {
+        Subscription subscription = Subscription.builder().user(user).startedAt(null).expiredAt(null).build();
+        when(subscriptionRepository.findByUserIdAndStatusIn(1L, LIVE_STATUSES))
+                .thenReturn(Optional.of(subscription));
+
+        assertThat(subscriptionService.hasLiveSubscription(1L)).isTrue();
+    }
+
+    @Test
+    void hasLiveSubscription_살아있는구독없으면_false() {
+        when(subscriptionRepository.findByUserIdAndStatusIn(1L, LIVE_STATUSES))
+                .thenReturn(Optional.empty());
+
+        assertThat(subscriptionService.hasLiveSubscription(1L)).isFalse();
+    }
+
+    // ------------------------------------------------------------------
+    // prepareResume / resume (해지 예약 취소 - 자동갱신 재개)
+    // ------------------------------------------------------------------
+
+    @Test
+    void prepareResume_ACTIVE구독없으면_예외() {
+        // PAST_DUE는 여기 대상이 아니라서 LIVE_STATUSES가 아니라 ACTIVE 단독 조회를 씀
+        // - PAST_DUE 사용자가 잘못 호출해도 "구독 내역이 없습니다"로 자연스럽게 막힘.
+        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> subscriptionService.prepareResume(1L));
+
+        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND);
+        verifyNoInteractions(paymentService);
+    }
+
+    @Test
+    void prepareResume_이미자동갱신중이면_예외() {
+        Subscription subscription = Subscription.builder()
+                .user(user).planType(SubscriptionPlanType.BASIC).startedAt(null).expiredAt(null).build();
+        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
+                .thenReturn(Optional.of(subscription));
+        when(paymentService.hasActiveBillingKey(user)).thenReturn(true);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> subscriptionService.prepareResume(1L));
+
+        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.AUTO_RENEW_ALREADY_ON);
+        verify(paymentService, never()).prepareBillingKeyReissue(any(), any());
+    }
+
+    @Test
+    void prepareResume_정상이면_발급파라미터반환() {
+        Subscription subscription = Subscription.builder()
+                .user(user).planType(SubscriptionPlanType.BASIC).startedAt(null).expiredAt(null).build();
+        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
+                .thenReturn(Optional.of(subscription));
+        when(paymentService.hasActiveBillingKey(user)).thenReturn(false);
+        PaymentPrepareResponse expected = PaymentPrepareResponse.builder().issueId("issue-1").build();
+        when(paymentService.prepareBillingKeyReissue(user, SubscriptionPlanType.BASIC)).thenReturn(expected);
+
+        PaymentPrepareResponse response = subscriptionService.prepareResume(1L);
+
+        assertThat(response).isSameAs(expected);
+    }
+
+    @Test
+    void resume_ACTIVE구독없으면_예외() {
+        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> subscriptionService.resume(1L, "billing-key-new"));
+
+        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND);
+        verifyNoInteractions(paymentService);
+    }
+
+    // ------------------------------------------------------------------
+    // retryPastDueNow (유예기간 중 수동 재시도) - 실제 재시도 로직은 PaymentService가 가지고 있어서
+    // 여기선 그 결과를 응답으로 잘 감싸는지만 확인한다.
+    // ------------------------------------------------------------------
+
+    @Test
+    void retryPastDueNow_성공하면_ACTIVE로_응답() {
+        Subscription subscription = Subscription.builder()
+                .user(user).planType(SubscriptionPlanType.BASIC).startedAt(null).expiredAt(null).build();
+        when(paymentService.retryPastDueChargeNow(1L)).thenReturn(subscription); // 복구 성공 -> ACTIVE로 바뀐 채 반환됨
+        when(paymentService.hasActiveBillingKey(user)).thenReturn(true);
+
+        SubscriptionResponse response = subscriptionService.retryPastDueNow(1L);
+
+        assertThat(response.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(response.isAutoRenew()).isTrue();
+    }
+
+    @Test
+    void retryPastDueNow_실패하면_PAST_DUE유지로_응답() {
+        Subscription subscription = Subscription.builder()
+                .user(user).planType(SubscriptionPlanType.BASIC).startedAt(null).expiredAt(null).build();
+        subscription.markPastDue(java.time.LocalDateTime.now().plusDays(1));
+        when(paymentService.retryPastDueChargeNow(1L)).thenReturn(subscription);
+        when(paymentService.hasActiveBillingKey(user)).thenReturn(true);
+
+        SubscriptionResponse response = subscriptionService.retryPastDueNow(1L);
+
+        assertThat(response.getStatus()).isEqualTo(SubscriptionStatus.PAST_DUE); // 여전히 실패 상태 그대로 내려감
+    }
+
+    @Test
+    void retryPastDueNow_PaymentService가예외던지면_그대로전파() {
+        when(paymentService.retryPastDueChargeNow(1L))
+                .thenThrow(new BusinessException(SubscriptionErrorCode.GRACE_PERIOD_ENDED));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> subscriptionService.retryPastDueNow(1L));
+
+        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.GRACE_PERIOD_ENDED);
+    }
+
+    @Test
+    void resume_정상이면_빌링키등록하고_autoRenew_true로_응답() {
+        Subscription subscription = Subscription.builder()
+                .user(user).planType(SubscriptionPlanType.BASIC).startedAt(null).expiredAt(null).build();
+        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
+                .thenReturn(Optional.of(subscription));
+        when(paymentService.hasActiveBillingKey(user)).thenReturn(true); // attachBillingKey 이후 재조회 시점
+
+        SubscriptionResponse response = subscriptionService.resume(1L, "billing-key-new");
+
+        verify(paymentService).attachBillingKey(user, "billing-key-new");
+        assertThat(response.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE); // 상태 자체는 안 바뀜(원래도 ACTIVE)
+        assertThat(response.isAutoRenew()).isTrue();
     }
 }

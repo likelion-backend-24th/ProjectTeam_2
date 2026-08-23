@@ -111,7 +111,7 @@ public class EmailService {
         message.setTo(toEmail);
         message.setSubject("[prep2gether] 정기결제에 실패했습니다 - 결제수단을 확인해주세요");
         message.setText("안녕하세요, prep2gether입니다.\n등록된 결제수단으로 정기결제를 시도했지만 승인에 실패해 프리미엄 이용이 잠시 중단되었습니다.\n" +
-                "3일 안에 결제수단을 업데이트하시면 매일 자동으로 재시도해 원래대로 복구해드려요.\n" +
+                "3일 안에는 등록된 카드로 매일 자동 재시도되며, 구독 페이지에서 지금 바로 다시 시도하실 수도 있어요.\n" +
                 "3일이 지나도 결제에 계속 실패하면 구독이 자동으로 종료됩니다.\n" +
                 "-------------------------------------------------------\n ▽prep2gether 홈페이지\n http://www.prep2gether.duckdns.org");
 

@@ -64,7 +64,7 @@ import static org.mockito.Mockito.*;
 // 주의: 이 테스트들은 리포지토리를 전부 목으로 대체한 순수 유닛테스트라,
 // detached 엔티티(Hibernate 세션 문제)류 버그는 못 잡는다.
 // (Mockito가 만든 목 엔티티엔 세션/영속성 컨텍스트라는 개념 자체가 없음)
-// renewSubscription/processPastDueSubscription이 subscriptionRepository.findById(...)를
+// renewSubscription/processPastDueSubscription이 subscriptionRepository.findByIdForUpdate(...)를
 // 실제로 호출하는지만 verify로 확인해서, "재조회 코드를 실수로 지워버리는" 회귀는 잡을 수 있게 해둠.
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
@@ -160,6 +160,106 @@ class PaymentServiceTest {
         assertThat(response.getAmount()).isEqualTo(SubscriptionPlanType.BASIC.getAmount());
         assertThat(response.getIssueId()).isNotBlank();
         verifyNoInteractions(portOneClient);
+    }
+
+    // ------------------------------------------------------------------
+    // prepareBillingKeyReissue (해지 예약 취소 - 재개용 빌링키 발급 파라미터)
+    // ------------------------------------------------------------------
+
+    @Test
+    void prepareBillingKeyReissue_정지회원이면_예외() {
+        user.setStatus(AccountStatus.SUSPENDED);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> paymentService.prepareBillingKeyReissue(user, SubscriptionPlanType.BASIC));
+
+        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.USER_INACTIVE);
+    }
+
+    @Test
+    void prepareBillingKeyReissue_정상이면_ACTIVE구독조회없이_발급값반환() {
+        // preparePayment와 달리 "ACTIVE 구독 없음"을 요구하지 않는다 - 반대로 ACTIVE 구독이 있는
+        // 상태(해지 예약)에서 호출되는 게 정상 케이스라, 여기선 구독 상태를 아예 조회하지 않아야 한다.
+        PaymentPrepareResponse response = paymentService.prepareBillingKeyReissue(user, SubscriptionPlanType.BASIC);
+
+        assertThat(response.getStoreId()).isEqualTo(STORE_ID);
+        assertThat(response.getChannelKey()).isEqualTo(CHANNEL_KEY);
+        assertThat(response.getAmount()).isEqualTo(SubscriptionPlanType.BASIC.getAmount());
+        assertThat(response.getIssueId()).isNotBlank();
+        verifyNoInteractions(subscriptionRepository, portOneClient);
+    }
+
+    @Test
+    void prepareBillingKeyReissue_planType이NULL인레거시구독이면_BASIC으로보정해서_발급값반환() {
+        // planType 컬럼은 나중에 추가된 필드라, 이 컬럼이 생기기 전부터 있던 레거시 ACTIVE 구독을
+        // 흉내냄. 보정 없이 그대로 두면 buildBillingKeyIssueParams()의 planType.getAmount()에서 NPE.
+        PaymentPrepareResponse response = paymentService.prepareBillingKeyReissue(user, null);
+
+        assertThat(response.getAmount()).isEqualTo(SubscriptionPlanType.BASIC.getAmount());
+        assertThat(response.getOrderName()).isEqualTo(SubscriptionPlanType.BASIC.getOrderName());
+        verifyNoInteractions(subscriptionRepository, portOneClient);
+    }
+
+    // ------------------------------------------------------------------
+    // attachBillingKey (해지 예약 취소 - 새 결제 없이 빌링키만 재등록)
+    // ------------------------------------------------------------------
+
+    @Test
+    void attachBillingKey_정지회원이면_예외() {
+        user.setStatus(AccountStatus.SUSPENDED);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> paymentService.attachBillingKey(user, "billing-key-abc"));
+
+        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.USER_INACTIVE);
+        verifyNoInteractions(billingKeyRepository);
+    }
+
+    @Test
+    void attachBillingKey_이미활성빌링키있으면_검증없이_조용히종료() {
+        // 중복 요청/이미 재개된 상태 - cancel()의 멱등성 처리와 대칭되는 설계.
+        when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
+                .thenReturn(Optional.of(new BillingKey(user, "old-billing-key")));
+
+        paymentService.attachBillingKey(user, "billing-key-new");
+
+        verifyNoInteractions(portOneClient);
+        verify(billingKeyRepository, never()).save(any());
+    }
+
+    @Test
+    void attachBillingKey_빌링키검증실패하면_예외이고_저장안함() {
+        when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+        IssuedBillingKeyInfo wrongStore = mock(IssuedBillingKeyInfo.class);
+        when(wrongStore.getStoreId()).thenReturn("다른-상점-id");
+        when(portOneClient.getPayment().getBillingKey().getBillingKeyInfo(anyString()))
+                .thenReturn(CompletableFuture.<BillingKeyInfo>completedFuture(wrongStore));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> paymentService.attachBillingKey(user, "billing-key-new"));
+
+        assertThat(e.getErrorCode()).isEqualTo(PaymentErrorCode.BILLING_KEY_VERIFICATION_FAILED);
+        verify(billingKeyRepository, never()).save(any());
+    }
+
+    @Test
+    void attachBillingKey_정상이면_새빌링키저장_결제는안함() {
+        when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
+                .thenReturn(Optional.empty());
+        IssuedBillingKeyInfo issued = mock(IssuedBillingKeyInfo.class);
+        when(issued.getStoreId()).thenReturn(STORE_ID);
+        SelectedChannel channel = mock(SelectedChannel.class);
+        when(channel.getKey()).thenReturn(CHANNEL_KEY);
+        when(issued.getChannels()).thenReturn(List.of(channel));
+        when(portOneClient.getPayment().getBillingKey().getBillingKeyInfo(anyString()))
+                .thenReturn(CompletableFuture.<BillingKeyInfo>completedFuture(issued));
+
+        paymentService.attachBillingKey(user, "billing-key-new");
+
+        verify(billingKeyRepository).save(any(BillingKey.class));
+        // 재개는 새 결제를 만들지 않는다 - 이미 낸 기간을 계속 쓰는 것뿐이므로
+        verifyNoInteractions(paymentRepository);
     }
 
     // ------------------------------------------------------------------
@@ -406,7 +506,7 @@ class PaymentServiceTest {
     @Test
     void renewSubscription_빌링키없으면_유예기간없이_바로최종취소() {
         Subscription subscription = dueSubscription();
-        when(subscriptionRepository.findById(nullable(Long.class))).thenReturn(Optional.of(subscription));
+        when(subscriptionRepository.findByIdForUpdate(nullable(Long.class))).thenReturn(Optional.of(subscription));
         when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE)).thenReturn(Optional.empty());
 
         paymentService.renewSubscription(subscription);
@@ -414,7 +514,7 @@ class PaymentServiceTest {
         // 빌링키가 아예 없으면 재시도해봤자 의미가 없으니 유예기간 없이 바로 취소
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
         assertThat(user.isSubscribed()).isFalse();
-        verify(subscriptionRepository).findById(nullable(Long.class)); // 트랜잭션 안에서 재조회하는지(버그 재발 방지 가드)
+        verify(subscriptionRepository).findByIdForUpdate(nullable(Long.class)); // 트랜잭션 안에서 락 걸고 재조회하는지(버그 재발 방지 가드)
         // 빌링키 없음 = 사실상 자진 해지라 cancel() 시점에 이미 "해지 완료" 메일을 보냈음
         // -> 여기서 "결제 실패" 메일을 또 보내면 안 됨
         verify(emailService, never()).sendSubscriptionRenewalFailed(anyString());
@@ -425,7 +525,7 @@ class PaymentServiceTest {
     void renewSubscription_결제요청이예외터지면_바로취소하지않고_유예기간시작() {
         Subscription subscription = dueSubscription();
         LocalDateTime originalExpiredAt = subscription.getExpiredAt();
-        when(subscriptionRepository.findById(nullable(Long.class))).thenReturn(Optional.of(subscription));
+        when(subscriptionRepository.findByIdForUpdate(nullable(Long.class))).thenReturn(Optional.of(subscription));
         when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
                 .thenReturn(Optional.of(new BillingKey(user, "billing-key-abc")));
         stubPayWithBillingKey(CompletableFuture.failedFuture(new RuntimeException("한도초과")));
@@ -443,7 +543,7 @@ class PaymentServiceTest {
     void renewSubscription_결제성공하면_기존만료일기준으로_한달연장() {
         Subscription subscription = dueSubscription();
         LocalDateTime oldExpiry = subscription.getExpiredAt();
-        when(subscriptionRepository.findById(nullable(Long.class))).thenReturn(Optional.of(subscription));
+        when(subscriptionRepository.findByIdForUpdate(nullable(Long.class))).thenReturn(Optional.of(subscription));
         when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
                 .thenReturn(Optional.of(new BillingKey(user, "billing-key-abc")));
         stubPayWithBillingKey(CompletableFuture.completedFuture(mock(PayWithBillingKeyResponse.class)));
@@ -458,12 +558,49 @@ class PaymentServiceTest {
     }
 
     @Test
+    void renewSubscription_planType이NULL인레거시구독이면_BASIC으로보정해서_정상갱신됨() {
+        // planType 컬럼은 나중에 추가된 필드라, 이 컬럼이 생기기 전부터 있던 레거시 ACTIVE 구독 행을
+        // 흉내냄. 보정 없이 그대로 두면 chargeWithBillingKey()의 planType.getAmount()에서 NPE.
+        Subscription subscription = Subscription.builder()
+                .user(user)
+                .planType(null)
+                .startedAt(LocalDateTime.now().minusMonths(1))
+                .expiredAt(LocalDateTime.now().minusDays(1))
+                .build();
+        when(subscriptionRepository.findByIdForUpdate(nullable(Long.class))).thenReturn(Optional.of(subscription));
+        when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
+                .thenReturn(Optional.of(new BillingKey(user, "billing-key-abc")));
+        stubPayWithBillingKey(CompletableFuture.completedFuture(mock(PayWithBillingKeyResponse.class)));
+        stubGetPayment(paidPaymentMock(SubscriptionPlanType.BASIC.getAmount()));
+        when(paymentTransactionRepository.existsByTransactionId(anyString())).thenReturn(false);
+
+        paymentService.renewSubscription(subscription); // NPE 없이 끝나야 함
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE); // 정상 갱신됨
+        verify(paymentRepository).save(argThat(p -> p.getAmount() == SubscriptionPlanType.BASIC.getAmount()));
+    }
+
+    @Test
+    void renewSubscription_락기다리는동안_이미다른상태로바뀌면_중복청구안함() {
+        // 스케줄러와 사용자의 수동 재시도(retryPastDueChargeNow)가 같은 구독에 동시에 들어와서,
+        // 이쪽이 락을 기다리는 사이 다른 쪽이 이미 처리를 끝낸 상황을 흉내냄
+        // (findByIdForUpdate가 최신 상태를 다시 읽어온다고 가정 - 실제 DB에서는 그렇게 동작함).
+        Subscription subscription = dueSubscription();
+        ReflectionTestUtils.setField(subscription, "status", SubscriptionStatus.PAST_DUE); // 이미 PAST_DUE로 바뀐 최신 상태
+        when(subscriptionRepository.findByIdForUpdate(nullable(Long.class))).thenReturn(Optional.of(subscription));
+
+        paymentService.renewSubscription(subscription); // 예외 없이 조용히 끝나야 함
+
+        verifyNoInteractions(billingKeyRepository, portOneClient); // 중복 청구 시도 자체를 안 함
+    }
+
+    @Test
     void renewSubscription_결제후_검증재조회가실패해도_예외전파안되고_PAST_DUE로기록됨() {
         // completePayment()와 달리 이 경로는 attemptRenewalCharge가 verifyAndFinalize를
         // try/catch(BusinessException)로 감싸고 있어서, verifyAndFinalize가 예외를 던지게 바뀌어도
         // 스케줄러 트랜잭션까지 전파되진 않고 여기서 흡수돼야 한다(회귀 확인용).
         Subscription subscription = dueSubscription();
-        when(subscriptionRepository.findById(nullable(Long.class))).thenReturn(Optional.of(subscription));
+        when(subscriptionRepository.findByIdForUpdate(nullable(Long.class))).thenReturn(Optional.of(subscription));
         when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
                 .thenReturn(Optional.of(new BillingKey(user, "billing-key-abc")));
         stubPayWithBillingKey(CompletableFuture.completedFuture(mock(PayWithBillingKeyResponse.class)));
@@ -482,7 +619,7 @@ class PaymentServiceTest {
     @Test
     void processPastDueSubscription_유예기간끝났으면_재시도없이_바로최종취소() {
         Subscription subscription = pastDueSubscription(LocalDateTime.now().minusHours(1), LocalDateTime.now().minusDays(1));
-        when(subscriptionRepository.findById(nullable(Long.class))).thenReturn(Optional.of(subscription));
+        when(subscriptionRepository.findByIdForUpdate(nullable(Long.class))).thenReturn(Optional.of(subscription));
         BillingKey billingKey = new BillingKey(user, "billing-key-abc");
         when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
                 .thenReturn(Optional.of(billingKey));
@@ -503,7 +640,7 @@ class PaymentServiceTest {
     @Test
     void processPastDueSubscription_오늘이미재시도했으면_스킵() {
         Subscription subscription = pastDueSubscription(LocalDateTime.now().plusDays(1), LocalDateTime.now());
-        when(subscriptionRepository.findById(nullable(Long.class))).thenReturn(Optional.of(subscription));
+        when(subscriptionRepository.findByIdForUpdate(nullable(Long.class))).thenReturn(Optional.of(subscription));
 
         paymentService.processPastDueSubscription(subscription);
 
@@ -515,7 +652,7 @@ class PaymentServiceTest {
     @Test
     void processPastDueSubscription_재시도대상이면_결제를시도하고_성공하면복구() {
         Subscription subscription = pastDueSubscription(LocalDateTime.now().plusDays(1), LocalDateTime.now().minusDays(1));
-        when(subscriptionRepository.findById(nullable(Long.class))).thenReturn(Optional.of(subscription));
+        when(subscriptionRepository.findByIdForUpdate(nullable(Long.class))).thenReturn(Optional.of(subscription));
         when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
                 .thenReturn(Optional.of(new BillingKey(user, "billing-key-abc")));
         stubPayWithBillingKey(CompletableFuture.completedFuture(mock(PayWithBillingKeyResponse.class)));
@@ -530,12 +667,89 @@ class PaymentServiceTest {
     @Test
     void processPastDueSubscription_이미다른상태로바뀐경우_아무것도안함() {
         Subscription subscription = dueSubscription(); // ACTIVE (PAST_DUE 아님)
-        when(subscriptionRepository.findById(nullable(Long.class))).thenReturn(Optional.of(subscription));
+        when(subscriptionRepository.findByIdForUpdate(nullable(Long.class))).thenReturn(Optional.of(subscription));
 
         paymentService.processPastDueSubscription(subscription);
 
         verifyNoInteractions(billingKeyRepository);
         verifyNoInteractions(portOneClient);
+    }
+
+    // ------------------------------------------------------------------
+    // retryPastDueChargeNow (사용자가 스케줄러를 기다리지 않고 지금 바로 재시도)
+    // ------------------------------------------------------------------
+
+    @Test
+    void retryPastDueChargeNow_PAST_DUE구독없으면_예외() {
+        when(subscriptionRepository.findByUserIdAndStatusForUpdate(1L, SubscriptionStatus.PAST_DUE))
+                .thenReturn(Optional.empty());
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> paymentService.retryPastDueChargeNow(1L));
+
+        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND);
+    }
+
+    @Test
+    void retryPastDueChargeNow_유예기간끝났으면_재시도안하고_예외() {
+        Subscription subscription = pastDueSubscription(LocalDateTime.now().minusHours(1), LocalDateTime.now().minusDays(1));
+        when(subscriptionRepository.findByUserIdAndStatusForUpdate(1L, SubscriptionStatus.PAST_DUE))
+                .thenReturn(Optional.of(subscription));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> paymentService.retryPastDueChargeNow(1L));
+
+        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.GRACE_PERIOD_ENDED);
+        verifyNoInteractions(billingKeyRepository); // 최종 취소는 스케줄러 몫 - 여기선 그냥 막기만 함
+    }
+
+    @Test
+    void retryPastDueChargeNow_정상이면_기존빌링키로재시도하고_성공하면복구() {
+        Subscription subscription = pastDueSubscription(LocalDateTime.now().plusDays(1), LocalDateTime.now().minusDays(1));
+        when(subscriptionRepository.findByUserIdAndStatusForUpdate(1L, SubscriptionStatus.PAST_DUE))
+                .thenReturn(Optional.of(subscription));
+        when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
+                .thenReturn(Optional.of(new BillingKey(user, "billing-key-abc")));
+        stubPayWithBillingKey(CompletableFuture.completedFuture(mock(PayWithBillingKeyResponse.class)));
+        stubGetPayment(paidPaymentMock(9900L));
+        when(paymentTransactionRepository.existsByTransactionId(anyString())).thenReturn(false);
+
+        Subscription result = paymentService.retryPastDueChargeNow(1L);
+
+        assertThat(result.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        // 새 카드를 등록하는 게 아니라 기존 활성 빌링키를 그대로 재사용하는지 확인
+        verify(billingKeyRepository, never()).save(any());
+    }
+
+    @Test
+    void retryPastDueChargeNow_카드로다시실패해도_예외없이_PAST_DUE유지() {
+        // 사용자가 직접 누른 재시도라도, 실패는 여전히 attemptRenewalCharge가 정상 처리하는 흐름이라
+        // (다음 재시도 기회를 유지) 예외로 튀면 안 됨 - 스케줄러 경로와 동일하게 동작해야 한다.
+        Subscription subscription = pastDueSubscription(LocalDateTime.now().plusDays(1), LocalDateTime.now().minusDays(1));
+        when(subscriptionRepository.findByUserIdAndStatusForUpdate(1L, SubscriptionStatus.PAST_DUE))
+                .thenReturn(Optional.of(subscription));
+        when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
+                .thenReturn(Optional.of(new BillingKey(user, "billing-key-abc")));
+        stubPayWithBillingKey(CompletableFuture.failedFuture(new RuntimeException("한도초과")));
+
+        Subscription result = paymentService.retryPastDueChargeNow(1L); // 예외 없이 끝나야 함
+
+        assertThat(result.getStatus()).isEqualTo(SubscriptionStatus.PAST_DUE); // 재시도 기회는 유지됨
+    }
+
+    @Test
+    void retryPastDueChargeNow_방금재시도했으면_연타로간주해서_예외() {
+        // 새로고침 후 다시 클릭, 두 탭에서 거의 동시 클릭 같은 상황을 흉내냄.
+        // lastRetryAt이 쿨다운(60초) 안쪽이면 실제 결제 시도 자체를 안 해야 한다.
+        Subscription subscription = pastDueSubscription(LocalDateTime.now().plusDays(1), LocalDateTime.now().minusSeconds(10));
+        when(subscriptionRepository.findByUserIdAndStatusForUpdate(1L, SubscriptionStatus.PAST_DUE))
+                .thenReturn(Optional.of(subscription));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> paymentService.retryPastDueChargeNow(1L));
+
+        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.RETRY_TOO_SOON);
+        verifyNoInteractions(billingKeyRepository, portOneClient); // 실제 결제 시도는 아예 안 나감
     }
 
     // ------------------------------------------------------------------

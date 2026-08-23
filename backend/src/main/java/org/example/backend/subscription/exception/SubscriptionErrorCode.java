@@ -11,7 +11,10 @@ public enum SubscriptionErrorCode implements ErrorCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 유저입니다."),
     SUBSCRIPTION_ALREADY_ACTIVE(HttpStatus.CONFLICT, "이미 구독 중입니다."),
     SUBSCRIPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "구독 내역이 없습니다."),
-    USER_INACTIVE(HttpStatus.CONFLICT, "탈퇴했거나 이용이 제한된 회원은 구독할 수 없습니다.");
+    USER_INACTIVE(HttpStatus.CONFLICT, "탈퇴했거나 이용이 제한된 회원은 구독할 수 없습니다."),
+    AUTO_RENEW_ALREADY_ON(HttpStatus.CONFLICT, "이미 자동갱신이 설정되어 있습니다."),
+    GRACE_PERIOD_ENDED(HttpStatus.CONFLICT, "유예기간이 이미 종료되었습니다."),
+    RETRY_TOO_SOON(HttpStatus.CONFLICT, "방금 재시도했어요. 잠시 후 다시 시도해주세요.");
 
     private final HttpStatus httpStatus;
     private final String message;
