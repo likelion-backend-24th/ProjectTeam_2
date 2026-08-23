@@ -176,6 +176,23 @@
   color: #f87171;
 }
 
+.pastDueBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #f87171;
+  background-color: rgba(248, 113, 113, 0.08);
+}
+
+.pastDueLabel {
+  font-size: 15px;
+  font-weight: 800;
+  color: #f87171;
+}
+
 .cancelButton {
   margin-top: 6px;
   padding: 8px 16px;

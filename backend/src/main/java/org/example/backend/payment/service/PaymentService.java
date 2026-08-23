@@ -24,6 +24,7 @@ import org.example.backend.payment.repository.PaymentTransactionRepository;
 import org.example.backend.payment.repository.WebhookEventRepository;
 import org.example.backend.subscription.entity.Subscription;
 import org.example.backend.user.entity.AccountStatus;
+import org.example.backend.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.payment.dto.PaymentPrepareResponse;
@@ -53,6 +54,7 @@ public class PaymentService {
     private final WebhookEventRepository webhookEventRepository;
     private final BillingKeyRepository billingKeyRepository;
     private final EmailService emailService;
+    private final UserRepository userRepository;
 
     @Value("${portone.store-id}")
     private String storeId;
@@ -82,8 +84,18 @@ public class PaymentService {
     // 최초 구독
     // 프론트가 requestIssueBillingKey로 발급받은 billingKey를 넘겨주면
     // 검증 -> 빌링키 저장 -> 그 빌링키로 첫 결제까지 서버가 직접 수행
-    @Transactional
+    // noRollbackFor = BusinessException.class:
+    // verifyAndFinalize가 검증 실패로 BusinessException을 던지면 프론트엔 여전히 실패로 전달돼야 하지만,
+    // 이미 실제로는 PortOne 쪽에서 카드 결제가 일어난 뒤라(=롤백 불가능한 외부 상태) 그 직전까지 저장한
+    // 빌링키/Payment/실패 기록(PaymentTransaction)까지 같이 롤백되면 결제는 됐는데 우리 DB엔 흔적이
+    // 하나도 안 남는 사고가 남. 그래서 이 예외 한정으로는 롤백하지 않고 지금까지의 기록은 커밋되게 함.
+    @Transactional(noRollbackFor = BusinessException.class)
     public void completePayment(User user, String billingKey, SubscriptionPlanType planType) {
+        // 동시에 두 번(더블클릭, 중복 요청 등) 결제 요청이 들어와도 순서대로 처리되도록 유저 행에 락을 검.
+        // 안 걸면 두 요청이 동시에 아래 "ACTIVE 구독 없음" 체크를 통과해서 이중결제/이중구독이 날 수 있음.
+        // (문의 스레드 생성 시 동시성 제어와 동일한 패턴 재사용)
+        userRepository.findByIdForUpdate(user.getId());
+
         if (user.getStatus() != AccountStatus.ACTIVE) {
             throw new BusinessException(SubscriptionErrorCode.USER_INACTIVE);
         }
@@ -92,13 +104,13 @@ public class PaymentService {
             throw new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_ALREADY_ACTIVE);
         }
 
-        // 유예기간(PAST_DUE) 중이던 예전 구독이 있으면 조용히 정리하고 새로 시작.
-        // 안 지우면: 이번에 새로 저장하는 빌링키를 나중에 스케줄러가 "옛날 유예기간 구독" 갱신에도 써버려서
-        // 구독이 2개(새로 만든 것 + 옛날 것) 동시에 ACTIVE가 되는 사고가 날 수 있음.
-        subscriptionRepository.findByUserIdAndStatus(user.getId(), SubscriptionStatus.PAST_DUE)
-                .ifPresent(Subscription::cancel);
-
-        // PortOne에 실제로 발급된 빌링키가 맞는지, 우리 상점/채널의 빌링키가 맞는지 조회 및 검증
+        // PortOne에 실제로 발급된 빌링키가 맞는지, 우리 상점/채널의 빌링키가 맞는지 조회 및 검증.
+        // 이 메서드는 @Transactional(noRollbackFor = BusinessException.class)라 여기서 BusinessException을
+        // 던져도 그 이후의 변경은 롤백 안 됨 - 그래서 되돌릴 수 없는 상태 변경(PAST_DUE 정리 등)은
+        // 전부 "새 구독이 실제로 만들어졌다"가 확정된 뒤(맨 아래 verifyAndFinalize 성공 이후)로 미룬다.
+        // 검증/청구/검증재확인 중 어디서 실패하든 여기까지 아무것도 안 바뀐 채로 예외만 던져야 한다.
+        // (안 그러면, 예를 들어 유예기간 중이던 사용자가 재구독을 시도했다가 카드 승인이 거절된 것뿐인데도
+        // noRollbackFor 때문에 옛날 PAST_DUE 구독이 영구 취소되는 사고가 남 - 재시도 기회를 뺏는 셈)
         BillingKeyInfo billingKeyInfo = portOneClient.getPayment().getBillingKey().getBillingKeyInfo(billingKey).join();
 
         if (!(billingKeyInfo instanceof IssuedBillingKeyInfo issue)
@@ -109,36 +121,24 @@ public class PaymentService {
 
         // 이전에 남아있던 활성 빌링키가 있으면 정리하고 새로 저장 (결제 실패로 끊긴 경우 등)
         billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE)
-                .ifPresent(old -> {
-                    old.setStatus(BillingKeyStatus.DELETED);
-                    old.setDeletedAt(LocalDateTime.now());
-                });
+                .ifPresent(old -> cleanUpBillingKey(old, "새 빌링키로 교체"));
         billingKeyRepository.save(new BillingKey(user, billingKey));
 
         // 저장된 빌링키로 첫 결제 시도
-        String paymentId = "p2g-kjs_" + UUID.randomUUID();
-        int amount = planType.getAmount();
-        Payment payment = new Payment(paymentId, user, planType, amount);
-        paymentRepository.save(payment);
-
-        try {
-            portOneClient.getPayment().payWithBillingKey(
-                    paymentId, billingKey, channelKeyBilling, planType.getOrderName(),
-                    null, null,
-                    new PaymentAmountInput(amount, null, null), Currency.Krw.INSTANCE,
-                    null, null, null, null, null, null,
-                    null, null, null, null,
-                    null, null, null, null
-            ).join();
-        } catch (RuntimeException e) {
-            markPaymentFailed(payment);
-            Throwable cause = e.getCause() != null ? e.getCause() : e; // .join()이 CompletionException으로 감싸므로 원인 예외를 꺼냄
-            log.warn("빌링키 결제 실패 (paymentId={}, reason={})", paymentId, cause.getMessage());
+        Payment payment = chargeWithBillingKey(user, billingKey, planType, null, "빌링키 결제 실패");
+        if (payment == null) {
             throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
         }
 
         verifyAndFinalize(payment);
 
+        // 유예기간(PAST_DUE) 중이던 예전 구독이 있으면 조용히 정리.
+        // 안 지우면: 방금 저장한 빌링키를 나중에 스케줄러가 "옛날 유예기간 구독" 갱신에도 써버려서
+        // 구독이 2개(방금 만든 것 + 옛날 것) 동시에 ACTIVE가 되는 사고가 날 수 있음.
+        // 위의 verifyAndFinalize가 예외 없이 끝난 뒤에만 실행되므로, 청구/검증이 도중에 실패하면
+        // (noRollbackFor라도) 여기까지 도달하지 못해 옛날 구독은 그대로 PAST_DUE로 남아 재시도 기회가 유지된다.
+        subscriptionRepository.findByUserIdAndStatus(user.getId(), SubscriptionStatus.PAST_DUE)
+                .ifPresent(Subscription::cancel);
     }
 
     // 스케줄러가 만료된 ACTIVE 구독을 넘겨주면 첫 재결제를 시도.
@@ -166,7 +166,7 @@ public class PaymentService {
 
         // 유예기간(만료일+3일)이 이미 지났으면 더 시도하지 않고 바로 최종 취소
         if (!LocalDateTime.now().isBefore(subscription.getGraceEndsAt())) {
-            finalizeCancellation(subscription, subscription.getUser());
+            finalizeCancellation(subscription, subscription.getUser(), true); // 진짜 결제 실패로 끝난 경우 - 안내 메일 보냄
             return;
         }
 
@@ -186,22 +186,45 @@ public class PaymentService {
 
         BillingKey billingKey = billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE).orElse(null);
         if (billingKey == null) {
-            // 빌링키가 아예 없으면 재시도해봤자 의미가 없으니 유예기간 없이 바로 최종 취소
+            // 빌링키가 아예 없으면 재시도해봤자 의미가 없으니 유예기간 없이 바로 최종 취소.
+            // 이 경로는 사실상 사용자가 직접 해지한 경우뿐이라(빌링키가 사라지는 다른 경로가 없음)
+            // "결제 실패" 메일이 아니라 cancel() 시점에 이미 보낸 "해지 완료" 메일로 충분함 -> 메일 재발송 안 함
             log.info("갱신 실패 - 활성 빌링키 없음 (subscriptionId={})", subscription.getId());
-            finalizeCancellation(subscription, user);
+            finalizeCancellation(subscription, user, false);
             return;
         }
 
         SubscriptionPlanType planType = subscription.getPlanType();
+        Payment payment = chargeWithBillingKey(user, billingKey.getBillingKey(), planType, subscription, "갱신 결제 실패");
+        if (payment == null) {
+            return;
+        }
+
+        try {
+            verifyAndFinalize(payment);
+        } catch (BusinessException e) {
+            log.warn("갱신 결제 검증 실패 (paymentId={}, reason={})", payment.getPaymentId(), e.getMessage());
+        }
+    }
+
+    // completePayment(신규결제)/attemptRenewalCharge(갱신)가 공유하는 빌링키 결제 요청 로직.
+    // PortOne SDK 시그니처가 바뀌면(0.12.0 -> 0.24.0 업그레이드 때도 있었음) 한쪽만 고치고 다른 쪽을
+    // 놓치는 실수를 막기 위해 한 곳으로 모음.
+    // Payment 생성/저장까지 여기서 처리하고, 결제 요청 자체가 실패하면 markPaymentFailed로 정리 +
+    // 로그만 남긴 뒤 null을 돌려준다. 실패 시 예외를 던질지/조용히 넘어갈지는 호출자가 정한다.
+    private Payment chargeWithBillingKey(User user, String billingKeyValue, SubscriptionPlanType planType,
+                                          Subscription subscriptionOrNull, String failureLogMessage) {
         String paymentId = "p2g-kjs_" + UUID.randomUUID();
         int amount = planType.getAmount();
         Payment payment = new Payment(paymentId, user, planType, amount);
-        payment.setSubscription(subscription);
+        if (subscriptionOrNull != null) {
+            payment.setSubscription(subscriptionOrNull);
+        }
         paymentRepository.save(payment);
 
         try {
             portOneClient.getPayment().payWithBillingKey(
-                    paymentId, billingKey.getBillingKey(), channelKeyBilling, planType.getOrderName(),
+                    paymentId, billingKeyValue, channelKeyBilling, planType.getOrderName(),
                     null, null,
                     new PaymentAmountInput(amount, null, null), Currency.Krw.INSTANCE,
                     null, null, null, null, null, null,
@@ -210,25 +233,33 @@ public class PaymentService {
             ).join();
         } catch (RuntimeException e) {
             markPaymentFailed(payment);
-            Throwable cause = e.getCause() != null ? e.getCause() : e;
-            log.warn("갱신 결제 실패 (paymentId={}, reason={})", paymentId, cause.getMessage());
-            return;
+            Throwable cause = e.getCause() != null ? e.getCause() : e; // .join()이 CompletionException으로 감싸므로 원인 예외를 꺼냄
+            log.warn("{} (paymentId={}, reason={})", failureLogMessage, paymentId, cause.getMessage());
+            return null;
         }
 
-        try {
-            verifyAndFinalize(payment);
-        } catch (BusinessException e) {
-            log.warn("갱신 결제 검증 실패 (paymentId={}, reason={})", paymentId, e.getMessage());
-        }
+        return payment;
     }
 
+    // 이미 조회(가급적 락까지 걸어 조회)된 활성 빌링키를 넘겨받아 PortOne 삭제 + 로컬 DELETED 처리만 한다.
+    // "활성 빌링키가 있는지"는 호출자가 먼저 판단하게 해서(SubscriptionService.cancel() 참고), 여기선
+    // "없음"을 예외로 알릴 필요가 없다. (예전엔 User만 받아서 여기서 직접 조회 후 없으면 예외를 던졌는데,
+    // 그 예외를 호출자가 다른 빈(bean)의 @Transactional 경계 너머에서 catch-and-continue로 처리하면서
+    // Spring이 공유 트랜잭션을 rollback-only로 표시해버려 커밋 시점에 UnexpectedRollbackException이
+    // 나는 문제가 있었음. 판단을 호출자 쪽으로 옮겨서 이 메서드가 "실패할 수 있는 조회"를 아예 안 하게 함)
     @Transactional
-    public void deleteBillingKey(User user, String reason) {
-        BillingKey billingKey = billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE)
-                .orElseThrow(() -> new BusinessException(PaymentErrorCode.BILLING_KEY_NOT_FOUND));
+    public void deleteBillingKey(BillingKey billingKey, String reason) {
+        requestPortOneBillingKeyDeletion(billingKey.getBillingKey(), reason);
 
+        billingKey.setStatus(BillingKeyStatus.DELETED);
+        billingKey.setDeletedAt(LocalDateTime.now());
+    }
+
+    // PortOne에 실제 빌링키 삭제를 요청한다. 실패하면 예외를 던지므로, 실패해도 흐름을 막고 싶지
+    // 않은 호출부는 감싸서 처리한다(cleanUpBillingKey 참고).
+    private void requestPortOneBillingKeyDeletion(String billingKey, String reason) {
         try {
-            portOneClient.getPayment().getBillingKey().deleteBillingKey(billingKey.getBillingKey(), reason, null, null).join();
+            portOneClient.getPayment().getBillingKey().deleteBillingKey(billingKey, reason, null, null).join();
         } catch (RuntimeException e) {
             // PortOne 쪽에 이미 삭제된 빌링키면(관리자 콘솔에서 미리 지웠거나 중복 요청 등)
             // 원하는 상태(빌링키 없음)는 이미 달성된 거라 에러가 아니라 성공으로 취급함.
@@ -236,6 +267,19 @@ public class PaymentService {
             if (!(cause instanceof BillingKeyAlreadyDeletedException)) {
                 throw new BusinessException(PaymentErrorCode.BILLING_KEY_DELETE_FAILED);
             }
+        }
+    }
+
+    // completePayment(빌링키 교체)/finalizeCancellation(구독 확정 취소)처럼 결제/구독 처리 자체는
+    // 이미 끝난 상황에서 뒷정리로 예전 빌링키를 지우는 곳들이 공유하는 헬퍼.
+    // PortOne 호출이 실패해도 예외를 던져 이미 끝난 핵심 흐름을 막지 않고 로그만 남긴다.
+    // (로컬은 DELETED로 비활성화되어 재사용되지 않으니 실질 위험은 낮음. PortOne 콘솔에서 수동 확인/정리 가능)
+    private void cleanUpBillingKey(BillingKey billingKey, String reason) {
+        try {
+            requestPortOneBillingKeyDeletion(billingKey.getBillingKey(), reason);
+        } catch (BusinessException e) {
+            log.warn("PortOne 빌링키 삭제 실패 - 로컬은 DELETED로 처리하되 PortOne 콘솔에서 수동 확인 필요 (billingKeyId={}, reason={})",
+                    billingKey.getId(), reason);
         }
 
         billingKey.setStatus(BillingKeyStatus.DELETED);
@@ -297,25 +341,39 @@ public class PaymentService {
         } else {
             subscription.markPastDue(subscription.getExpiredAt().plusDays(3));
             payment.getUser().setSubscribed(false);
+            // 유예기간에 처음 들어가는 시점에만 알림 - 재시도 중 또 실패할 때마다 매번 보내진 않음
+            // (사용자가 결제수단을 고칠 기회가 있다는 걸 알아야 하니, 접근이 끊기는 이 순간엔 반드시 안내)
+            emailService.sendSubscriptionPastDue(payment.getUser().getUsername());
         }
     }
 
     // 유예기간을 다 썼거나(재시도 소진) 애초에 빌링키가 없을 때의 최종 취소 처리.
-    // 구독 취소 + 접근 권한 해제 + 알림 메일 + 빌링키 로컬 정리까지 한 번에.
-    private void finalizeCancellation(Subscription subscription, User user) {
+    // 구독 취소 + 접근 권한 해제 + 빌링키 로컬 정리까지 한 번에.
+    //
+    // notifyRenewalFailed: "결제 실패로 종료" 메일을 보낼지 여부는 호출부가 정한다.
+    // 빌링키가 없어서 여기 오는 경우(attemptRenewalCharge)는 사실상 사용자가 직접 해지한 것뿐이라
+    // (유예기간 중엔 빌링키를 안 지우고, PAST_DUE 구독은 cancel()로도 못 지움 -> 빌링키 소실 경로가
+    //  자진 해지뿐임) 이미 cancel() 시점에 "해지 완료" 메일을 보냈음. 여기서 또 "결제 실패" 메일을
+    // 보내면 자진 해지한 사람한테 사실과 다른 안내가 감.
+    private void finalizeCancellation(Subscription subscription, User user, boolean notifyRenewalFailed) {
         subscription.cancel();
         user.setSubscribed(false);
-        emailService.sendSubscriptionRenewalFailed(user.getUsername());
+        if (notifyRenewalFailed) {
+            emailService.sendSubscriptionRenewalFailed(user.getUsername());
+        }
 
         billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE)
-                .ifPresent(billingKey -> {
-                    billingKey.setStatus(BillingKeyStatus.DELETED);
-                    billingKey.setDeletedAt(LocalDateTime.now());
-                });
+                .ifPresent(billingKey -> cleanUpBillingKey(billingKey, "구독 종료에 따른 빌링키 정리"));
     }
 
     @Transactional
     public void verifyAndFinalize(Payment payment) {
+        // 웹훅과 completePayment/재결제 시도가 같은 paymentId를 거의 동시에 검증할 수 있어서
+        // (check-then-act 레이스) 행 락을 걸어 재조회한다. 나중에 들어온 쪽은 먼저 것이 커밋될
+        // 때까지 여기서 블록됐다가, 락이 풀리면 이미 PAID로 바뀐 상태를 보고 바로 아래 가드에서
+        // 조용히 리턴된다. (문의 스레드 생성 동시성 제어와 동일한 패턴 재사용)
+        payment = paymentRepository.findByPaymentIdForUpdate(payment.getPaymentId())
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
         // 이미 PAID(완료)면 조용히 종료
         if (payment.getStatus() == PaymentStatus.PAID) {
@@ -323,8 +381,26 @@ public class PaymentService {
         }
 
         // 포트원에 실제 결제 조회
-        io.portone.sdk.server.payment.Payment portOnePayment =
-                portOneClient.getPayment().getPayment(payment.getPaymentId()).join();
+        io.portone.sdk.server.payment.Payment portOnePayment;
+        try {
+            portOnePayment = portOneClient.getPayment().getPayment(payment.getPaymentId()).join();
+        } catch (RuntimeException e) {
+            // 재조회 자체가 실패한 경우 - 결제(payWithBillingKey)는 이미 끝났을 수도 있어서
+            // 진짜 성공/실패인지 알 수가 없음. 그래서 확실치 않을 땐 일단 실패로 간주해 재시도 속도를
+            // 매시간 -> 하루 1회로 늦추고, PortOne 콘솔에서 수동으로 확인할 시간을 벌어준다.
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            log.error("결제 검증 재조회 실패 - PortOne 콘솔에서 실제 청구 여부 수동 확인 필요 (paymentId={}, reason={})",
+                    payment.getPaymentId(), cause.getMessage());
+            markPaymentFailed(payment);
+            // 여기서 조용히 return하면(예외를 안 던지면) completePayment()도 그냥 정상 종료돼서
+            // 컨트롤러가 200("결제가 완료되었습니다")을 응답해버림 - 실제론 방금 FAILED로 처리했는데
+            // 사용자에겐 성공했다고 알려주는 꼴. 그래서 다른 실패 분기들과 마찬가지로 예외를 던진다.
+            // (attemptRenewalCharge/handleWebhook은 이미 이 메서드를 try/catch(BusinessException)로
+            // 감싸서 로그만 남기고 넘어가므로, 여기서 던져도 그쪽 트랜잭션이 롤백되진 않는다.
+            // completePayment()는 noRollbackFor=BusinessException.class라 지금까지 저장한
+            // Payment/BillingKey 기록은 그대로 유지된 채 예외만 컨트롤러까지 전달된다.)
+            throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
+        }
 
         // 아직 결제 진행 중(Ready/PayPending)이면 판단 보류 - 결제 완료 전 웹훅이 먼저 도착하는 경우 대비
         if (portOnePayment instanceof ReadyPayment || portOnePayment instanceof PayPendingPayment) {

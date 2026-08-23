@@ -53,17 +53,26 @@ export default function PaymentModal({ onClose, onSubscribed }) {
       }
 
       // 3. 완료 API — 발급받은 billingKey를 서버가 검증·저장하고, 그 빌링키로 첫 결제까지 직접 수행한다.
+      // 이 호출이 성공하면 카드 청구 + 서버 쪽 구독 생성까지 이미 다 끝난 것이므로, 아래 구독 재조회는
+      // 별도 try/catch로 분리해 실패해도 "결제 실패"로 보이지 않게 한다.
       await paymentApi.complete(response.billingKey, PLAN_TYPE)
-
-      // complete API는 결제 성공 여부만 알려줄 뿐 구독 정보를 내려주지 않으므로,
-      // 최신 구독 상태를 별도로 조회해서 상위 컴포넌트에 전달한다.
-      const { data: subscriptionRes } = await subscriptionApi.getMy()
-
-      setStage('success')
-      setTimeout(() => onSubscribed(subscriptionRes.data), 900)
     } catch (err) {
       setStage('error')
       setError(err.response?.data?.message ?? err.message ?? '결제에 실패했습니다.')
+      return
+    }
+
+    setStage('success')
+
+    try {
+      // complete API는 결제 성공 여부만 알려줄 뿐 구독 정보를 내려주지 않으므로,
+      // 최신 구독 상태를 별도로 조회해서 상위 컴포넌트에 전달한다.
+      const { data: subscriptionRes } = await subscriptionApi.getMy()
+      setTimeout(() => onSubscribed(subscriptionRes.data), 900)
+    } catch (err) {
+      // 결제 자체는 이미 성공했고 이 조회만 (일시적 네트워크 문제 등으로) 실패한 것이므로,
+      // 사용자에게는 그대로 성공 화면을 보여준다. 상위 화면 갱신은 다음 방문/새로고침 때 자연히 맞춰진다.
+      console.error('결제 후 구독 정보 재조회 실패', err)
     }
   }
 

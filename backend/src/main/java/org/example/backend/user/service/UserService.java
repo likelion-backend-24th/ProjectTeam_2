@@ -9,6 +9,7 @@ import org.example.backend.study.repository.StudyPostCommentRepository;
 import org.example.backend.study.repository.StudyPostRepository;
 import org.example.backend.study.repository.StudyRepository;
 import org.example.backend.study.service.StudyService;
+import org.example.backend.subscription.exception.SubscriptionErrorCode;
 import org.example.backend.subscription.service.SubscriptionService;
 import org.example.backend.user.dto.UserResponse;
 import org.example.backend.user.entity.AccountStatus;
@@ -94,9 +95,17 @@ public class UserService {
         if(user.getPassword() != null && !passwordEncoder.matches(password,user.getPassword())){
             throw new BusinessException(UserErrorCode.INVALID_CURRENT_PASSWORD);
         }
-        // 구독중이면 구독 취소
-        if (user.isSubscribed()){
+        // 구독 중(ACTIVE)이거나 유예기간(PAST_DUE) 중이면 구독/빌링키 정리.
+        // isSubscribed()는 PAST_DUE에 들어가는 순간 이미 false로 꺼지므로(접근 권한 차단 목적) 판단
+        // 기준으로 쓸 수 없음 - 그걸 기준으로 삼으면 카드 결제가 실패해서 유예기간 중이던 사용자가
+        // 탈퇴해도 빌링키가 안 지워져서, 탈퇴한 사용자 카드로 스케줄러가 유예기간 내내 계속 청구를 시도함.
+        // 그래서 대신 cancel()을 시도해보고, 애초에 살아있는 구독이 없던 사용자면 그냥 넘어간다.
+        try {
             subscriptionService.cancel(user.getId());
+        } catch (BusinessException e) {
+            if (e.getErrorCode() != SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND) {
+                throw e;
+            }
         }
 
         // 회원탈퇴자가 스터디 방장인 스터디는 소프트 딜리트

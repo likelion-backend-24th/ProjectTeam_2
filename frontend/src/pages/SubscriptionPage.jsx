@@ -84,7 +84,9 @@ export default function SubscriptionPage() {
     }
   }
 
-  const isSubscribed = Boolean(subscription)
+  // status: undefined(조회 전) | null(구독 없음) | 'ACTIVE'(정상 이용 중) | 'PAST_DUE'(결제 실패, 유예기간 중 - 접근 권한은 이미 끊김)
+  const isPastDue = subscription?.status === 'PAST_DUE'
+  const isSubscribed = Boolean(subscription) && !isPastDue
 
   return (
     <>
@@ -129,7 +131,30 @@ export default function SubscriptionPage() {
               ))}
             </ul>
 
-            {isSubscribed ? (
+            {isPastDue ? (
+              <div className={styles.pastDueBox}>
+                <p className={styles.pastDueLabel}>⚠ 결제에 실패했어요</p>
+                <p className={styles.activeExpiry}>
+                  {subscription.autoRenew
+                    ? subscription.graceEndsAt
+                      ? `${formatDate(subscription.graceEndsAt)}까지 결제수단을 업데이트하면 자동으로 재시도해 복구돼요`
+                      : '결제수단을 업데이트하면 자동으로 재시도해 복구돼요'
+                    : '이용 권한이 중단됐어요. 다시 구독하시려면 새로 결제해주세요.'}
+                </p>
+                {cancelError && <p className={styles.cancelError}>{cancelError}</p>}
+                {subscription.autoRenew ? (
+                  <button type="button" className={styles.cancelButton} onClick={handleCancel} disabled={isCancelling}>
+                    {isCancelling ? '처리 중...' : '재시도 중단(구독 해지)'}
+                  </button>
+                ) : (
+                  // 이미 재시도용 결제수단도 없는 상태(직접 해지했거나 카드가 지워짐) -> 새로 구독해야 함.
+                  // 완료 API는 PAST_DUE 구독을 자동으로 정리하고 새로 시작해준다(서버 PaymentService.completePayment 참고).
+                  <button type="button" className={styles.premiumButton} onClick={handleSubscribeClick}>
+                    지금 다시 구독
+                  </button>
+                )}
+              </div>
+            ) : isSubscribed ? (
               <div className={styles.activeBox}>
                 <p className={styles.activeLabel}>{subscription.autoRenew ? '✓ 구독 중이에요' : '해지 예약됨'}</p>
                 {subscription?.expiredAt && (
