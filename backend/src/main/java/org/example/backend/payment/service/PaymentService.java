@@ -3,6 +3,7 @@ package org.example.backend.payment.service;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.payment.client.PortOnePaymentClient;
+import org.example.backend.payment.dto.PaymentInfoResponse;
 import org.example.backend.payment.dto.PortOnePaymentResponse;
 import org.example.backend.payment.entity.*;
 import org.example.backend.payment.exception.PaymentErrorCode;
@@ -180,6 +181,57 @@ public class PaymentService {
         payment.setSubscription(subscription);
 
         scheduleNextPayment(user, schedule.getBillingKey(), newExpiredAt);
+    }
+
+    // 정기결제 해지 예약->다음 자동결제만 취소, 이용 기간은 만료일까지 유지됨
+    @Transactional
+    public void cancelAutoRenewal(Long userId) {
+        SubscriptionSchedule schedule = subscriptionScheduleRepository.findFirstByUser_IdOrderByCreatedAtDesc(userId)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.SUBSCRIPTION_SCHEDULE_NOT_FOUND));
+
+        if (!schedule.getAutoRenew()) {
+            return;
+        }
+
+        portOnePaymentClient.cancelSchedule(schedule.getBillingKey().getBillingKey());
+
+        schedule.setAutoRenew(false);
+    }
+
+    // 내 정기결제 예약 상태 조회
+    @Transactional(readOnly = true)
+    public PaymentInfoResponse getMySchedule(Long userId) {
+        SubscriptionSchedule schedule = subscriptionScheduleRepository.findFirstByUser_IdOrderByCreatedAtDesc(userId)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.SUBSCRIPTION_SCHEDULE_NOT_FOUND));
+
+        return PaymentInfoResponse.builder()
+                .nextChargeAt(schedule.getNextChargeAt())
+                .autoRenew(schedule.getAutoRenew())
+                .build();
+    }
+
+    // 정기결제 재개-> 취소했던 다음 자동결제를 같은 예정일로 다시 예약함
+    @Transactional
+    public void resumeAutoRenewal(Long userId) {
+        SubscriptionSchedule schedule = subscriptionScheduleRepository.findFirstByUser_IdOrderByCreatedAtDesc(userId)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.SUBSCRIPTION_SCHEDULE_NOT_FOUND));
+
+        if (schedule.getAutoRenew()) {
+            return;
+        }
+
+        String newNextPaymentId = "p2g-csh-" + UUID.randomUUID().toString().replace("-", "");
+
+        String timeToPay = schedule.getNextChargeAt().atZone(ZoneId.of("Asia/Seoul"))
+                .withZoneSameInstant(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
+        portOnePaymentClient.schedule(
+                newNextPaymentId, schedule.getBillingKey().getBillingKey(),
+                "prep2gether 구독 (정기결제)", subscriptionPrice, timeToPay);
+
+        schedule.setNextPaymentId(newNextPaymentId);
+        schedule.setAutoRenew(true);
     }
 
 

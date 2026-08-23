@@ -28,10 +28,12 @@ export default function SubscriptionPage() {
   const [cancelError, setCancelError] = useState('')
   const [isSubscribing, setIsSubscribing] = useState(false)
   const [subscribeError, setSubscribeError] = useState('')
+  const [schedule, setSchedule] = useState(null)
 
   useEffect(() => {
     if (!isAuthenticated) {
       setSubscription(null)
+      setSchedule(null)
       return
     }
     let ignore = false
@@ -46,6 +48,16 @@ export default function SubscriptionPage() {
         // 구독 내역이 없으면 404(SUBSCRIPTION_NOT_FOUND) — 정상적인 "무료 회원" 상태라 에러로 취급하지 않는다.
         setSubscription(null)
       })
+
+       paymentApi
+    .getSchedule()
+    .then(({ data }) => {
+      if (!ignore) setSchedule(data.data)
+    })
+    .catch(() => {
+      if (ignore) return
+      setSchedule(null)
+    })
 
     return () => {
       ignore = true
@@ -66,6 +78,8 @@ export default function SubscriptionPage() {
       await paymentApi.subscribe()
       const { data } = await subscriptionApi.getMy()
       setSubscription(data.data)
+      const { data: scheduleData } = await paymentApi.getSchedule()
+      setSchedule(scheduleData.data)
       await refetchMe()
       alert('구독이 시작됐어요!')
     } catch (err) {
@@ -111,19 +125,37 @@ export default function SubscriptionPage() {
   }
 
   async function handleCancel() {
-    if (!window.confirm('구독을 해지할까요? 해지하면 프리미엄 기능을 바로 이용할 수 없어요.')) return
-    setCancelError('')
-    setIsCancelling(true)
-    try {
-      await subscriptionApi.cancel()
-      setSubscription(null)
-      await refetchMe()
-    } catch (err) {
-      setCancelError(err.response?.data?.message ?? '구독 해지에 실패했습니다.')
-    } finally {
-      setIsCancelling(false)
-    }
+  if (!window.confirm('구독을 해지할까요? 다음 결제만 취소되고, 이미 결제한 기간까지는 계속 이용할 수 있어요.')) return
+  setCancelError('')
+  setIsCancelling(true)
+  try {
+    await paymentApi.cancelAutoRenewal()
+    const { data } = await paymentApi.getSchedule()
+    setSchedule(data.data)
+    alert('다음 결제가 취소됐어요. 이용 기간까지는 계속 이용 가능해요.')
+  } catch (err) {
+    setCancelError(err.response?.data?.message ?? '구독 해지에 실패했습니다.')
+  } finally {
+    setIsCancelling(false)
   }
+}
+
+async function handleResume() {
+  setCancelError('')
+  setIsCancelling(true)
+  try {
+    await paymentApi.resumeAutoRenewal()
+    const { data } = await paymentApi.getSchedule()
+    setSchedule(data.data)
+    alert('정기결제가 다시 예약됐어요!')
+  } catch (err) {
+    setCancelError(err.response?.data?.message ?? '정기결제 재개에 실패했습니다.')
+  } finally {
+    setIsCancelling(false)
+  }
+}
+
+
 
   const isSubscribed = Boolean(subscription)
 
@@ -173,13 +205,22 @@ export default function SubscriptionPage() {
             {isSubscribed ? (
               <div className={styles.activeBox}>
                 <p className={styles.activeLabel}>✓ 구독 중이에요</p>
-                {subscription?.expiredAt && (
-                  <p className={styles.activeExpiry}>다음 결제일 {formatDate(subscription.expiredAt)}</p>
-                )}
+                {schedule?.autoRenew === true && schedule?.nextChargeAt && (
+  <p className={styles.activeExpiry}>다음 결제일 {formatDate(schedule.nextChargeAt)}</p>
+)}
+{schedule?.autoRenew === false && subscription?.expiredAt && (
+  <p className={styles.activeExpiry}>{formatDate(subscription.expiredAt)}까지 이용 가능 (자동결제 해지됨)</p>
+)}
                 {cancelError && <p className={styles.cancelError}>{cancelError}</p>}
-                <button type="button" className={styles.cancelButton} onClick={handleCancel} disabled={isCancelling}>
-                  {isCancelling ? '해지 처리 중...' : '구독 해지'}
-                </button>
+                {schedule?.autoRenew !== false ? (
+      <button type="button" className={styles.cancelButton} onClick={handleCancel} disabled={isCancelling}>
+        {isCancelling ? '해지 처리 중...' : '구독 해지'}
+      </button>
+    ) : (
+      <button type="button" className={styles.cancelButton} onClick={handleResume} disabled={isCancelling}>
+        {isCancelling ? '처리 중...' : '다시 구독하기'}
+      </button>
+    )}
               </div>
             ) : (
               <>

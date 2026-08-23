@@ -9,4 +9,6 @@ import java.util.Optional;
 public interface SubscriptionScheduleRepository extends JpaRepository<SubscriptionSchedule, Long> {
     Optional<SubscriptionSchedule> findByNextPaymentId(String nextPaymentId);
 
+    //유저의 예약기록중 가장 최근 것 하나를 가져오는것
+    Optional<SubscriptionSchedule> findFirstByUser_IdOrderByCreatedAtDesc(Long userId);
 }

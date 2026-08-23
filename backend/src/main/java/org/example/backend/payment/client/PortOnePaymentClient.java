@@ -1,6 +1,7 @@
 package org.example.backend.payment.client;
 
 import org.example.backend.payment.dto.PortOneBillingKeyChargeRequest;
+import org.example.backend.payment.dto.PortOneCancelScheduleRequest;
 import org.example.backend.payment.dto.PortOnePaymentResponse;
 import org.example.backend.payment.dto.PortOneScheduleRequest;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +24,7 @@ public class PortOnePaymentClient {
     private String webhookNoticeUrl;
 
     private static final String PORTONE_PAYMENT_URL = "https://api.portone.io/payments/";
+    private static final String PORTONE_SCHEDULE_URL = "https://api.portone.io/payment-schedules";
 
     // 결제 단건 조회 (검증용 재조회)
     public PortOnePaymentResponse getPayment(String paymentId) {
@@ -53,6 +55,18 @@ public class PortOnePaymentClient {
 
         restClient.post()
                 .uri(PORTONE_PAYMENT_URL + paymentId + "/schedule")
+                .header("Authorization", "PortOne " + apiSecret)
+                .body(request)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    // 이 빌링키로 걸린 모든 결제 예약 취소
+    public void cancelSchedule(String billingKey) {
+        PortOneCancelScheduleRequest request = new PortOneCancelScheduleRequest(storeId, billingKey);
+
+        restClient.method(org.springframework.http.HttpMethod.DELETE)
+                .uri(PORTONE_SCHEDULE_URL)
                 .header("Authorization", "PortOne " + apiSecret)
                 .body(request)
                 .retrieve()
