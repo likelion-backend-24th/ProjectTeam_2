@@ -86,6 +86,11 @@ export default function SubscriptionPage() {
       setSubscription(data.data)
       if (data.data.status === 'ACTIVE') {
         await refetchMe() // 복구됐으니 헤더 등 상위 화면의 구독 상태도 같이 갱신
+      } else if (data.data.status === 'CANCELLED') {
+        // 재시도 처리 중 다른 탭 등에서 이미 해지(빌링키 삭제)돼 구독이 종료된 경우 - 결제 실패가
+        // 아니라 해지가 확정된 것이므로 다른 문구로 안내한다.
+        setRetryError('구독이 이미 해지 처리됐어요. 다시 구독하시려면 새로 결제해주세요.')
+        await refetchMe()
       } else {
         setRetryError('다시 시도했지만 결제에 실패했어요. 카드 상태를 확인해주세요.')
       }
@@ -113,9 +118,12 @@ export default function SubscriptionPage() {
     }
   }
 
-  // status: undefined(조회 전) | null(구독 없음) | 'ACTIVE'(정상 이용 중) | 'PAST_DUE'(결제 실패, 유예기간 중 - 접근 권한은 이미 끊김)
+  // status: undefined(조회 전) | null(구독 없음) | 'ACTIVE'(정상 이용 중) | 'PAST_DUE'(결제 실패, 유예기간 중 - 접근 권한은 이미 끊김) | 'CANCELLED'(해지 완료)
   const isPastDue = subscription?.status === 'PAST_DUE'
-  const isSubscribed = Boolean(subscription) && !isPastDue
+  // CANCELLED도 명시적으로 제외 - retryPastDueNow가 레이스로 CANCELLED를 리턴할 수 있는데, 그걸
+  // 걸러내지 않으면 해지된 구독을 "구독 중"으로 잘못 렌더링해서 있지도 않은 "해지 예약 취소" 버튼이 뜬다.
+  const isCancelled = subscription?.status === 'CANCELLED'
+  const isSubscribed = Boolean(subscription) && !isPastDue && !isCancelled
 
   return (
     <>
@@ -224,9 +232,12 @@ export default function SubscriptionPage() {
                 )}
               </div>
             ) : (
-              <button type="button" className={styles.premiumButton} onClick={handleSubscribeClick}>
-                지금 구독
-              </button>
+              <>
+                {retryError && <p className={styles.cancelError}>{retryError}</p>}
+                <button type="button" className={styles.premiumButton} onClick={handleSubscribeClick}>
+                  지금 구독
+                </button>
+              </>
             )}
           </section>
         </div>
