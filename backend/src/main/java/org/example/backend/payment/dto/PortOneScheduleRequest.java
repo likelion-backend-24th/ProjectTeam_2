@@ -2,15 +2,17 @@ package org.example.backend.payment.dto;
 
 import lombok.Getter;
 
+import java.util.List;
+
 // 결제 예약 요청
 @Getter
 public class PortOneScheduleRequest {
 
     private PaymentInput payment;
-    private String timeToPay; //포트원이 요구하는 시간형식때메 문자열
+    private String timeToPay;
 
-    public PortOneScheduleRequest(String storeId, String billingKey, String orderName, Integer totalAmount, String currency, String timeToPay) {
-        this.payment = new PaymentInput(storeId, billingKey, orderName, totalAmount, currency);
+    public PortOneScheduleRequest(String storeId, String billingKey, String orderName, Integer totalAmount, String currency, String timeToPay, String noticeUrl) {
+        this.payment = new PaymentInput(storeId, billingKey, orderName, totalAmount, currency, noticeUrl);
         this.timeToPay = timeToPay;
     }
 
@@ -22,13 +24,15 @@ public class PortOneScheduleRequest {
         private String orderName;
         private Amount amount;
         private String currency;
+        private List<String> noticeUrls;
 
-        public PaymentInput(String storeId, String billingKey, String orderName, Integer totalAmount, String currency) {
+        public PaymentInput(String storeId, String billingKey, String orderName, Integer totalAmount, String currency, String noticeUrl) {
             this.storeId = storeId;
             this.billingKey = billingKey;
             this.orderName = orderName;
             this.amount = new Amount(totalAmount);
             this.currency = currency;
+            this.noticeUrls = noticeUrl == null || noticeUrl.isBlank() ? null : List.of(noticeUrl);
         }
     }
 

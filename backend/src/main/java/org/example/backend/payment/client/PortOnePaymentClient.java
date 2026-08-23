@@ -19,6 +19,9 @@ public class PortOnePaymentClient {
     @Value("${portone.store-id}")
     private String storeId;
 
+    @Value("${portone.webhook-notice-url}")
+    private String webhookNoticeUrl;
+
     private static final String PORTONE_PAYMENT_URL = "https://api.portone.io/payments/";
 
     // 결제 단건 조회 (검증용 재조회)
@@ -46,7 +49,7 @@ public class PortOnePaymentClient {
     // 다음 회차 결제 예약
     public void schedule(String paymentId, String billingKey, String orderName, Integer amount, String timeToPay) {
         PortOneScheduleRequest request =
-                new PortOneScheduleRequest(storeId,billingKey, orderName, amount, "KRW", timeToPay);
+                new PortOneScheduleRequest(storeId, billingKey, orderName, amount, "KRW", timeToPay, webhookNoticeUrl);
 
         restClient.post()
                 .uri(PORTONE_PAYMENT_URL + paymentId + "/schedule")

@@ -45,4 +45,8 @@ public class Subscription {
     public void cancel() {
         this.status = SubscriptionStatus.CANCELLED;
     }
+
+    public void renew(LocalDateTime newExpiredAt) {
+        this.expiredAt = newExpiredAt;
+    }
 }

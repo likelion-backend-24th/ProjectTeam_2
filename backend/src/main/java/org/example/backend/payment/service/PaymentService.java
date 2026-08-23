@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -107,13 +108,16 @@ public class PaymentService {
         payment.setSubscription(subscription);
 
         scheduleNextPayment(user, billingKey, subscription.getExpiredAt());
+        //테스트용 한달말고 1분으로 테스트
+        //scheduleNextPayment(user, billingKey, LocalDateTime.now().plusMinutes(1));
     }
 
     // 다음 회차 결제를 포트원에 예약하고, 우리 DB에도 예약 기록을 남김
     private void scheduleNextPayment(User user, BillingKey billingKey, LocalDateTime nextChargeAt) {
         String nextPaymentId = "p2g-csh-" + UUID.randomUUID().toString().replace("-", "");
 
-        String timeToPay = nextChargeAt.atOffset(ZoneOffset.UTC)
+        String timeToPay = nextChargeAt.atZone(ZoneId.of("Asia/Seoul"))
+                .withZoneSameInstant(ZoneOffset.UTC)
                 .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
         portOnePaymentClient.schedule(
@@ -127,4 +131,56 @@ public class PaymentService {
         schedule.setAutoRenew(true);
         subscriptionScheduleRepository.save(schedule);
     }
+
+    // 정기결제 웹훅 처리: 다음 회차 자동결제 결과를 반영함
+    @Transactional
+    public void handleWebhook(String paymentId) {
+        if (paymentRepository.findByPaymentId(paymentId).isPresent()) {
+            return; // 이미 직접 처리한 결제 — 웹훅에서는 중복 처리 안 함
+        }
+
+        SubscriptionSchedule schedule = subscriptionScheduleRepository.findByNextPaymentId(paymentId)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED));
+
+        //웹훅 바디 안믿고 다시 포트원한테 재조회
+        PortOnePaymentResponse verified = portOnePaymentClient.getPayment(paymentId);
+
+        boolean valid = storeId.equals(verified.getStoreId())
+                && billingChannelKey.equals(verified.getChannel().getKey())
+                && "KRW".equals(verified.getCurrency())
+                && subscriptionPrice == verified.getAmount().getTotal()
+                && "PAID".equals(verified.getStatus());
+
+        User user = schedule.getUser();
+
+        if (!valid) {
+            subscriptionService.cancel(user.getId());
+            return;
+        }
+
+        Order order = new Order();
+        order.setUser(user);
+        order.setStatus(OrderStatus.PAID);
+        order.setAmount(subscriptionPrice);
+        orderRepository.save(order);
+
+        Payment payment = new Payment();
+        payment.setOrder(order);
+        payment.setBillingKey(schedule.getBillingKey());
+        payment.setPaymentId(paymentId);
+        payment.setAmount(subscriptionPrice);
+        payment.setStatus(PaymentStatus.PAID);
+        paymentRepository.save(payment);
+
+        Subscription subscription = subscriptionRepository.findByUserIdAndStatus(user.getId(), SubscriptionStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED));
+
+        LocalDateTime newExpiredAt = subscription.getExpiredAt().plusMonths(1);
+        subscription.renew(newExpiredAt);
+        payment.setSubscription(subscription);
+
+        scheduleNextPayment(user, schedule.getBillingKey(), newExpiredAt);
+    }
+
+
 }

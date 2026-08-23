@@ -44,6 +44,7 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll() // 예외 발생 시 /error로 forward되는데, 막혀있으면 원래 에러(4xx/5xx) 대신 403으로 가려짐
                         .requestMatchers("/api/auth/logout").authenticated() //로그아웃 인증!!
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/payments/webhook").permitAll() //웹훅
                         .requestMatchers(HttpMethod.GET, "/api/studies").permitAll() //비회원
                         .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()//비회원
                         .requestMatchers(HttpMethod.GET, "/api/experts").permitAll() //비회원
