@@ -23,9 +23,19 @@ public class PortOneProperties {
     private String channelKeyPayment;
 
     /**
+     * 정기결제(빌링키) 채널 키
+     */
+    private String channelKeyBilling;
+
+    /**
      * V2 API Secret. 절대 로그·프론트로 노출하지 않는다.
      */
     private String apiSecret;
+
+    /**
+     * 빌링키 암호화 저장용 시크릿.
+     */
+    private String billingKeySecret;
 
     /**
      * PortOne REST API Base URL
@@ -38,8 +48,8 @@ public class PortOneProperties {
     private String paymentIdPrefix;
 
     /**
-     * 테스트 채널 여부. 학생 프로젝트는 항상 true — 이 값과 실제 결제의 테스트 여부가
-     * 다르면 PortOne이 조회 자체를 거부한다 (실거래 오반영 방지).
+     * 테스트 채널 여부. 학생 프로젝트는 항상 true.
+     * 결제 검증 시 PortOne 응답의 channel.type(TEST/LIVE)과 대조해 환경 오반영을 막는다.
      */
     private boolean testMode = true;
 

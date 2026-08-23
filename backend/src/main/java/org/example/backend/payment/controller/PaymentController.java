@@ -43,4 +43,23 @@ public class PaymentController {
                 userDetails.getUser().getId(), request.paymentId());
         return ResponseEntity.ok(ApiResponse.success("구독이 시작되었습니다.", response));
     }
+
+    @Operation(summary = "정기결제 구독 시작", description = "등록된 빌링키로 즉시 청구하고, 성공하면 다음 회차부터 자동 갱신되는 구독을 시작한다.")
+    @PostMapping("/billing-key")
+    public ResponseEntity<ApiResponse<SubscriptionResponse>> subscribeWithBillingKey(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        SubscriptionResponse response = paymentService.subscribeWithBillingKey(userDetails.getUser().getId());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("구독이 시작되었습니다.", response));
+    }
+
+    @Operation(summary = "정기결제 재시도", description = "결제 실패(PAST_DUE) 상태에서 등록된 카드로 즉시 재결제를 시도한다.")
+    @PostMapping("/retry")
+    public ResponseEntity<ApiResponse<SubscriptionResponse>> retry(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        SubscriptionResponse response = paymentService.retrySubscriptionPayment(userDetails.getUser().getId());
+        return ResponseEntity.ok(ApiResponse.success("재결제를 시도했습니다.", response));
+    }
 }

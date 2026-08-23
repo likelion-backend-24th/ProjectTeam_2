@@ -16,6 +16,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,6 +30,8 @@ import org.example.backend.auth.service.EmailService;
 
 @ExtendWith(MockitoExtension.class)
 class SubscriptionServiceTest {
+
+    private static final List<SubscriptionStatus> USABLE = List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE);
 
     @Mock
     private SubscriptionRepository subscriptionRepository;
@@ -52,27 +56,28 @@ class SubscriptionServiceTest {
         user.setStatus(AccountStatus.ACTIVE);
     }
 
+    // ---------- subscribe (일반결제 - 자동갱신 없음) ----------
+
     @Test
     void subscribe_정상이면_ACTIVE구독생성_및_유저플래그갱신() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
-                .thenReturn(Optional.empty());
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.empty());
         when(subscriptionRepository.save(any(Subscription.class))).thenAnswer(inv -> inv.getArgument(0));
 
         SubscriptionResponse response = subscriptionService.subscribe(1L);
 
         assertThat(response.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
         assertThat(response.getExpiredAt()).isEqualTo(response.getStartedAt().plusMonths(1));
+        assertThat(response.isAutoRenew()).isFalse();
         assertThat(user.isSubscribed()).isTrue();
         verify(emailService).sendSubscriptionStarted(user.getUsername());
     }
 
     @Test
-    void subscribe_이미ACTIVE구독있으면_예외() {
+    void subscribe_이미이용중구독있으면_예외() {
         Subscription existing = Subscription.builder().user(user).startedAt(null).expiredAt(null).build();
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
-                .thenReturn(Optional.of(existing));
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.of(existing));
 
         BusinessException e = assertThrows(BusinessException.class,
                 () -> subscriptionService.subscribe(1L));
@@ -89,52 +94,6 @@ class SubscriptionServiceTest {
     }
 
     @Test
-    void cancel_정상이면_CANCELLED전환_및_유저플래그해제() {
-        user.setSubscribed(true);
-        Subscription subscription = Subscription.builder().user(user).startedAt(null).expiredAt(null).build();
-        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
-                .thenReturn(Optional.of(subscription));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-
-        SubscriptionResponse response = subscriptionService.cancel(1L);
-
-        assertThat(response.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
-        assertThat(user.isSubscribed()).isFalse();
-        verify(emailService).sendSubscriptionCancelled(user.getUsername());
-    }
-
-    @Test
-    void cancel_활성구독없으면_예외() {
-        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
-                .thenReturn(Optional.empty());
-
-        BusinessException e = assertThrows(BusinessException.class,
-                () -> subscriptionService.cancel(1L));
-        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND);
-    }
-
-    @Test
-    void getMy_활성구독있으면_반환() {
-        Subscription subscription = Subscription.builder().user(user).startedAt(null).expiredAt(null).build();
-        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
-                .thenReturn(Optional.of(subscription));
-
-        SubscriptionResponse response = subscriptionService.getMy(1L);
-
-        assertThat(response.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
-    }
-
-    @Test
-    void getMy_활성구독없으면_예외() {
-        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
-                .thenReturn(Optional.empty());
-
-        BusinessException e = assertThrows(BusinessException.class,
-                () -> subscriptionService.getMy(1L));
-        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND);
-    }
-
-    @Test
     void subscribe_탈퇴회원이면_예외() {
         user.setStatus(AccountStatus.WITHDRAWN);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
@@ -143,6 +102,147 @@ class SubscriptionServiceTest {
                 () -> subscriptionService.subscribe(1L));
         assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.USER_INACTIVE);
 
-        verify(subscriptionRepository, never()).findByUserIdAndStatus(any(), any());
+        verify(subscriptionRepository, never()).findFirstByUserIdAndStatusIn(any(), any());
+    }
+
+    // ---------- startWithAutoRenew (빌링키 기반 최초 구독) ----------
+
+    @Test
+    void startWithAutoRenew_정상이면_자동갱신켜진구독생성() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.empty());
+        when(subscriptionRepository.save(any(Subscription.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        LocalDateTime expiredAt = LocalDateTime.now().plusMonths(1);
+        subscriptionService.startWithAutoRenew(1L, expiredAt);
+
+        assertThat(user.isSubscribed()).isTrue();
+        verify(subscriptionRepository).save(argThat(Subscription::isAutoRenew));
+    }
+
+    // ---------- renewExisting / recordPaymentFailure (정기결제 갱신/실패) ----------
+
+    @Test
+    void renewExisting_이용기간연장_및_실패횟수초기화() {
+        Subscription subscription = Subscription.builder().user(user).startedAt(LocalDateTime.now()).expiredAt(LocalDateTime.now()).build();
+        subscription.markPaymentFailed();
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.of(subscription));
+
+        LocalDateTime newExpiredAt = LocalDateTime.now().plusMonths(1);
+        subscriptionService.renewExisting(1L, newExpiredAt);
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(subscription.getExpiredAt()).isEqualTo(newExpiredAt);
+        assertThat(subscription.getRetryCount()).isZero();
+    }
+
+    @Test
+    void recordPaymentFailure_최대재시도미만이면_PAST_DUE로전환만() {
+        Subscription subscription = Subscription.builder().user(user).startedAt(LocalDateTime.now()).expiredAt(LocalDateTime.now()).build();
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.of(subscription));
+
+        subscriptionService.recordPaymentFailure(1L);
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.PAST_DUE);
+        assertThat(subscription.getRetryCount()).isEqualTo(1);
+    }
+
+    @Test
+    void recordPaymentFailure_최대재시도도달하면_EXPIRED로전환_및_유저플래그해제() {
+        user.setSubscribed(true);
+        Subscription subscription = Subscription.builder().user(user).startedAt(LocalDateTime.now()).expiredAt(LocalDateTime.now()).build();
+        subscription.markPaymentFailed();
+        subscription.markPaymentFailed();
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.of(subscription));
+
+        subscriptionService.recordPaymentFailure(1L); // 3번째 실패
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.EXPIRED);
+        assertThat(user.isSubscribed()).isFalse();
+    }
+
+    // ---------- cancel / resume (자동갱신 플래그) ----------
+
+    @Test
+    void cancel_정상이면_자동갱신만꺼짐_이용권은유지() {
+        user.setSubscribed(true);
+        Subscription subscription = Subscription.builder().user(user).startedAt(null).expiredAt(null).build();
+        subscription.enableAutoRenew();
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.of(subscription));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        SubscriptionResponse response = subscriptionService.cancel(1L);
+
+        assertThat(response.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(response.isAutoRenew()).isFalse();
+        assertThat(user.isSubscribed()).isTrue(); // 만료일까지는 계속 이용 가능
+        verify(emailService).sendSubscriptionCancelled(user.getUsername());
+    }
+
+    @Test
+    void cancel_이용중구독없으면_예외() {
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.empty());
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> subscriptionService.cancel(1L));
+        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND);
+    }
+
+    @Test
+    void resume_해지예약상태면_자동갱신다시켜짐() {
+        Subscription subscription = Subscription.builder().user(user).startedAt(null).expiredAt(null).build();
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.of(subscription));
+
+        SubscriptionResponse response = subscriptionService.resume(1L);
+
+        assertThat(response.isAutoRenew()).isTrue();
+    }
+
+    @Test
+    void resume_이미자동갱신중이면_예외() {
+        Subscription subscription = Subscription.builder().user(user).startedAt(null).expiredAt(null).build();
+        subscription.enableAutoRenew();
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.of(subscription));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> subscriptionService.resume(1L));
+        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.SUBSCRIPTION_ALREADY_AUTO_RENEW);
+    }
+
+    // ---------- getMy / 조회 헬퍼 ----------
+
+    @Test
+    void getMy_이용중구독있으면_반환() {
+        Subscription subscription = Subscription.builder().user(user).startedAt(null).expiredAt(null).build();
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.of(subscription));
+
+        SubscriptionResponse response = subscriptionService.getMy(1L);
+
+        assertThat(response.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+    }
+
+    @Test
+    void getMy_이용중구독없으면_예외() {
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.empty());
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> subscriptionService.getMy(1L));
+        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND);
+    }
+
+    @Test
+    void isPastDue_PAST_DUE상태면_true() {
+        Subscription subscription = Subscription.builder().user(user).startedAt(LocalDateTime.now()).expiredAt(LocalDateTime.now()).build();
+        subscription.markPaymentFailed();
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.of(subscription));
+
+        assertThat(subscriptionService.isPastDue(1L)).isTrue();
+    }
+
+    @Test
+    void hasUsableSubscription_없으면_false() {
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.empty());
+
+        assertThat(subscriptionService.hasUsableSubscription(1L)).isFalse();
     }
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { subscriptionApi } from '../api'
+import { paymentApi, subscriptionApi } from '../api'
 import SiteHeader from '../components/common/SiteHeader'
 import PaymentModal from '../components/subscription/PaymentModal'
 import { useAuth } from '../context/AuthContext'
@@ -22,11 +22,11 @@ export default function SubscriptionPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  // subscription: undefined(조회 전) | null(구독 없음) | { status, startedAt, expiredAt }
+  // subscription: undefined(조회 전) | null(이용 중인 구독 없음) | { status, startedAt, expiredAt, autoRenew }
   const [subscription, setSubscription] = useState(undefined)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isCancelling, setIsCancelling] = useState(false)
-  const [cancelError, setCancelError] = useState('')
+  const [isActionLoading, setIsActionLoading] = useState(false)
+  const [actionError, setActionError] = useState('')
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -42,9 +42,7 @@ export default function SubscriptionPage() {
       })
       .catch(() => {
         if (ignore) return
-        // 구독 내역이 없으면 404(SUBSCRIPTION_NOT_FOUND) — 정상적인 "무료 회원" 상태라 에러로 취급하지 않는다.
-        // 그 밖의 예기치 못한 실패도 일단 "무료 회원"으로 보여주고, 실제 구독 중이었다면
-        // 구독 시도 시 서버가 SUBSCRIPTION_ALREADY_ACTIVE로 알려준다.
+        // 이용 중인 구독이 없으면 404(SUBSCRIPTION_NOT_FOUND) — 정상적인 "무료 회원" 상태라 에러로 취급하지 않는다.
         setSubscription(null)
       })
 
@@ -58,6 +56,7 @@ export default function SubscriptionPage() {
       navigate('/login', { state: { from: location } })
       return
     }
+    setActionError('')
     setIsModalOpen(true)
   }
 
@@ -67,22 +66,28 @@ export default function SubscriptionPage() {
     await refetchMe()
   }
 
-  async function handleCancel() {
-    if (!window.confirm('구독을 해지할까요? 해지하면 프리미엄 기능을 바로 이용할 수 없어요.')) return
-    setCancelError('')
-    setIsCancelling(true)
+  async function runAction(action, confirmMessage) {
+    if (confirmMessage && !window.confirm(confirmMessage)) return
+    setActionError('')
+    setIsActionLoading(true)
     try {
-      await subscriptionApi.cancel()
-      setSubscription(null)
+      const { data } = await action()
+      setSubscription(data.data)
       await refetchMe()
     } catch (err) {
-      setCancelError(err.response?.data?.message ?? '구독 해지에 실패했습니다.')
+      setActionError(err.response?.data?.message ?? '요청 처리에 실패했어요.')
     } finally {
-      setIsCancelling(false)
+      setIsActionLoading(false)
     }
   }
 
+  const handleCancel = () =>
+    runAction(subscriptionApi.cancel, '다음 회차부터 자동 갱신을 멈출까요? 만료일까지는 계속 이용할 수 있어요.')
+  const handleResume = () => runAction(subscriptionApi.resume)
+  const handleRetry = () => runAction(paymentApi.retrySubscriptionPayment)
+
   const isSubscribed = Boolean(subscription)
+  const isPastDue = subscription?.status === 'PAST_DUE'
 
   return (
     <>
@@ -128,15 +133,40 @@ export default function SubscriptionPage() {
             </ul>
 
             {isSubscribed ? (
-              <div className={styles.activeBox}>
-                <p className={styles.activeLabel}>✓ 구독 중이에요</p>
-                {subscription?.expiredAt && (
-                  <p className={styles.activeExpiry}>다음 결제일 {formatDate(subscription.expiredAt)}</p>
+              <div className={isPastDue ? `${styles.activeBox} ${styles.pastDueBox}` : styles.activeBox}>
+                {isPastDue ? (
+                  <>
+                    <p className={styles.pastDueLabel}>⚠ 결제에 실패했어요</p>
+                    <p className={styles.activeExpiry}>등록된 카드로 자동으로 다시 시도돼요. 지금 바로 재시도할 수도 있어요.</p>
+                  </>
+                ) : subscription.autoRenew ? (
+                  <p className={styles.activeLabel}>✓ 구독 중이에요</p>
+                ) : (
+                  <p className={styles.activeLabel}>해지 예약됨</p>
                 )}
-                {cancelError && <p className={styles.cancelError}>{cancelError}</p>}
-                <button type="button" className={styles.cancelButton} onClick={handleCancel} disabled={isCancelling}>
-                  {isCancelling ? '해지 처리 중...' : '구독 해지'}
-                </button>
+
+                {subscription?.expiredAt && (
+                  <p className={styles.activeExpiry}>
+                    {isPastDue ? '만료 예정일 ' : subscription.autoRenew ? '다음 결제일 ' : '이용 종료 예정일 '}
+                    {formatDate(subscription.expiredAt)}
+                  </p>
+                )}
+
+                {actionError && <p className={styles.cancelError}>{actionError}</p>}
+
+                {isPastDue ? (
+                  <button type="button" className={styles.cancelButton} onClick={handleRetry} disabled={isActionLoading}>
+                    {isActionLoading ? '처리 중...' : '지금 다시 결제'}
+                  </button>
+                ) : subscription.autoRenew ? (
+                  <button type="button" className={styles.cancelButton} onClick={handleCancel} disabled={isActionLoading}>
+                    {isActionLoading ? '처리 중...' : '구독 해지'}
+                  </button>
+                ) : (
+                  <button type="button" className={styles.cancelButton} onClick={handleResume} disabled={isActionLoading}>
+                    {isActionLoading ? '처리 중...' : '구독 재개'}
+                  </button>
+                )}
               </div>
             ) : (
               <button type="button" className={styles.premiumButton} onClick={handleSubscribeClick}>

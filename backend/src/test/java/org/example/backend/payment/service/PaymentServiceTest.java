@@ -2,16 +2,19 @@ package org.example.backend.payment.service;
 
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.payment.client.PortOnePaymentClient;
+import org.example.backend.payment.client.dto.PortOneBillingKeyResponse;
 import org.example.backend.payment.client.dto.PortOnePaymentResponse;
 import org.example.backend.payment.config.PortOneProperties;
+import org.example.backend.payment.dto.response.BillingKeyPrepareResponse;
 import org.example.backend.payment.dto.response.PaymentReadyResponse;
+import org.example.backend.payment.entity.BillingKey;
 import org.example.backend.payment.entity.Payment;
 import org.example.backend.payment.entity.PaymentStatus;
 import org.example.backend.payment.exception.PaymentErrorCode;
+import org.example.backend.payment.repository.BillingKeyRepository;
 import org.example.backend.payment.repository.PaymentRepository;
 import org.example.backend.subscription.dto.response.SubscriptionResponse;
-import org.example.backend.subscription.entity.SubscriptionStatus;
-import org.example.backend.subscription.repository.SubscriptionRepository;
+import org.example.backend.subscription.exception.SubscriptionErrorCode;
 import org.example.backend.subscription.service.SubscriptionService;
 import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.Role;
@@ -42,9 +45,9 @@ class PaymentServiceTest {
     @Mock
     private PaymentRepository paymentRepository;
     @Mock
-    private UserRepository userRepository;
+    private BillingKeyRepository billingKeyRepository;
     @Mock
-    private SubscriptionRepository subscriptionRepository;
+    private UserRepository userRepository;
     @Mock
     private SubscriptionService subscriptionService;
     @Mock
@@ -56,6 +59,7 @@ class PaymentServiceTest {
     private User user;
     private static final String STORE_ID = "store-bfa1cc62-7d02-4979-b0db-7f4b79827b8e";
     private static final String CHANNEL_KEY = "channel-key-c5723eb4-9ee3-4df3-9c56-129d13d4e9d6";
+    private static final String BILLING_CHANNEL_KEY = "channel-key-billing-9e3-4df3-9c56-129d13d4e9d6";
 
     @BeforeEach
     void setUp() {
@@ -68,6 +72,7 @@ class PaymentServiceTest {
         portOneProperties = new PortOneProperties();
         portOneProperties.setStoreId(STORE_ID);
         portOneProperties.setChannelKeyPayment(CHANNEL_KEY);
+        portOneProperties.setChannelKeyBilling(BILLING_CHANNEL_KEY);
         portOneProperties.setApiSecret("test-secret");
         portOneProperties.setPaymentIdPrefix("p2g-kty-");
         PortOneProperties.Subscription sub = new PortOneProperties.Subscription();
@@ -77,9 +82,17 @@ class PaymentServiceTest {
         portOneProperties.setSubscription(sub);
 
         paymentService = new PaymentService(
-                paymentRepository, userRepository, subscriptionRepository,
+                paymentRepository, billingKeyRepository, userRepository,
                 subscriptionService, portOnePaymentClient, portOneProperties
         );
+    }
+
+    private BillingKey activeBillingKey() {
+        return BillingKey.builder()
+                .user(user)
+                .billingKeyToken("billing-key-token")
+                .issuedAt(java.time.LocalDateTime.now())
+                .build();
     }
 
     private Payment readyPayment(String paymentId) {
@@ -99,7 +112,7 @@ class PaymentServiceTest {
                 status,
                 "txn-id",
                 storeId,
-                new PortOnePaymentResponse.Channel("PG", "ch-id", channelKey),
+                new PortOnePaymentResponse.Channel("TEST", "ch-id", channelKey),
                 currency,
                 new PortOnePaymentResponse.Amount(amount, amount),
                 Instant.now()
@@ -111,8 +124,7 @@ class PaymentServiceTest {
     @Test
     void ready_정상이면_READY결제생성_및_서버금액사용() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
-                .thenReturn(Optional.empty());
+        when(subscriptionService.hasUsableSubscription(1L)).thenReturn(false);
         when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
 
         PaymentReadyResponse response = paymentService.readySubscriptionPayment(1L);
@@ -128,8 +140,7 @@ class PaymentServiceTest {
     @Test
     void ready_이미구독중이면_예외() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(subscriptionRepository.findByUserIdAndStatus(1L, SubscriptionStatus.ACTIVE))
-                .thenReturn(Optional.of(mock(org.example.backend.subscription.entity.Subscription.class)));
+        when(subscriptionService.hasUsableSubscription(1L)).thenReturn(true);
 
         BusinessException e = assertThrows(BusinessException.class,
                 () -> paymentService.readySubscriptionPayment(1L));
@@ -267,5 +278,127 @@ class PaymentServiceTest {
                 () -> paymentService.completeSubscriptionPayment(1L, paymentId));
         assertThat(e.getErrorCode()).isEqualTo(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
+    }
+
+    // ---------- 카드(빌링키) 등록 ----------
+
+    @Test
+    void prepareBillingKeyIssue_정상이면_등록에필요한값반환() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        BillingKeyPrepareResponse response = paymentService.prepareBillingKeyIssue(1L);
+
+        assertThat(response.getStoreId()).isEqualTo(STORE_ID);
+        assertThat(response.getChannelKey()).isEqualTo(BILLING_CHANNEL_KEY);
+        assertThat(response.getCustomerId()).isEqualTo("user-1");
+        assertThat(response.getIssueId()).isNotBlank();
+    }
+
+    @Test
+    void completeBillingKeyIssue_PortOne이ISSUED로응답하면_기존카드소프트삭제하고새카드저장() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(portOnePaymentClient.getBillingKey("new-key"))
+                .thenReturn(new PortOneBillingKeyResponse("new-key", "ISSUED",
+                        java.util.List.of(new PortOneBillingKeyResponse.Channel(BILLING_CHANNEL_KEY))));
+        BillingKey existing = activeBillingKey();
+        when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(existing));
+
+        paymentService.completeBillingKeyIssue(1L, "new-key", null);
+
+        assertThat(existing.isActive()).isFalse();
+        verify(billingKeyRepository).save(any(BillingKey.class));
+    }
+
+    @Test
+    void completeBillingKeyIssue_채널불일치면_예외() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(portOnePaymentClient.getBillingKey("new-key"))
+                .thenReturn(new PortOneBillingKeyResponse("new-key", "ISSUED",
+                        java.util.List.of(new PortOneBillingKeyResponse.Channel("다른-채널"))));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> paymentService.completeBillingKeyIssue(1L, "new-key", null));
+        assertThat(e.getErrorCode()).isEqualTo(PaymentErrorCode.BILLING_KEY_VERIFICATION_FAILED);
+        verify(billingKeyRepository, never()).save(any());
+    }
+
+    @Test
+    void completeBillingKeyIssue_수동승인이면_confirm으로_실제빌링키확정() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(portOnePaymentClient.confirmBillingKeyIssue("issue-token")).thenReturn("real-billing-key");
+
+        paymentService.completeBillingKeyIssue(1L, "NEEDS_CONFIRMATION", "issue-token");
+
+        verify(portOnePaymentClient, never()).getBillingKey(anyString());
+        verify(billingKeyRepository).save(argThat(bk -> bk.getBillingKeyToken().equals("real-billing-key")));
+    }
+
+    // ---------- 빌링키 청구 (최초 구독 / 재시도 / 스케줄러 공용) ----------
+
+    @Test
+    void chargeSubscription_성공하면_결제PAID_및_최초구독시작() {
+        when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeBillingKey()));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(portOnePaymentClient.getPayment(anyString()))
+                .thenReturn(paidResponse("PAID", STORE_ID, BILLING_CHANNEL_KEY, "KRW", 9900L));
+
+        boolean success = paymentService.chargeSubscription(user, false);
+
+        assertThat(success).isTrue();
+        verify(subscriptionService).startWithAutoRenew(eq(1L), any());
+        verify(subscriptionService, never()).recordPaymentFailure(anyLong());
+    }
+
+    @Test
+    void chargeSubscription_재시도이고_검증실패하면_실패기록만하고_예외없음() {
+        when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeBillingKey()));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(portOnePaymentClient.getPayment(anyString()))
+                .thenReturn(paidResponse("FAILED", STORE_ID, BILLING_CHANNEL_KEY, "KRW", 9900L));
+
+        boolean success = paymentService.chargeSubscription(user, true);
+
+        assertThat(success).isFalse();
+        verify(subscriptionService).recordPaymentFailure(1L);
+        verify(subscriptionService, never()).renewExisting(anyLong(), any());
+    }
+
+    @Test
+    void chargeSubscription_등록된카드없으면_예외() {
+        when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.empty());
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> paymentService.chargeSubscription(user, false));
+        assertThat(e.getErrorCode()).isEqualTo(PaymentErrorCode.BILLING_KEY_NOT_FOUND);
+        verifyNoInteractions(paymentRepository);
+    }
+
+    // ---------- 정기결제 재시도 API ----------
+
+    @Test
+    void retrySubscriptionPayment_PAST_DUE아니면_예외() {
+        when(subscriptionService.isPastDue(1L)).thenReturn(false);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> paymentService.retrySubscriptionPayment(1L));
+        assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.SUBSCRIPTION_NOT_PAST_DUE);
+        verifyNoInteractions(billingKeyRepository);
+    }
+
+    @Test
+    void retrySubscriptionPayment_실패해도_예외없이_현재상태반환() {
+        SubscriptionResponse expected = mock(SubscriptionResponse.class);
+        when(subscriptionService.isPastDue(1L)).thenReturn(true);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeBillingKey()));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(portOnePaymentClient.getPayment(anyString()))
+                .thenReturn(paidResponse("FAILED", STORE_ID, BILLING_CHANNEL_KEY, "KRW", 9900L));
+        when(subscriptionService.getMy(1L)).thenReturn(expected);
+
+        SubscriptionResponse result = paymentService.retrySubscriptionPayment(1L);
+
+        assertThat(result).isSameAs(expected);
+        verify(subscriptionService).recordPaymentFailure(1L);
     }
 }

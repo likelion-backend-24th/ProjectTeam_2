@@ -1,43 +1,53 @@
-import { CheckCircle2, X } from 'lucide-react'
+import { requestIssueBillingKey } from '@portone/browser-sdk/v2'
+import { CheckCircle2, CreditCard, X } from 'lucide-react'
 import { useState } from 'react'
-import { subscriptionApi } from '../../api'
+import { billingKeyApi, paymentApi } from '../../api'
 import styles from './PaymentModal.module.css'
 
-// F-UI-12: 실제 PG 연동 없이 프론트에서 카드 입력 폼만 흉내 낸 뒤, 성공하면 백엔드에
-// 구독 상태 반영(Mock)을 요청한다. 카드 정보는 어디에도 전송하지 않는다(입력값 검증만 함).
-export default function PaymentModal({ onClose, onSubscribed }) {
-  const [cardNumber, setCardNumber] = useState('')
-  const [expiry, setExpiry] = useState('')
-  const [cvc, setCvc] = useState('')
-  const [stage, setStage] = useState('form') // 'form' | 'processing' | 'success' | 'error'
-  const [error, setError] = useState('')
+const PLAN_FEATURES = ['전문가 1:1 상담 무제한', '스터디 개설·참여 무제한', '구독자 전용 스터디 참여']
 
-  const isFormValid = cardNumber.replace(/\s/g, '').length === 16 && /^\d{2}\/\d{2}$/.test(expiry) && cvc.length === 3
+// 카드 정보는 PortOne이 직접 띄우는 등록 창에서만 입력받는다 (우리 서버/프론트를 거치지 않음).
+// 등록된 카드는 매달 자동으로 청구되며, 결제 성공 여부는 서버가 PortOne 재조회로 직접 검증한다.
+export default function PaymentModal({ onClose, onSubscribed }) {
+  const [stage, setStage] = useState('summary') // 'summary' | 'processing' | 'success' | 'error'
+  const [error, setError] = useState('')
 
   function closeUnlessProcessing() {
     if (stage === 'processing') return
     onClose()
   }
 
-  async function handlePay(event) {
-    event.preventDefault()
-    if (!isFormValid) {
-      setError('카드 정보를 다시 확인해주세요.')
-      return
-    }
+  async function handleSubscribe() {
     setError('')
     setStage('processing')
 
-    // 실제 결제창처럼 잠깐의 처리 시간을 흉내낸다.
-    await new Promise((resolve) => setTimeout(resolve, 700))
-
     try {
-      const { data } = await subscriptionApi.subscribe()
+      const { data: prepareRes } = await billingKeyApi.prepareIssue()
+      const { storeId, channelKey, issueId, customerId } = prepareRes.data
+
+      const issued = await requestIssueBillingKey({
+        storeId,
+        channelKey,
+        billingKeyMethod: 'CARD',
+        issueId,
+        issueName: 'prep2gether 정기결제 카드 등록',
+        customer: { customerId },
+      })
+
+      if (!issued || issued.code) {
+        throw new Error(issued?.message ?? '카드 등록이 취소되었어요.')
+      }
+
+      // 채널이 수동 승인이면 billingKey는 'NEEDS_CONFIRMATION' 자리표시자로 오고,
+      // billingIssueToken으로 서버가 PortOne에 발급을 확정해야 진짜 빌링키를 받을 수 있다.
+      await billingKeyApi.completeIssue(issued.billingKey, issued.billingIssueToken)
+      const { data } = await paymentApi.subscribeWithBillingKey()
+
       setStage('success')
       setTimeout(() => onSubscribed(data.data), 900)
     } catch (err) {
       setStage('error')
-      setError(err.response?.data?.message ?? '결제에 실패했습니다.')
+      setError(err.response?.data?.message ?? err.message ?? '카드 등록 또는 결제에 실패했어요.')
     }
   }
 
@@ -58,66 +68,33 @@ export default function PaymentModal({ onClose, onSubscribed }) {
           </div>
         ) : (
           <>
-            <p className={styles.eyebrow}>MOCK PAYMENT</p>
-            <h2 className={styles.title}>프리미엄 구독</h2>
-            <p className={styles.price}>9,900원 / 월</p>
+            <p className={styles.eyebrow}>프리미엄 구독</p>
+            <h2 className={styles.title}>매달 자동으로 결제돼요</h2>
+            <p className={styles.price}>
+              9,900원<span className={styles.priceUnit}> / 월</span>
+            </p>
 
-            <form className={styles.form} onSubmit={handlePay}>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="cardNumber">
-                  카드 번호
-                </label>
-                <input
-                  id="cardNumber"
-                  className={styles.input}
-                  placeholder="0000 0000 0000 0000"
-                  inputMode="numeric"
-                  maxLength={19}
-                  value={cardNumber}
-                  onChange={(event) => setCardNumber(event.target.value.replace(/[^\d ]/g, ''))}
-                  disabled={stage === 'processing'}
-                />
-              </div>
+            <ul className={styles.featureList}>
+              {PLAN_FEATURES.map((feature) => (
+                <li key={feature} className={styles.featureItem}>
+                  <span className={styles.bullet} />
+                  {feature}
+                </li>
+              ))}
+            </ul>
 
-              <div className={styles.row}>
-                <div className={styles.field}>
-                  <label className={styles.label} htmlFor="expiry">
-                    유효기간
-                  </label>
-                  <input
-                    id="expiry"
-                    className={styles.input}
-                    placeholder="MM/YY"
-                    maxLength={5}
-                    value={expiry}
-                    onChange={(event) => setExpiry(event.target.value)}
-                    disabled={stage === 'processing'}
-                  />
-                </div>
-                <div className={styles.field}>
-                  <label className={styles.label} htmlFor="cvc">
-                    CVC
-                  </label>
-                  <input
-                    id="cvc"
-                    className={styles.input}
-                    placeholder="000"
-                    inputMode="numeric"
-                    maxLength={3}
-                    value={cvc}
-                    onChange={(event) => setCvc(event.target.value.replace(/\D/g, ''))}
-                    disabled={stage === 'processing'}
-                  />
-                </div>
-              </div>
+            {error && <p className={styles.error}>{error}</p>}
 
-              {error && <p className={styles.error}>{error}</p>}
-
-              <button type="submit" className={styles.payButton} disabled={stage === 'processing'}>
-                {stage === 'processing' ? '결제 처리 중...' : '9,900원 결제하기'}
-              </button>
-              <p className={styles.disclaimer}>* 실제 결제가 이뤄지지 않는 테스트 화면이에요.</p>
-            </form>
+            <button
+              type="button"
+              className={styles.payButton}
+              onClick={handleSubscribe}
+              disabled={stage === 'processing'}
+            >
+              <CreditCard size={16} />
+              {stage === 'processing' ? '처리 중...' : '카드 등록하고 시작하기'}
+            </button>
+            <p className={styles.disclaimer}>카드 정보는 PortOne 결제창에만 입력되며 저장되지 않아요. 언제든 해지할 수 있어요.</p>
           </>
         )}
       </div>

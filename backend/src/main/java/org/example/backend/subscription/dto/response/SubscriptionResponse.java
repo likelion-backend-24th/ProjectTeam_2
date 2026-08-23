@@ -11,20 +11,24 @@ import java.time.LocalDateTime;
 @Getter
 @Builder
 public class SubscriptionResponse {
-    @Schema(description = "구독 상태 (ACTIVE, CANCELLED)", example = "ACTIVE")
+    @Schema(description = "구독 상태 (ACTIVE, PAST_DUE, EXPIRED)", example = "ACTIVE")
     private SubscriptionStatus status;
 
     @Schema(description = "구독 시작일시", example = "2026-08-13T10:00:00")
     private LocalDateTime startedAt;
 
-    @Schema(description = "구독 만료 예정일시", example = "2026-09-13T10:00:00")
+    @Schema(description = "구독 만료(또는 다음 결제) 예정일시", example = "2026-09-13T10:00:00")
     private LocalDateTime expiredAt;
+
+    @Schema(description = "다음 회차 자동 결제 여부", example = "true")
+    private boolean autoRenew;
 
     public static SubscriptionResponse from(Subscription subscription) {
         return SubscriptionResponse.builder()
                 .status(subscription.getStatus())
                 .startedAt(subscription.getStartedAt())
                 .expiredAt(subscription.getExpiredAt())
+                .autoRenew(subscription.isAutoRenew())
                 .build();
     }
 }

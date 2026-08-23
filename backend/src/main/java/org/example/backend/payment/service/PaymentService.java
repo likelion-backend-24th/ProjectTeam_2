@@ -4,17 +4,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.payment.client.PortOnePaymentClient;
+import org.example.backend.payment.client.dto.PortOneBillingKeyResponse;
 import org.example.backend.payment.client.dto.PortOnePaymentResponse;
 import org.example.backend.payment.config.PortOneProperties;
+import org.example.backend.payment.dto.response.BillingKeyPrepareResponse;
 import org.example.backend.payment.dto.response.PaymentReadyResponse;
+import org.example.backend.payment.entity.BillingKey;
 import org.example.backend.payment.entity.Payment;
 import org.example.backend.payment.entity.PaymentPurpose;
 import org.example.backend.payment.entity.PaymentStatus;
 import org.example.backend.payment.exception.PaymentErrorCode;
+import org.example.backend.payment.repository.BillingKeyRepository;
 import org.example.backend.payment.repository.PaymentRepository;
 import org.example.backend.subscription.dto.response.SubscriptionResponse;
-import org.example.backend.subscription.entity.SubscriptionStatus;
-import org.example.backend.subscription.repository.SubscriptionRepository;
+import org.example.backend.subscription.exception.SubscriptionErrorCode;
 import org.example.backend.subscription.service.SubscriptionService;
 import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.User;
@@ -33,24 +36,22 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class PaymentService {
 
+    private static final String BILLING_KEY_ISSUED_STATUS = "ISSUED";
+
     private final PaymentRepository paymentRepository;
+    private final BillingKeyRepository billingKeyRepository;
     private final UserRepository userRepository;
-    private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionService subscriptionService;
     private final PortOnePaymentClient portOnePaymentClient;
     private final PortOneProperties portOneProperties;
 
     @Transactional
     public PaymentReadyResponse readySubscriptionPayment(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(PaymentErrorCode.USER_NOT_FOUND));
+        User user = loadActiveUser(userId, PaymentErrorCode.USER_NOT_FOUND, PaymentErrorCode.USER_INACTIVE);
 
-        if (user.getStatus() != AccountStatus.ACTIVE) {
-            throw new BusinessException(PaymentErrorCode.USER_INACTIVE);
+        if (subscriptionService.hasUsableSubscription(userId)) {
+            throw new BusinessException(PaymentErrorCode.SUBSCRIPTION_ALREADY_ACTIVE);
         }
-
-        subscriptionRepository.findByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
-                .ifPresent(s -> { throw new BusinessException(PaymentErrorCode.SUBSCRIPTION_ALREADY_ACTIVE); });
 
         String paymentId = portOneProperties.getPaymentIdPrefix() + UUID.randomUUID();
 
@@ -88,7 +89,7 @@ public class PaymentService {
         }
 
         PortOnePaymentResponse portOnePayment = portOnePaymentClient.getPayment(paymentId);
-        String failReason = verify(payment, portOnePayment);
+        String failReason = verify(payment, portOnePayment, portOneProperties.getChannelKeyPayment());
 
         if (failReason != null) {
             payment.markFailed(failReason);
@@ -105,25 +106,182 @@ public class PaymentService {
     }
 
     /**
+     * 카드(빌링키) 등록 준비. PortOne SDK의 카드 등록 팝업 호출에 필요한 값만 내려준다.
+     * 실제 검증은 카드 등록 후 completeBillingKeyIssue()에서 PortOne 재조회로 이뤄진다.
+     */
+    public BillingKeyPrepareResponse prepareBillingKeyIssue(Long userId) {
+        User user = loadActiveUser(userId, PaymentErrorCode.USER_NOT_FOUND, PaymentErrorCode.USER_INACTIVE);
+
+        return BillingKeyPrepareResponse.builder()
+                .storeId(portOneProperties.getStoreId())
+                .channelKey(portOneProperties.getChannelKeyBilling())
+                .issueId(UUID.randomUUID().toString())
+                .customerId(customerIdOf(user))
+                .build();
+    }
+
+    /**
+     * 프론트가 PortOne SDK로 발급받은 빌링키를 그대로 믿지 않고 서버가 검증한 뒤 저장한다.
+     * 채널이 수동 승인으로 설정된 경우 billingKey는 "NEEDS_CONFIRMATION" 자리표시자로 오고
+     * billingIssueToken으로 승인을 확정해야 진짜 빌링키를 받을 수 있다 — 이 경우엔 그 확정 호출
+     * 자체가 우리 서버(api-secret)로 인증된 것이라 신뢰 근거가 되므로 재조회를 따로 하지 않는다.
+     * 즉시발급인 경우엔 기존처럼 재조회로 상태/채널을 검증한다.
+     * 기존 활성 카드가 있으면 소프트 삭제하고 새 카드로 교체한다 (유저당 활성 카드 1개).
+     */
+    @Transactional
+    public void completeBillingKeyIssue(Long userId, String billingKey, String billingIssueToken) {
+        User user = loadActiveUser(userId, PaymentErrorCode.USER_NOT_FOUND, PaymentErrorCode.USER_INACTIVE);
+
+        String verifiedBillingKey = (billingIssueToken != null && !billingIssueToken.isBlank())
+                ? portOnePaymentClient.confirmBillingKeyIssue(billingIssueToken)
+                : verifyIssuedBillingKey(billingKey);
+
+        billingKeyRepository.findByUserIdAndDeletedAtIsNull(userId).ifPresent(BillingKey::delete);
+
+        BillingKey entity = BillingKey.builder()
+                .user(user)
+                .billingKeyToken(verifiedBillingKey)
+                .issuedAt(LocalDateTime.now())
+                .build();
+        billingKeyRepository.save(entity);
+    }
+
+    private String verifyIssuedBillingKey(String billingKey) {
+        PortOneBillingKeyResponse issued = portOnePaymentClient.getBillingKey(billingKey);
+        boolean channelMatches = issued.hasChannel(portOneProperties.getChannelKeyBilling());
+        if (!BILLING_KEY_ISSUED_STATUS.equalsIgnoreCase(issued.status()) || !channelMatches) {
+            throw new BusinessException(PaymentErrorCode.BILLING_KEY_VERIFICATION_FAILED);
+        }
+        return billingKey;
+    }
+
+    /** 카드 등록 + 즉시 청구로 정기결제 구독을 시작한다. */
+    @Transactional
+    public SubscriptionResponse subscribeWithBillingKey(Long userId) {
+        User user = loadActiveUser(userId, PaymentErrorCode.USER_NOT_FOUND, PaymentErrorCode.USER_INACTIVE);
+
+        if (subscriptionService.hasUsableSubscription(userId)) {
+            throw new BusinessException(PaymentErrorCode.SUBSCRIPTION_ALREADY_ACTIVE);
+        }
+
+        if (!chargeSubscription(user, false)) {
+            throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
+        }
+        return subscriptionService.getMy(userId);
+    }
+
+    /** PAST_DUE 상태에서 사용자가 수동으로 다시 결제를 시도한다. 실패해도 예외 없이 현재 상태를 반환한다 (자동 재시도 대상으로 남음). */
+    @Transactional
+    public SubscriptionResponse retrySubscriptionPayment(Long userId) {
+        if (!subscriptionService.isPastDue(userId)) {
+            throw new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_NOT_PAST_DUE);
+        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.USER_NOT_FOUND));
+
+        chargeSubscription(user, true);
+        return subscriptionService.getMy(userId);
+    }
+
+    /**
+     * 빌링키로 청구를 시도한다. 최초 구독/수동 재시도/정기 스케줄러 재시도가 모두 이 메서드를 공유한다.
+     * 카드사 거절 등 "정상적으로 실패할 수 있는" 케이스는 예외를 던지지 않고 boolean으로만 알린다 —
+     * 예외를 던지면 트랜잭션이 롤백되어 방금 늘어난 실패 횟수(retryCount)까지 함께 사라지기 때문이다.
+     *
+     * @return 청구 성공 여부
+     */
+    @Transactional
+    public boolean chargeSubscription(User user, boolean isRenewal) {
+        BillingKey billingKey = billingKeyRepository.findByUserIdAndDeletedAtIsNull(user.getId())
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.BILLING_KEY_NOT_FOUND));
+
+        String paymentId = portOneProperties.getPaymentIdPrefix() + UUID.randomUUID();
+        Payment payment = Payment.builder()
+                .paymentId(paymentId)
+                .user(user)
+                .purpose(PaymentPurpose.SUBSCRIPTION)
+                .amount(portOneProperties.getSubscription().getAmount())
+                .currency(portOneProperties.getSubscription().getCurrency())
+                .orderName(portOneProperties.getSubscription().getOrderName())
+                .billingKey(billingKey)
+                .build();
+        paymentRepository.save(payment);
+
+        String failReason = chargeAndVerify(payment, billingKey);
+        if (failReason != null) {
+            payment.markFailed(failReason);
+            log.warn("정기결제 청구 실패: paymentId={}, userId={}, reason={}", paymentId, user.getId(), failReason);
+            if (isRenewal) {
+                subscriptionService.recordPaymentFailure(user.getId());
+            }
+            return false;
+        }
+
+        payment.markPaid(LocalDateTime.now());
+        LocalDateTime newExpiredAt = LocalDateTime.now().plusMonths(1);
+        if (isRenewal) {
+            subscriptionService.renewExisting(user.getId(), newExpiredAt);
+        } else {
+            subscriptionService.startWithAutoRenew(user.getId(), newExpiredAt);
+        }
+        return true;
+    }
+
+    /**
+     * @return 실패 사유. 검증을 통과하면 null.
+     */
+    private String chargeAndVerify(Payment payment, BillingKey billingKey) {
+        try {
+            portOnePaymentClient.payWithBillingKey(payment.getPaymentId(), billingKey.getBillingKeyToken(),
+                    customerIdOf(payment.getUser()), payment.getOrderName(), payment.getAmount());
+        } catch (BusinessException e) {
+            return "빌링키 결제 요청 실패: " + e.getMessage();
+        }
+
+        PortOnePaymentResponse portOnePayment = portOnePaymentClient.getPayment(payment.getPaymentId());
+        return verify(payment, portOnePayment, portOneProperties.getChannelKeyBilling());
+    }
+
+    /**
      * @return 검증 실패 사유. 검증을 통과하면 null.
      */
-    private String verify(Payment payment, PortOnePaymentResponse portOnePayment) {
+    private String verify(Payment payment, PortOnePaymentResponse portOnePayment, String expectedChannelKey) {
         if (!"PAID".equalsIgnoreCase(portOnePayment.status())) {
             return "결제 상태가 PAID가 아님: " + portOnePayment.status();
         }
         if (!Objects.equals(portOneProperties.getStoreId(), portOnePayment.storeId())) {
             return "storeId 불일치";
         }
-        if (portOnePayment.channel() == null
-                || !Objects.equals(portOneProperties.getChannelKeyPayment(), portOnePayment.channel().key())) {
+        if (portOnePayment.channel() == null || !Objects.equals(expectedChannelKey, portOnePayment.channel().key())) {
             return "channelKey 불일치";
         }
-        if (!Objects.equals(payment.getCurrency(), portOnePayment.currency())) {
-            return "통화 불일치";
+        // 테스트 채널로 설정해뒀는데 실거래가 잡히는(혹은 그 반대) 환경 오반영을 막는다.
+        String expectedChannelType = portOneProperties.isTestMode() ? "TEST" : "LIVE";
+        if (!expectedChannelType.equalsIgnoreCase(portOnePayment.channel().type())) {
+            return "결제 환경(테스트/실연동) 불일치: " + portOnePayment.channel().type();
         }
         if (portOnePayment.amount() == null || !Objects.equals(payment.getAmount(), portOnePayment.amount().total())) {
             return "결제 금액 불일치";
         }
+        if (!Objects.equals(payment.getCurrency(), portOnePayment.currency())) {
+            return "통화 불일치";
+        }
         return null;
+    }
+
+    private User loadActiveUser(Long userId, PaymentErrorCode notFound, PaymentErrorCode inactive) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(notFound));
+        if (user.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessException(inactive);
+        }
+        return user;
+    }
+
+    /**
+     * PortOne customerKey는 2자 이상이어야 한다 — 한 자리 유저 ID를 그대로 쓰면 검증에 걸린다.
+     */
+    private String customerIdOf(User user) {
+        return "user-" + user.getId();
     }
 }

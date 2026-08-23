@@ -40,6 +40,10 @@ public class Payment {
     @Column(name = "order_name", nullable = false, length = 100)
     private String orderName;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "billing_key_id")
+    private BillingKey billingKey;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private PaymentStatus status;
@@ -54,13 +58,15 @@ public class Payment {
     private LocalDateTime paidAt;
 
     @Builder
-    public Payment(String paymentId, User user, PaymentPurpose purpose, Long amount, String currency, String orderName) {
+    public Payment(String paymentId, User user, PaymentPurpose purpose, Long amount, String currency,
+                   String orderName, BillingKey billingKey) {
         this.paymentId = paymentId;
         this.user = user;
         this.purpose = purpose;
         this.amount = amount;
         this.currency = currency;
         this.orderName = orderName;
+        this.billingKey = billingKey;
         this.status = PaymentStatus.READY;
         this.createdAt = LocalDateTime.now();
     }

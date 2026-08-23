@@ -15,11 +15,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class SubscriptionService {
+
+    // 정기결제가 이 횟수만큼 연속 실패하면 구독을 만료 처리한다.
+    private static final int MAX_RETRY = 3;
+
+    private static final List<SubscriptionStatus> USABLE_STATUSES =
+            List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE);
 
     private final SubscriptionRepository subscriptionRepository;
     private final UserRepository userRepository;
@@ -27,15 +34,7 @@ public class SubscriptionService {
 
     @Transactional
     public SubscriptionResponse subscribe(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.USER_NOT_FOUND));
-
-        if (user.getStatus() != AccountStatus.ACTIVE) {
-            throw new BusinessException(SubscriptionErrorCode.USER_INACTIVE);
-        }
-
-        subscriptionRepository.findByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
-                .ifPresent(s -> { throw new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_ALREADY_ACTIVE); });
+        User user = loadSubscribableUser(userId);
 
         LocalDateTime now = LocalDateTime.now();
         Subscription subscription = Subscription.builder()
@@ -51,23 +50,95 @@ public class SubscriptionService {
         return SubscriptionResponse.from(subscription);
     }
 
+    /** 빌링키 기반 최초 구독. 이후 회차부터 자동 갱신된다. */
+    @Transactional
+    public void startWithAutoRenew(Long userId, LocalDateTime expiredAt) {
+        User user = loadSubscribableUser(userId);
+
+        Subscription subscription = Subscription.builder()
+                .user(user)
+                .startedAt(LocalDateTime.now())
+                .expiredAt(expiredAt)
+                .build();
+        subscription.enableAutoRenew();
+        subscriptionRepository.save(subscription);
+
+        user.setSubscribed(true);
+        emailService.sendSubscriptionStarted(user.getUsername());
+    }
+
+    /** 정기결제 성공(정상 갱신 또는 실패 후 재시도 성공) 시 이용 기간을 연장한다. */
+    @Transactional
+    public void renewExisting(Long userId, LocalDateTime newExpiredAt) {
+        Subscription subscription = findUsableOrThrow(userId);
+        subscription.renew(newExpiredAt);
+    }
+
+    /** 정기결제 실패 시 호출. 재시도 한도를 넘기면 구독을 만료시킨다. */
+    @Transactional
+    public void recordPaymentFailure(Long userId) {
+        Subscription subscription = findUsableOrThrow(userId);
+        subscription.markPaymentFailed();
+        if (subscription.getRetryCount() >= MAX_RETRY) {
+            subscription.expire();
+            subscription.getUser().setSubscribed(false);
+        }
+    }
+
+    /** 다음 회차 자동 갱신을 멈춘다. 이용권 자체는 만료일까지 유지된다. */
     @Transactional
     public SubscriptionResponse cancel(Long userId) {
-        Subscription subscription = subscriptionRepository.findByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
-                .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND));
-        subscription.cancel();
+        Subscription subscription = findUsableOrThrow(userId);
+        subscription.disableAutoRenew();
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.USER_NOT_FOUND));
-        user.setSubscribed(false);
         emailService.sendSubscriptionCancelled(user.getUsername());
 
         return SubscriptionResponse.from(subscription);
     }
 
-    public SubscriptionResponse getMy(Long userId) {
-        Subscription subscription = subscriptionRepository.findByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
-                .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND));
+    /** 만료 전 상태에서 자동 갱신을 다시 켠다. 카드 유효성은 실제 결제 시점에 확인된다. */
+    @Transactional
+    public SubscriptionResponse resume(Long userId) {
+        Subscription subscription = findUsableOrThrow(userId);
+        if (subscription.isAutoRenew()) {
+            throw new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_ALREADY_AUTO_RENEW);
+        }
+        subscription.enableAutoRenew();
         return SubscriptionResponse.from(subscription);
+    }
+
+    public SubscriptionResponse getMy(Long userId) {
+        return SubscriptionResponse.from(findUsableOrThrow(userId));
+    }
+
+    public boolean hasUsableSubscription(Long userId) {
+        return subscriptionRepository.findFirstByUserIdAndStatusIn(userId, USABLE_STATUSES).isPresent();
+    }
+
+    public boolean isPastDue(Long userId) {
+        return subscriptionRepository.findFirstByUserIdAndStatusIn(userId, USABLE_STATUSES)
+                .map(subscription -> subscription.getStatus() == SubscriptionStatus.PAST_DUE)
+                .orElse(false);
+    }
+
+    private User loadSubscribableUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.USER_NOT_FOUND));
+
+        if (user.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessException(SubscriptionErrorCode.USER_INACTIVE);
+        }
+
+        subscriptionRepository.findFirstByUserIdAndStatusIn(userId, USABLE_STATUSES)
+                .ifPresent(s -> { throw new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_ALREADY_ACTIVE); });
+
+        return user;
+    }
+
+    private Subscription findUsableOrThrow(Long userId) {
+        return subscriptionRepository.findFirstByUserIdAndStatusIn(userId, USABLE_STATUSES)
+                .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND));
     }
 }

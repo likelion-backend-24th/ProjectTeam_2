@@ -23,7 +23,7 @@ public class SubscriptionExpirationScheduler {
         List<Subscription> expired = subscriptionRepository
                 .findByStatusAndExpiredAtBefore(SubscriptionStatus.ACTIVE, LocalDateTime.now());
         expired.forEach(subscription -> {
-            subscription.cancel();
+            subscription.expire();
             subscription.getUser().setSubscribed(false);
         });
     }
