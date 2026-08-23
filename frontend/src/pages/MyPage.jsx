@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { feedbackApi, postApi, studyApi, userApi } from '../api'
+import { billingKeyApi, feedbackApi, postApi, studyApi, userApi } from '../api'
 import Pagination from '../components/common/Pagination'
 import SiteHeader from '../components/common/SiteHeader'
 import { getPostCategoryMeta } from '../constants/postCategory'
@@ -24,6 +24,7 @@ import { useAuth } from '../context/AuthContext'
 import { getAvatarColor } from '../utils/avatarColor'
 import { formatDateTime } from '../utils/formatDate'
 import styles from './MyPage.module.css'
+import * as PortOne from '@portone/browser-sdk/v2'
 
 const ROLE_META = {
   USER: { label: 'USER', color: '#c6ff3d' },
@@ -49,8 +50,6 @@ export default function MyPage() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('activity')
 
-  // 프로필 카드의 "게시글 N개"와 [내 활동] 탭의 최근 글 3건은 [게시글] 탭 페이징과 무관하게
-  // 항상 최신 상태를 보여줘야 해서 별도로 관리한다. postsVersion을 올리면 다시 불러온다.
   const [recentPosts, setRecentPosts] = useState([])
   const [postCount, setPostCount] = useState(0)
   const [postsVersion, setPostsVersion] = useState(0)
@@ -68,7 +67,6 @@ export default function MyPage() {
     }
   }, [postsVersion])
 
-  // 프로필 카드의 "스터디 N개"와 [내 활동] 탭의 최근 스터디 3건.
   const [recentStudies, setRecentStudies] = useState([])
   const [studyCount, setStudyCount] = useState(0)
 
@@ -263,7 +261,6 @@ function PostsTab({ onPostsChanged }) {
     if (!window.confirm(`"${post.title}" 게시글을 삭제할까요?`)) return
     try {
       await postApi.deletePost(post.id)
-      // 마지막 페이지의 마지막 글을 지운 경우를 대비해 한 페이지 앞으로 당겨준다.
       setPosts((prev) => prev.filter((item) => item.id !== post.id))
       setTotalElements((prev) => Math.max(0, prev - 1))
       setPage((prev) => (posts.length === 1 && prev > 0 ? prev - 1 : prev))
@@ -345,7 +342,6 @@ function StudiesTab() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // 카테고리 필터 없이 내가 가입한 스터디 전체를 받아온 뒤, 방장 여부로 프론트에서 두 섹션으로 나눈다.
   useEffect(() => {
     let ignore = false
     setIsLoading(true)
@@ -583,6 +579,89 @@ function SettingsTab({ user, onNicknameChanged, onLogout }) {
   const [withdrawPassword, setWithdrawPassword] = useState('')
   const [withdrawMessage, setWithdrawMessage] = useState('')
 
+  // 결제 수단(카드 목록) 관련 상태
+  const [billingKeys, setBillingKeys] = useState([])
+  const [isLoadingCards, setIsLoadingCards] = useState(true)
+  const [cardError, setCardError] = useState('')
+  const [isAddingCard, setIsAddingCard] = useState(false)
+  const [processingCardId, setProcessingCardId] = useState(null)
+
+  useEffect(() => {
+    let ignore = false
+    fetchBillingKeys(ignore)
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  async function fetchBillingKeys(ignore = false) {
+    setIsLoadingCards(true)
+    try {
+      const { data } = await billingKeyApi.getMyBillingKeys()
+      if (!ignore) setBillingKeys(data.data)
+    } catch (err) {
+      if (!ignore) setCardError(err.response?.data?.message ?? '카드 목록을 불러오지 못했습니다.')
+    } finally {
+      if (!ignore) setIsLoadingCards(false)
+    }
+  }
+
+  async function handleAddCard() {
+    setCardError('')
+    setIsAddingCard(true)
+    try {
+      const { data: prepareRes } = await billingKeyApi.prepare()
+      const { storeId, channelKey, issueId } = prepareRes.data
+
+      const issueResponse = await PortOne.requestIssueBillingKey({
+        storeId,
+        channelKey,
+        billingKeyMethod: 'CARD',
+        issueId,
+        issueName: 'prep2gether 정기결제 카드 등록',
+      })
+
+      if (issueResponse.code !== undefined) {
+        setCardError('카드 등록 실패: ' + issueResponse.message)
+        return
+      }
+
+      await billingKeyApi.verify(issueId, issueResponse.billingKey)
+      await fetchBillingKeys()
+    } catch (err) {
+      setCardError(err.response?.data?.message ?? '카드 등록에 실패했습니다.')
+    } finally {
+      setIsAddingCard(false)
+    }
+  }
+
+  async function handleSelectCard(billingKeyId) {
+    setCardError('')
+    setProcessingCardId(billingKeyId)
+    try {
+      await billingKeyApi.selectBillingKey(billingKeyId)
+      await fetchBillingKeys()
+    } catch (err) {
+      setCardError(err.response?.data?.message ?? '카드 선택에 실패했습니다.')
+    } finally {
+      setProcessingCardId(null)
+    }
+  }
+
+  async function handleDeleteCard(billingKeyId) {
+    if (!window.confirm('이 카드를 삭제할까요?')) return
+    setCardError('')
+    setProcessingCardId(billingKeyId)
+    try {
+      await billingKeyApi.deleteBillingKey(billingKeyId)
+      await fetchBillingKeys()
+    } catch (err) {
+      setCardError(err.response?.data?.message ?? '카드 삭제에 실패했습니다.')
+    } finally {
+      setProcessingCardId(null)
+    }
+  }
+
   async function handleNicknameSubmit(event) {
     event.preventDefault()
     if (!nickname.trim() || nickname === user.nickname) return
@@ -651,6 +730,58 @@ function SettingsTab({ user, onNicknameChanged, onLogout }) {
           {isSavingNickname ? '저장 중...' : '변경 저장'}
         </button>
       </form>
+
+      <h2 className={styles.sectionHeading}>결제 수단</h2>
+      <div className={styles.settingsForm}>
+        {isLoadingCards && <p className={styles.emptyState}>불러오는 중...</p>}
+
+        {!isLoadingCards && billingKeys.length === 0 && (
+          <p className={styles.emptyState}>등록된 카드가 없어요.</p>
+        )}
+
+        {!isLoadingCards && billingKeys.length > 0 && (
+          <div className={styles.list}>
+            {billingKeys.map((card) => (
+              <div key={card.id} className={styles.activityRow}>
+                <span className={styles.cardLabelRow}>
+                  {card.label}
+                  {card.selected && <span className={styles.cardSelectedBadge}>사용 중</span>}
+                </span>
+                <span className={styles.cardActions}>
+                  <span className={styles.activityMeta}>{formatDateTime(card.registeredAt)} 등록</span>
+                  {!card.selected && (
+                    <button
+                      type="button"
+                      className={styles.seeAllButton}
+                      onClick={() => handleSelectCard(card.id)}
+                      disabled={processingCardId === card.id}
+                    >
+                      {processingCardId === card.id ? '처리 중...' : '이 카드 쓰기'}
+                    </button>
+                  )}
+                  {!card.selected && (
+                    <button
+                      type="button"
+                      className={styles.iconButton}
+                      onClick={() => handleDeleteCard(card.id)}
+                      disabled={processingCardId === card.id}
+                      aria-label="카드 삭제"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {cardError && <p className={styles.settingsMessage}>{cardError}</p>}
+
+        <button type="button" className={styles.secondaryButton} onClick={handleAddCard} disabled={isAddingCard}>
+          {isAddingCard ? '등록 중...' : '+ 카드 추가'}
+        </button>
+      </div>
 
       <h2 className={styles.sectionHeading}>비밀번호 변경</h2>
       <form className={styles.settingsForm} onSubmit={handlePasswordSubmit}>

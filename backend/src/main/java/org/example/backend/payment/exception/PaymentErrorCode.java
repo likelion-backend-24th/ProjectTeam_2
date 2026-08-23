@@ -16,7 +16,9 @@ public enum PaymentErrorCode implements ErrorCode {
     BILLING_KEY_NOT_FOUND(HttpStatus.NOT_FOUND, "등록된 빌링키가 없습니다."),
     ALREADY_SUBSCRIBED(HttpStatus.CONFLICT, "이미 구독 중입니다."),
     PAYMENT_VERIFICATION_FAILED(HttpStatus.CONFLICT, "결제 검증에 실패했습니다."),
-    SUBSCRIPTION_SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "예약된 정기결제가 없습니다.");
+    SUBSCRIPTION_SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "예약된 정기결제가 없습니다."),
+    BILLING_KEY_TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않거나 이미 삭제된 카드입니다."),
+    CANNOT_DELETE_SELECTED_BILLING_KEY(HttpStatus.CONFLICT, "선택된 카드는 삭제할 수 없습니다. 다른 카드를 먼저 선택해주세요.");
 
 
     private final HttpStatus httpStatus;

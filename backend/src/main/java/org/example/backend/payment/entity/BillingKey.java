@@ -35,6 +35,10 @@ public class BillingKey {
     @Column(name = "status", nullable = false, length = 20)
     private BillingKeyStatus status;
 
+    // 지금 결제/예약에 사용할 카드인지 여부 (유저당 ACTIVE 상태에서 정확히 1개만 true)
+    @Column(name = "is_selected", nullable = false)
+    private Boolean isSelected;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

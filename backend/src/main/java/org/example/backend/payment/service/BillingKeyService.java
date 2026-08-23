@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.payment.client.PortOneBillingKeyClient;
 import org.example.backend.payment.dto.BillingKeyPrepareResponse;
+import org.example.backend.payment.dto.BillingKeyResponse;
 import org.example.backend.payment.dto.PortOneBillingKeyResponse;
 import org.example.backend.payment.entity.BillingKey;
 import org.example.backend.payment.entity.BillingKeyIssuanceIntent;
@@ -18,9 +19,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
-// 빌링키 발급 관련 서비스
+// 빌링키 발급/선택/삭제 관련 서비스
 @Service
 @RequiredArgsConstructor
 public class BillingKeyService {
@@ -29,6 +32,7 @@ public class BillingKeyService {
     private final BillingKeyIssuanceIntentRepository billingKeyIssuanceIntentRepository;
     private final BillingKeyRepository billingKeyRepository;
     private final PortOneBillingKeyClient portOneBillingKeyClient;
+    private final PaymentService paymentService;
 
     @Value("${portone.store-id}")
     private String storeId;
@@ -54,24 +58,21 @@ public class BillingKeyService {
                 .storeId(storeId)
                 .channelKey(billingChannelKey)
                 .issueId(issueId)
-                .build(); //이값을 프론트한테 돌려줌, 프론트는 이값을 받아서 포트원한테 상점id, 빌링 채널키,issueId로 카드 등록해달라함
+                .build();
     }
 
     // 빌링키 발급 검증: 발급 의도와 대조하고, 포트원 재조회로 확인 후 저장
     @Transactional
     public void verifyAndSaveBillingKey(String issueId, String billingKey, Long userId) {
-        // 발급 의도 찾음
         BillingKeyIssuanceIntent intent = billingKeyIssuanceIntentRepository.findByIssueId(issueId)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.BILLING_KEY_ISSUANCE_INTENT_NOT_FOUND));
-        // 이 발급 의도가 진짜 지금 요청한 사람의 것인지 확인 로직
+
         if (!intent.getUser().getId().equals(userId)) {
             throw new BusinessException(PaymentErrorCode.FORBIDDEN);
         }
 
-        // 프론트가 성공했다는것을 안믿고 백엔드에서 직접 포트원한테 재조회
         PortOneBillingKeyResponse portOneBillingKey = portOneBillingKeyClient.getBillingKey(billingKey);
 
-        // 상태가 발급완료인지, 채널 목록중에 빌링채널키가 포함 되어있는지
         boolean channelMatched = false;
         for (PortOneBillingKeyResponse.Channel channel : portOneBillingKey.getChannels()) {
             if (billingChannelKey.equals(channel.getKey())) {
@@ -80,18 +81,67 @@ public class BillingKeyService {
             }
         }
         boolean valid = "ISSUED".equals(portOneBillingKey.getStatus()) && channelMatched;
-        // 검증 실패하면 발급의도 FAILED
         if (!valid) {
             intent.setStatus(BillingKeyIssuanceIntentStatus.FAILED);
             throw new BusinessException(PaymentErrorCode.BILLING_KEY_VERIFICATION_FAILED);
         }
-        //검증 통과하면 저장
+
+        // 이 유저의 ACTIVE 카드가 하나도 없으면(첫 카드) 자동 선택, 있으면 선택 안 함
+        long activeCount = billingKeyRepository.countByUserIdAndStatus(userId, BillingKeyStatus.ACTIVE);
+        boolean isFirstCard = activeCount == 0;
+
         BillingKey newBillingKey = new BillingKey();
         newBillingKey.setUser(intent.getUser());
         newBillingKey.setBillingKey(billingKey);
         newBillingKey.setStatus(BillingKeyStatus.ACTIVE);
+        newBillingKey.setIsSelected(isFirstCard);
         billingKeyRepository.save(newBillingKey);
 
         intent.setStatus(BillingKeyIssuanceIntentStatus.ISSUED);
+    }
+
+    // 내 카드 목록 조회 (등록일 오름차순 -> 카드1, 카드2... 순번 매겨서 응답 DTO로 변환)
+    @Transactional(readOnly = true)
+    public List<BillingKeyResponse> getMyBillingKeys(Long userId) {
+        List<BillingKey> billingKeys = billingKeyRepository.findByUserIdAndStatusOrderByCreatedAtAsc(userId, BillingKeyStatus.ACTIVE);
+
+        List<BillingKeyResponse> responses = new ArrayList<>();
+        for (int i = 0; i < billingKeys.size(); i++) {
+            responses.add(BillingKeyResponse.from(billingKeys.get(i), i + 1));
+        }
+        return responses;
+    }
+
+    // 카드 선택 변경: 선택 상태를 옮기고, 예약된 자동결제가 있으면 새 카드로 재예약
+    @Transactional
+    public void selectBillingKey(Long userId, Long billingKeyId) {
+        BillingKey target = billingKeyRepository.findById(billingKeyId)
+                .filter(bk -> bk.getUser().getId().equals(userId) && bk.getStatus() == BillingKeyStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.BILLING_KEY_TARGET_NOT_FOUND));
+
+        if (Boolean.TRUE.equals(target.getIsSelected())) {
+            return;
+        }
+
+        billingKeyRepository.findByUserIdAndStatusAndIsSelectedTrue(userId, BillingKeyStatus.ACTIVE)
+                .ifPresent(current -> current.setIsSelected(false));
+
+        target.setIsSelected(true);
+
+        paymentService.reassignScheduleBillingKey(userId, target);
+    }
+
+    // 카드 삭제: 선택된 카드는 삭제 불가, 나머지는 소프트 딜리트
+    @Transactional
+    public void deleteBillingKey(Long userId, Long billingKeyId) {
+        BillingKey target = billingKeyRepository.findById(billingKeyId)
+                .filter(bk -> bk.getUser().getId().equals(userId) && bk.getStatus() == BillingKeyStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.BILLING_KEY_TARGET_NOT_FOUND));
+
+        if (Boolean.TRUE.equals(target.getIsSelected())) {
+            throw new BusinessException(PaymentErrorCode.CANNOT_DELETE_SELECTED_BILLING_KEY);
+        }
+
+        target.setStatus(BillingKeyStatus.DELETED);
     }
 }

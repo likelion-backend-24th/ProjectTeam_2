@@ -609,3 +609,33 @@
     flex: 1;
   }
 }
+
+.cardLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.cardSelectedBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-accent);
+  background-color: rgba(198, 255, 61, 0.12);
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}

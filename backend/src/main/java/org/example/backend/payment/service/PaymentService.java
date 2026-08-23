@@ -53,16 +53,15 @@ public class PaymentService {
     // 등록된 빌링키로 첫 결제를 실행하고, 검증 통과 시 구독을 활성화함
     @Transactional
     public void chargeFirstPayment(Long userId) {
-        // 일단 유저 조회
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.USER_NOT_FOUND));
-        // 이미 구독 중이면 예외처리
+
         subscriptionRepository.findByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
                 .ifPresent(exist -> {
                     throw new BusinessException(PaymentErrorCode.ALREADY_SUBSCRIBED);
                 });
-        // 유저의 액티브 빌링키를 찾는다. 없으면 카드 등록해야되니 에러처리
-        BillingKey billingKey = billingKeyRepository.findByUserIdAndStatus(userId, BillingKeyStatus.ACTIVE)
+
+        BillingKey billingKey = billingKeyRepository.findByUserIdAndStatusAndIsSelectedTrue(userId, BillingKeyStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.BILLING_KEY_NOT_FOUND));
 
         Order order = new Order();
@@ -86,7 +85,6 @@ public class PaymentService {
 
         PortOnePaymentResponse verified = portOnePaymentClient.getPayment(paymentId);
 
-        // 상점, 결제 채널, 통화 원화, 내 금액=포트원이 알려준 실제 금액, 상태가 PAID 5개 다맞아야됨
         boolean valid = storeId.equals(verified.getStoreId())
                 && billingChannelKey.equals(verified.getChannel().getKey())
                 && "KRW".equals(verified.getCurrency())
@@ -109,8 +107,6 @@ public class PaymentService {
         payment.setSubscription(subscription);
 
         scheduleNextPayment(user, billingKey, subscription.getExpiredAt());
-        //테스트용 한달말고 1분으로 테스트
-        //scheduleNextPayment(user, billingKey, LocalDateTime.now().plusMinutes(1));
     }
 
     // 다음 회차 결제를 포트원에 예약하고, 우리 DB에도 예약 기록을 남김
@@ -137,13 +133,12 @@ public class PaymentService {
     @Transactional
     public void handleWebhook(String paymentId) {
         if (paymentRepository.findByPaymentId(paymentId).isPresent()) {
-            return; // 이미 직접 처리한 결제 — 웹훅에서는 중복 처리 안 함
+            return;
         }
 
         SubscriptionSchedule schedule = subscriptionScheduleRepository.findByNextPaymentId(paymentId)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED));
 
-        //웹훅 바디 안믿고 다시 포트원한테 재조회
         PortOnePaymentResponse verified = portOnePaymentClient.getPayment(paymentId);
 
         boolean valid = storeId.equals(verified.getStoreId())
@@ -234,5 +229,28 @@ public class PaymentService {
         schedule.setAutoRenew(true);
     }
 
+    // 카드 선택이 바뀌었을 때, 예약된 자동결제가 있으면 새 카드로 옮겨줌
+    @Transactional
+    public void reassignScheduleBillingKey(Long userId, BillingKey newBillingKey) {
+        subscriptionScheduleRepository.findFirstByUser_IdOrderByCreatedAtDesc(userId)
+                .ifPresent(schedule -> {
+                    if (Boolean.TRUE.equals(schedule.getAutoRenew())) {
+                        portOnePaymentClient.cancelSchedule(schedule.getBillingKey().getBillingKey());
 
+                        String newNextPaymentId = "p2g-csh-" + UUID.randomUUID().toString().replace("-", "");
+
+                        String timeToPay = schedule.getNextChargeAt().atZone(ZoneId.of("Asia/Seoul"))
+                                .withZoneSameInstant(ZoneOffset.UTC)
+                                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
+                        portOnePaymentClient.schedule(
+                                newNextPaymentId, newBillingKey.getBillingKey(),
+                                "prep2gether 구독 (정기결제)", subscriptionPrice, timeToPay);
+
+                        schedule.setNextPaymentId(newNextPaymentId);
+                    }
+
+                    schedule.setBillingKey(newBillingKey);
+                });
+    }
 }
