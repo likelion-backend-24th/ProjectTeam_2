@@ -9,7 +9,6 @@ import org.example.backend.study.repository.StudyPostCommentRepository;
 import org.example.backend.study.repository.StudyPostRepository;
 import org.example.backend.study.repository.StudyRepository;
 import org.example.backend.study.service.StudyService;
-import org.example.backend.subscription.exception.SubscriptionErrorCode;
 import org.example.backend.subscription.service.SubscriptionService;
 import org.example.backend.user.dto.UserResponse;
 import org.example.backend.user.entity.AccountStatus;
@@ -99,13 +98,16 @@ public class UserService {
         // isSubscribed()는 PAST_DUE에 들어가는 순간 이미 false로 꺼지므로(접근 권한 차단 목적) 판단
         // 기준으로 쓸 수 없음 - 그걸 기준으로 삼으면 카드 결제가 실패해서 유예기간 중이던 사용자가
         // 탈퇴해도 빌링키가 안 지워져서, 탈퇴한 사용자 카드로 스케줄러가 유예기간 내내 계속 청구를 시도함.
-        // 그래서 대신 cancel()을 시도해보고, 애초에 살아있는 구독이 없던 사용자면 그냥 넘어간다.
-        try {
+        //
+        // cancel()을 그냥 불러보고 SUBSCRIPTION_NOT_FOUND를 catch하는 방식은 쓰지 않는다: cancel()이
+        // 다른 빈(bean)의 @Transactional 메서드라 이 메서드와 크로스빈으로 같은 트랜잭션을 공유하는데,
+        // cancel()이 예외를 던지는 순간 Spring이 catch 지점보다 먼저 개입해 이 공유 트랜잭션을
+        // rollback-only로 표시해버린다. 그러면 구독한 적 없는(대다수인) 사용자조차 catch로 잡아
+        // 정상 진행한 것처럼 보여도 커밋 시점에 UnexpectedRollbackException이 나서 탈퇴 자체가 실패한다
+        // (deleteBillingKey가 겪었던 것과 동일한 함정). 그래서 정리할 구독이 있는지 먼저 조회로 확인한
+        // 뒤에만 cancel()을 호출해 "실패할 수 있는 크로스빈 호출" 자체를 피한다.
+        if (subscriptionService.hasLiveSubscription(user.getId())) {
             subscriptionService.cancel(user.getId());
-        } catch (BusinessException e) {
-            if (e.getErrorCode() != SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND) {
-                throw e;
-            }
         }
 
         // 회원탈퇴자가 스터디 방장인 스터디는 소프트 딜리트
