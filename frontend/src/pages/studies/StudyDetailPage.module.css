@@ -157,13 +157,22 @@
 
 .editLink {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 14px 18px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
+  background: none;
   color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.editLink:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .editLink:hover {

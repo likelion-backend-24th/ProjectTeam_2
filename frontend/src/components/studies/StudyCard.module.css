@@ -16,6 +16,17 @@
   transform: translateY(-2px);
 }
 
+/* 구독자(방장)가 개설한 스터디를 형광색 테두리로 강조 */
+.cardSubscribed {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent), 0 0 16px rgba(198, 255, 61, 0.35);
+}
+
+.cardSubscribed:hover {
+  border-color: var(--color-accent-strong);
+  box-shadow: 0 0 0 1px var(--color-accent-strong), 0 0 20px rgba(198, 255, 61, 0.45);
+}
+
 .badgeRow {
   display: flex;
   flex-wrap: wrap;

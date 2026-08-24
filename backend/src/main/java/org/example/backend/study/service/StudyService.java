@@ -23,7 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,6 +33,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class StudyService {
+    private static final Duration BUMP_COOLDOWN = Duration.ofHours(24);
+
     private final StudyRepository studyRepository;
     private final StudyPostService studyPostService;
     private final StudyMemberRepository studyMemberRepository;
@@ -56,7 +60,7 @@ public class StudyService {
 
     public Page<StudyResponse> getStudies(String keyword, Pageable pageable) {
         String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword;
-        Page<Study> page = studyRepository.findAllOrderBySubscribedLeader(normalizedKeyword, pageable);
+        Page<Study> page = studyRepository.findAllOrderByBumpedAt(normalizedKeyword, pageable);
 
         Map<Long, Integer> memberCountMap = getMemberCountMap(page.getContent());
 
@@ -91,6 +95,31 @@ public class StudyService {
         study.setRecruitEnd(request.getRecruitEnd());
         study.setCategory(request.getCategory());
 
+        List<String> imageUrls = getImageUrls(id);
+
+        return StudyResponse.from(study, memberCount, imageUrls);
+    }
+
+    @Transactional
+    public StudyResponse bumpStudy(Long userId, Long id) {
+        Study study = studyAccessValidator.getStudyOrThrow(id);
+        studyAccessValidator.validateStudyLeader(study, userId);
+
+        if (!study.getLeader().isSubscribed()) {
+            throw new BusinessException(StudyErrorCode.STUDY_BUMP_SUBSCRIBER_ONLY);
+        }
+
+        if (study.getRecruitEnd() != null && study.getRecruitEnd().isBefore(LocalDate.now())) {
+            throw new BusinessException(StudyErrorCode.STUDY_RECRUIT_CLOSED);
+        }
+
+        if (study.getBumpedAt() != null && study.getBumpedAt().isAfter(LocalDateTime.now().minus(BUMP_COOLDOWN))) {
+            throw new BusinessException(StudyErrorCode.STUDY_BUMP_COOLDOWN);
+        }
+
+        study.setBumpedAt(LocalDateTime.now());
+
+        int memberCount = studyMemberRepository.countByStudyId(id);
         List<String> imageUrls = getImageUrls(id);
 
         return StudyResponse.from(study, memberCount, imageUrls);

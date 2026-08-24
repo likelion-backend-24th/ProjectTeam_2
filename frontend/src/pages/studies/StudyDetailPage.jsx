@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, Crown, Lock, PenLine, Pin, UserX } from 'lucide-react'
+import { ArrowUpCircle, Check, ChevronLeft, Crown, Lock, PenLine, Pin, UserX } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { studyApi, studyPostApi } from '../../api'
@@ -24,6 +24,27 @@ function isRecruitClosed(recruitEnd) {
   return new Date(recruitEnd) < today
 }
 
+const BUMP_COOLDOWN_MS = 24 * 60 * 60 * 1000
+
+// 끌올 가능 여부와 버튼 라벨을 계산한다. 쿨다운은 "마지막 끌올 시각 + 24시간" 기준.
+// 구독자 전용 기능이라, 비구독자에게는 disabled 대신 클릭 시 구독 플랜으로 안내하는 상태를 준다.
+function getBumpState(study, closed, isSubscribed, now) {
+  if (!isSubscribed) {
+    return { disabled: false, label: '끌올 (구독자 전용)', subscriberOnly: true }
+  }
+  if (closed) {
+    return { disabled: true, label: '모집 마감으로 끌올 불가' }
+  }
+  if (study.bumpedAt) {
+    const remainingMs = new Date(study.bumpedAt).getTime() + BUMP_COOLDOWN_MS - now
+    if (remainingMs > 0) {
+      const remainingHours = Math.ceil(remainingMs / (60 * 60 * 1000))
+      return { disabled: true, label: `${remainingHours}시간 후 끌올 가능` }
+    }
+  }
+  return { disabled: false, label: '끌올' }
+}
+
 export default function StudyDetailPage() {
   const { studyId } = useParams()
   const navigate = useNavigate()
@@ -36,6 +57,15 @@ export default function StudyDetailPage() {
   const [activeTab, setActiveTab] = useState('intro')
   const [isJoining, setIsJoining] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [isBumping, setIsBumping] = useState(false)
+
+  // 끌올 쿨다운 남은 시간 표시("N시간 후 끌올 가능")를 새로고침 없이도 갱신하기 위한 시계.
+  // 분 단위 카운트다운이라 초 단위로 돌 필요는 없어서 1분마다만 갱신한다.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60 * 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const [posts, setPosts] = useState([])
   const [isBoardLoading, setIsBoardLoading] = useState(false)
@@ -160,6 +190,23 @@ export default function StudyDetailPage() {
     }
   }
 
+  async function handleBump() {
+    if (!user.subscribed) {
+      navigate('/subscription')
+      return
+    }
+
+    setIsBumping(true)
+    try {
+      await studyApi.bumpStudy(studyId)
+      await refetchStudy()
+    } catch (err) {
+      window.alert(err.response?.data?.message ?? '끌올에 실패했습니다.')
+    } finally {
+      setIsBumping(false)
+    }
+  }
+
   async function handleDeleteStudy() {
     // 방장의 "스터디 삭제"는 실제로는 탈퇴 API(leaveStudy)로 처리된다.
     // 백엔드는 방장이 마지막 한 명(본인)일 때만 실제 삭제를 수행하고,
@@ -198,6 +245,7 @@ export default function StudyDetailPage() {
   const categoryMeta = getStudyCategoryMeta(study.category)
   const closed = isRecruitClosed(study.recruitEnd)
   const isFull = study.currentMemberCount >= study.capacity
+  const bumpState = getBumpState(study, closed, user?.subscribed, now)
 
   return (
     <>
@@ -255,6 +303,15 @@ export default function StudyDetailPage() {
               <Link to={`/studies/${studyId}/edit`} className={styles.editLink}>
                 수정
               </Link>
+              <button
+                type="button"
+                className={styles.editLink}
+                onClick={handleBump}
+                disabled={isBumping || bumpState.disabled}
+              >
+                <ArrowUpCircle size={14} />
+                {isBumping ? '끌올 중...' : bumpState.label}
+              </button>
               <button type="button" className={styles.dangerLink} onClick={handleDeleteStudy}>
                 스터디 삭제
               </button>

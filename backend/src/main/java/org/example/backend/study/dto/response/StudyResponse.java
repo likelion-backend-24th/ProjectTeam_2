@@ -39,6 +39,9 @@ public class StudyResponse {
     @Schema(description = "방장 닉네임", example = "전주족발집알바생")
     private String leaderNickname;
 
+    @Schema(description = "방장 구독 여부 (목록에서 강조 표시용)", example = "true")
+    private boolean leaderSubscribed;
+
     @Schema(description = "카테고리", example = "IT_DEVELOPMENT")
     private String category;
 
@@ -47,6 +50,9 @@ public class StudyResponse {
 
     @Schema(description = "스터디 개설일시", example = "2026-08-05T10:00:00")
     private LocalDateTime createdAt;
+
+    @Schema(description = "마지막 끌올 시각 (끌올한 적 없으면 null)", example = "2026-08-24T09:00:00")
+    private LocalDateTime bumpedAt;
 
     @Schema(description = "스터디 대표 이미지 URL 목록")
     private List<String> imageUrls;
@@ -62,9 +68,11 @@ public class StudyResponse {
                 .recruitEnd(study.getRecruitEnd())
                 .leaderId(study.getLeader().getId())
                 .leaderNickname(study.getLeader().getNickname())
+                .leaderSubscribed(study.getLeader().isSubscribed())
                 .category(study.getCategory().name())
                 .categoryLabel(study.getCategory().getLabel())
                 .createdAt(study.getCreatedAt())
+                .bumpedAt(study.getBumpedAt())
                 .imageUrls(imageUrls)
                 .build();
     }
