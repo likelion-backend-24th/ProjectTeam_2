@@ -42,3 +42,17 @@ cloud:
     credentials:
       access-key: ${AWS_ACCESS_KEY}
       secret-key: ${AWS_SECRET_KEY}
+
+portone:
+  store-id: ${PORTONE_STORE_ID}
+  api-secret: ${PORTONE_API_SECRET}
+  webhook-secret: ${PORTONE_WEBHOOK_SECRET}
+  billing-key-secret: ${PORTONE_BILLING_KEY_SECRET}
+  channel-key-payment: ${PORTONE_CHANNEL_KEY_PAYMENT}
+  channel-key-billing: ${PORTONE_CHANNEL_KEY_BILLING}
+  payment-id-prefix: p2g-
+  test-mode: true
+  subscription:
+    amount: 9900
+    currency: KRW
+    order-name: 프리미엄 구독 1개월
