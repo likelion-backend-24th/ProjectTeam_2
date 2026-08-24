@@ -96,12 +96,23 @@ public class PaymentService {
             throw new BusinessException(PaymentErrorCode.PAYMENT_ALREADY_PROCESSED);
         }
 
-        PortOnePaymentResponse portOnePayment = portOnePaymentClient.getPayment(paymentId);
+        return confirmPayment(payment, userId);
+    }
+
+    /**
+     * 검증부터 확정까지 - completeSubscriptionPayment(완료 API)와 finalizeIfReady(웹훅)가
+     * 공유하는 핵심 로직. PortOne 재조회로 검증하고, 통과하면 PAID로 확정 + 구독을 시작한다.
+     * userId를 파라미터로 받는 이유: 완료 API는 이미 인증된 userId가 있지만, 웹훅은 로그인
+     * 개념이 없어 payment.getUser().getId()로 결제 기록에서 꺼내와야 하기 때문 - 호출자마다
+     * userId를 얻는 방법만 다르고 그 이후 로직은 완전히 동일하다.
+     */
+    private SubscriptionResponse confirmPayment(Payment payment, Long userId) {
+        PortOnePaymentResponse portOnePayment = portOnePaymentClient.getPayment(payment.getPaymentId());
         String failReason = verify(payment, portOnePayment, portOneProperties.getChannelKeyPayment());
 
         if (failReason != null) {
             payment.markFailed(failReason);
-            log.warn("결제 검증 실패: paymentId={}, reason={}", paymentId, failReason);
+            log.warn("결제 검증 실패: paymentId={}, reason={}", payment.getPaymentId(), failReason);
             throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
         }
 
@@ -389,7 +400,8 @@ public class PaymentService {
             try {
                 finalizeIfReady(payment);
             } catch (BusinessException e) {
-                log.warn("웹훅 처리 중 결제 검증 실패 (paymentId={}, reason={})", paymentId, e.getMessage());
+                // confirmPayment()가 이미 사유를 로그로 남겼으므로 여기선 웹훅 응답이 항상 200인 이유만 남김
+                log.info("웹훅 처리 중 결제 확정 실패 - 웹훅 응답은 그대로 200 유지 (paymentId={})", paymentId);
             }
         });
     }
@@ -404,19 +416,7 @@ public class PaymentService {
             return; // 2단계 대상 (지금은 자동 복구 안 함)
         }
 
-        PortOnePaymentResponse portOnePayment = portOnePaymentClient.getPayment(payment.getPaymentId());
-        String failReason = verify(payment, portOnePayment, portOneProperties.getChannelKeyPayment());
-
-        if (failReason != null) {
-            payment.markFailed(failReason);
-            throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
-        }
-
-        LocalDateTime paidAt = portOnePayment.paidAt() != null
-                ? LocalDateTime.ofInstant(portOnePayment.paidAt(), ZoneId.systemDefault())
-                : LocalDateTime.now();
-        payment.markPaid(paidAt);
-        subscriptionService.subscribe(payment.getUser().getId());
+        confirmPayment(payment, payment.getUser().getId());
     }
 
     /**
