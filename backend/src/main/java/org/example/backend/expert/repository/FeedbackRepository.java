@@ -22,7 +22,6 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
     Page<Feedback> findByRequesterId(@Param("requesterId") Long requesterId, Pageable pageable);
     List<Feedback> findByExpertProfileIdAndClosedAtIsNull(Long expertProfileId);
     List<Feedback> findByRequesterIdAndClosedAtIsNull(Long requesterId);
-    List<Feedback> findByRequesterIdAndClosedAtIsNull(Long requesterId);
     boolean existsByRequesterIdAndExpertProfileIdAndClosedAtIsNull(Long requesterId, Long expertProfileId);
     long countByRequesterIdAndClosedAtIsNull(Long requesterId);
 }
