@@ -1,8 +1,9 @@
 import { CheckCircle2, CreditCard, X } from 'lucide-react'
-import { useState } from 'react'
-import { paymentApi } from '../../api'
+import { useEffect, useState } from 'react'
+import { billingKeyApi, paymentApi } from '../../api'
 import styles from './PaymentModal.module.css'
 import { registerCard } from './registerCard'
+import { formatCardLabel } from '../../utils/formatCard'
 
 const PLAN_FEATURES = ['전문가 1:1 상담 무제한', '스터디 개설·참여 무제한', '구독자 전용 스터디 참여']
 
@@ -11,6 +12,23 @@ const PLAN_FEATURES = ['전문가 1:1 상담 무제한', '스터디 개설·참�
 export default function PaymentModal({ onClose, onSubscribed }) {
   const [stage, setStage] = useState('summary') // 'summary' | 'processing' | 'success' | 'error'
   const [error, setError] = useState('')
+  // registeredCard: undefined(조회 전) | null(없음) | { cardName, cardNumberMasked, ... }
+  const [registeredCard, setRegisteredCard] = useState(undefined)
+
+  useEffect(() => {
+    let ignore = false
+    billingKeyApi
+      .getMy()
+      .then(({ data }) => {
+        if (!ignore) setRegisteredCard(data.data.registered ? data.data : null)
+      })
+      .catch(() => {
+        if (!ignore) setRegisteredCard(null)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   function closeUnlessProcessing() {
     if (stage === 'processing') return
@@ -22,7 +40,10 @@ export default function PaymentModal({ onClose, onSubscribed }) {
     setStage('processing')
 
     try {
-      await registerCard()
+      // 이미 등록된 카드가 있으면 재등록하지 않는다. 재등록하면 기존 카드가 교체(소프트 삭제)된다.
+      if (!registeredCard) {
+        await registerCard()
+      }
       const { data } = await paymentApi.subscribeWithBillingKey()
 
       setStage('success')
@@ -65,18 +86,33 @@ export default function PaymentModal({ onClose, onSubscribed }) {
               ))}
             </ul>
 
+            {registeredCard && (
+              <p className={styles.registeredCard}>
+                <CreditCard size={14} />
+                {formatCardLabel(registeredCard.cardName, registeredCard.cardNumberMasked)} 로 결제돼요
+              </p>
+            )}
+
             {error && <p className={styles.error}>{error}</p>}
 
             <button
               type="button"
               className={styles.payButton}
               onClick={handleSubscribe}
-              disabled={stage === 'processing'}
+              disabled={stage === 'processing' || registeredCard === undefined}
             >
               <CreditCard size={16} />
-              {stage === 'processing' ? '처리 중...' : '카드 등록하고 시작하기'}
+              {stage === 'processing'
+                ? '처리 중...'
+                : registeredCard
+                  ? '이 카드로 구독 시작'
+                  : '카드 등록하고 시작하기'}
             </button>
-            <p className={styles.disclaimer}>카드 정보는 PortOne 결제창에만 입력되며 저장되지 않아요. 언제든 해지할 수 있어요.</p>
+            <p className={styles.disclaimer}>
+              {registeredCard
+                ? '마이페이지에 등록된 카드로 매달 자동 결제돼요. 언제든 해지할 수 있어요.'
+                : '카드 정보는 PortOne 결제창에만 입력되며 저장되지 않아요. 언제든 해지할 수 있어요.'}
+            </p>
           </>
         )}
       </div>
