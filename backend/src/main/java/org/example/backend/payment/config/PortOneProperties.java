@@ -43,6 +43,11 @@ public class PortOneProperties {
     private String apiBaseUrl = "https://api.portone.io";
 
     /**
+     * 웹훅 서명 검증용 시크릿. PortOne 콘솔 > 웹훅 설정에서 발급.
+     */
+    private String webhookSecret;
+
+    /**
      * paymentId 접두어. 팀/작성자 식별용 (예: p2g-ty-)
      */
     private String paymentIdPrefix;

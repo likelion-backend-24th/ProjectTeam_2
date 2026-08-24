@@ -19,7 +19,8 @@ public enum PaymentErrorCode implements ErrorCode {
     BILLING_KEY_NOT_FOUND(HttpStatus.NOT_FOUND, "등록된 카드가 없습니다."),
     BILLING_KEY_VERIFICATION_FAILED(HttpStatus.CONFLICT, "카드 등록 검증에 실패했습니다."),
     BILLING_PAYMENT_FAILED(HttpStatus.CONFLICT, "카드 결제에 실패했습니다."),
-    PAYMENT_RETRY_TOO_SOON(HttpStatus.TOO_MANY_REQUESTS, "방금 결제를 시도했습니다. 잠시 후 다시 시도해주세요.");
+    PAYMENT_RETRY_TOO_SOON(HttpStatus.TOO_MANY_REQUESTS, "방금 결제를 시도했습니다. 잠시 후 다시 시도해주세요."),
+    WEBHOOK_VERIFICATION_FAILED(HttpStatus.BAD_REQUEST, "웹훅 서명 검증에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String message;

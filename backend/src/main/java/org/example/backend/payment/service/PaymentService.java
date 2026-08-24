@@ -1,5 +1,9 @@
 package org.example.backend.payment.service;
 
+import io.portone.sdk.server.errors.WebhookVerificationException;
+import io.portone.sdk.server.webhook.Webhook;
+import io.portone.sdk.server.webhook.WebhookTransaction;
+import io.portone.sdk.server.webhook.WebhookVerifier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.backend.common.exception.BusinessException;
@@ -10,13 +14,11 @@ import org.example.backend.payment.config.PortOneProperties;
 import org.example.backend.payment.dto.response.BillingKeyPrepareResponse;
 import org.example.backend.payment.dto.response.BillingKeyResponse;
 import org.example.backend.payment.dto.response.PaymentReadyResponse;
-import org.example.backend.payment.entity.BillingKey;
-import org.example.backend.payment.entity.Payment;
-import org.example.backend.payment.entity.PaymentPurpose;
-import org.example.backend.payment.entity.PaymentStatus;
+import org.example.backend.payment.entity.*;
 import org.example.backend.payment.exception.PaymentErrorCode;
 import org.example.backend.payment.repository.BillingKeyRepository;
 import org.example.backend.payment.repository.PaymentRepository;
+import org.example.backend.payment.repository.WebhookEventRepository;
 import org.example.backend.subscription.dto.response.SubscriptionResponse;
 import org.example.backend.subscription.exception.SubscriptionErrorCode;
 import org.example.backend.subscription.service.SubscriptionService;
@@ -48,6 +50,8 @@ public class PaymentService {
     private final SubscriptionService subscriptionService;
     private final PortOnePaymentClient portOnePaymentClient;
     private final PortOneProperties portOneProperties;
+    private final WebhookVerifier webhookVerifier;
+    private final WebhookEventRepository webhookEventRepository;
 
     @Transactional
     public PaymentReadyResponse readySubscriptionPayment(Long userId) {
@@ -355,6 +359,64 @@ public class PaymentService {
             throw new BusinessException(inactive);
         }
         return user;
+    }
+
+    /**
+     * PortOne 웹훅 수신. completeSubscriptionPayment가 응답을 못 받고 끝났을 때를 대비한 보험 경로.
+     * 웹훅 본문은 트리거로만 쓰고, 확정은 항상 verify()로 재조회한 결과로만 한다.
+     */
+    @Transactional
+    public void handleWebhook(String body, String webhookId, String signature, String timestamp) {
+        Webhook webhook;
+        try {
+            webhook = webhookVerifier.verify(body, webhookId, signature, timestamp);
+        } catch (WebhookVerificationException e) {
+            throw new BusinessException(PaymentErrorCode.WEBHOOK_VERIFICATION_FAILED);
+        }
+
+        if (webhookEventRepository.existsByWebhookId(webhookId)) {
+            log.info("이미 처리한 웹훅이라 스킵 (webhookId={})", webhookId);
+            return;
+        }
+        webhookEventRepository.save(new WebhookEvent(webhookId));
+
+        if (!(webhook instanceof WebhookTransaction transaction)) {
+            return; // 결제 관련 웹훅이 아니면(빌링키 발급 등) 지금은 관심 없음
+        }
+
+        String paymentId = transaction.getData().getPaymentId();
+        paymentRepository.findByPaymentIdForUpdate(paymentId).ifPresent(payment -> {
+            try {
+                finalizeIfReady(payment);
+            } catch (BusinessException e) {
+                log.warn("웹훅 처리 중 결제 검증 실패 (paymentId={}, reason={})", paymentId, e.getMessage());
+            }
+        });
+    }
+
+    private void finalizeIfReady(Payment payment) {
+        if (!payment.isReady()) {
+            return; // 이미 completeSubscriptionPayment 등에서 확정됨 - 웹훅 재전송에도 안전(멱등)
+        }
+        if (payment.getBillingKey() != null) {
+            log.warn("정기결제(빌링키) 건이 READY로 방치돼 웹훅에서 발견됨 - 수동 확인 필요: paymentId={}",
+                    payment.getPaymentId());
+            return; // 2단계 대상 (지금은 자동 복구 안 함)
+        }
+
+        PortOnePaymentResponse portOnePayment = portOnePaymentClient.getPayment(payment.getPaymentId());
+        String failReason = verify(payment, portOnePayment, portOneProperties.getChannelKeyPayment());
+
+        if (failReason != null) {
+            payment.markFailed(failReason);
+            throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
+        }
+
+        LocalDateTime paidAt = portOnePayment.paidAt() != null
+                ? LocalDateTime.ofInstant(portOnePayment.paidAt(), ZoneId.systemDefault())
+                : LocalDateTime.now();
+        payment.markPaid(paidAt);
+        subscriptionService.subscribe(payment.getUser().getId());
     }
 
     /**
