@@ -16,7 +16,7 @@ function getMyStudies(params) {
 
 // GET /api/studies (비로그인 접근 가능)
 function getStudies(params) {
-  // params: { keyword, page, size } — 정렬은 백엔드가 고정(구독자 모집글 상단 고정 + 최신순)하므로 sort는 넘기지 않는다.
+  // params: { keyword, page, size } — 정렬은 백엔드가 고정(끌올 시각 desc, 없으면 개설일 desc)하므로 sort는 넘기지 않는다.
   return apiClient.get('/api/studies', { params })
 }
 
@@ -28,6 +28,11 @@ function getStudyById(id) {
 // PUT /api/studies/:id
 function updateStudy(id, payload) {
   return apiClient.put(`/api/studies/${id}`, payload)
+}
+
+// PATCH /api/studies/:id/bump (방장 전용, 24시간 쿨다운, 모집 마감 시 불가)
+function bumpStudy(id) {
+  return apiClient.patch(`/api/studies/${id}/bump`)
 }
 
 // ---- 스터디 멤버 ----
@@ -63,6 +68,7 @@ export const studyApi = {
   getStudies,
   getStudyById,
   updateStudy,
+  bumpStudy,
   joinStudy,
   getStudyMembers,
   removeStudyMember,

@@ -48,6 +48,9 @@ public class StudyDetailResponse {
     @Schema(description = "스터디 개설일시", example = "2026-08-05T10:00:00")
     private LocalDateTime createdAt;
 
+    @Schema(description = "마지막 끌올 시각 (끌올한 적 없으면 null)", example = "2026-08-24T09:00:00")
+    private LocalDateTime bumpedAt;
+
     @Schema(description = "스터디 이미지 URL 목록")
     private List<String> imageUrls;
 
@@ -65,6 +68,7 @@ public class StudyDetailResponse {
                 .category(study.getCategory().name())
                 .categoryLabel(study.getCategory().getLabel())
                 .createdAt(study.getCreatedAt())
+                .bumpedAt(study.getBumpedAt())
                 .imageUrls(imageUrls)
                 .build();
     }

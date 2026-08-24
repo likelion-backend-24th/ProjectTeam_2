@@ -60,6 +60,10 @@ public class Study {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // 방장이 "끌올"을 누른 시각. null이면 끌올한 적 없는 스터디 — 목록 정렬 시 createdAt으로 대체한다.
+    @Column(name = "bumped_at")
+    private LocalDateTime bumpedAt;
+
     public Study(String title, String description, Integer capacity,
                  LocalDate recruitStart, LocalDate recruitEnd, User leader, StudyCategory category) {
         this.title = title;

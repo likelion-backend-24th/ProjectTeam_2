@@ -17,7 +17,10 @@ export default function StudyCard({ study }) {
   const closed = isRecruitClosed(study.recruitEnd)
 
   return (
-    <Link to={`/studies/${study.id}`} className={styles.card}>
+    <Link
+      to={`/studies/${study.id}`}
+      className={`${styles.card} ${study.leaderSubscribed ? styles.cardSubscribed : ''}`}
+    >
       <div className={styles.badgeRow}>
         {categoryMeta && (
           <span className={styles.badge} style={{ backgroundColor: categoryMeta.bg, color: categoryMeta.color }}>

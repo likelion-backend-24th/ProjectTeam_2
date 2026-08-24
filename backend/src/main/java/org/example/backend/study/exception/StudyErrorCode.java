@@ -25,7 +25,9 @@ public enum StudyErrorCode implements ErrorCode {
     STUDY_POST_COMMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "댓글에 대한 권한이 없습니다."),
     STUDY_LEADER_CANNOT_BE_REMOVED(HttpStatus.FORBIDDEN, "방장은 강퇴할 수 없습니다."),
     STUDY_LEADER_DELEGATE_SELF(HttpStatus.CONFLICT, "본인에게는 방장을 위임할 수 없습니다."),
-    STUDY_LEADER_MUST_DELEGATE(HttpStatus.CONFLICT, "방장은 위임 후에 탈퇴할 수 있습니다.");
+    STUDY_LEADER_MUST_DELEGATE(HttpStatus.CONFLICT, "방장은 위임 후에 탈퇴할 수 있습니다."),
+    STUDY_BUMP_COOLDOWN(HttpStatus.CONFLICT, "끌올은 24시간에 한 번만 가능합니다."),
+    STUDY_BUMP_SUBSCRIBER_ONLY(HttpStatus.FORBIDDEN, "끌올은 구독자 전용 기능입니다.");
 
     private final HttpStatus httpStatus;
     private final String message;

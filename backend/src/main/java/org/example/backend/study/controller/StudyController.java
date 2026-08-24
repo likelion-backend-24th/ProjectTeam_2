@@ -84,4 +84,14 @@ public class StudyController {
         return ResponseEntity.ok(ApiResponse.success("스터디 수정", response));
     }
 
+    @Operation(summary = "스터디 끌올", description = "구독자인 방장이 스터디를 목록 상단으로 끌어올립니다. 24시간에 한 번만 가능하며, 모집이 마감된 스터디는 끌올할 수 없습니다.")
+    @PatchMapping("/{id}/bump")
+    public ResponseEntity<ApiResponse<StudyResponse>> bumpStudy(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable Long id) {
+        Long userId = user.getUser().getId();
+        StudyResponse response = studyService.bumpStudy(userId, id);
+        return ResponseEntity.ok(ApiResponse.success("스터디 끌올 성공", response));
+    }
+
 }
