@@ -1,7 +1,13 @@
 import { ArrowRight, UserPlus } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import styles from './CtaBanner.module.css'
 export default function CtaBanner() {
+  const { isAuthenticated } = useAuth()
+
+  // 가입·로그인 유도 배너라 로그인 후에는 노출하지 않는다.
+  if (isAuthenticated) return null
+
   return (
     <section className={styles.section}>
       <div className={styles.banner}>
