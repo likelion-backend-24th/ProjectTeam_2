@@ -29,13 +29,13 @@ public class SubscriptionController {
                 .body(ApiResponse.success("구독이 시작되었습니다.", response));
     }
 
-    @Operation(summary = "구독 취소")
+    @Operation(summary = "구독 해지", description = "다음 회차 자동 갱신만 멈춘다. 만료일까지는 계속 이용할 수 있다.")
     @DeleteMapping("/api/subscriptions")
     public ResponseEntity<ApiResponse<SubscriptionResponse>> cancel(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         SubscriptionResponse response = subscriptionService.cancel(userDetails.getUser().getId());
-        return ResponseEntity.ok(ApiResponse.success("구독이 취소되었습니다.", response));
+        return ResponseEntity.ok(ApiResponse.success("자동 갱신이 해지되었습니다.", response));
     }
 
     @Operation(summary = "내 구독 조회")

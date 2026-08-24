@@ -169,6 +169,36 @@
 .activeExpiry {
   font-size: 12px;
   color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.pastDueBox {
+  border-color: #f59e0b;
+  background-color: rgba(245, 158, 11, 0.08);
+}
+
+.pastDueLabel {
+  font-size: 15px;
+  font-weight: 800;
+  color: #f59e0b;
+}
+
+.cardHint {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.cardHint a {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+.actionNotice {
+  font-size: 12px;
+  color: var(--color-text);
+  text-align: center;
 }
 
 .cancelError {

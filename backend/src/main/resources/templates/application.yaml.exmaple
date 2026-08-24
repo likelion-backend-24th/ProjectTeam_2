@@ -41,6 +41,20 @@ logging:
       springframework:
         security: trace
 
+# PortOne V2 결제 연동. 포트원 콘솔에서 발급받은 값을 넣는다.
+portone:
+  store-id: YOUR_PORTONE_STORE_ID
+  channel-key-payment: YOUR_PORTONE_PAYMENT_CHANNEL_KEY   # 일반결제 채널
+  channel-key-billing: YOUR_PORTONE_BILLING_CHANNEL_KEY   # 정기결제(빌링키) 채널
+  api-secret: YOUR_PORTONE_V2_API_SECRET
+  billing-key-secret: YOUR_BILLING_KEY_ENCRYPTION_SECRET  # 빌링키를 DB에 암호화 저장할 때 쓰는 키. 임의의 긴 문자열
+  payment-id-prefix: p2g-                                 # paymentId 접두어. 팀원별로 다르게 두면 콘솔에서 구분하기 쉽다
+  test-mode: true                                         # 테스트 채널이면 true. 결제 검증 시 채널 환경(TEST/LIVE)과 대조한다
+  subscription:
+    amount: 9900
+    currency: KRW
+    order-name: 프리미엄 구독 1개월
+
 jwt:
   secret: YOUR_JWT_SECRET
   access-token-expiration: 3600000
