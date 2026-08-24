@@ -39,6 +39,14 @@ public class BillingKey {
     @Column(name = "issued_at", nullable = false)
     private LocalDateTime issuedAt;
 
+    /**
+     * 이 카드로 마지막 청구에 성공한 시각. 미사용 정리 기준이 된다.
+     * 컬럼이 추가되기 전에 등록된 카드는 null이며, 그 경우 등록 시각을 기준으로 본다.
+     * (NOT NULL로 두면 기존 행이 있는 테이블에 컬럼 추가 자체가 실패한다.)
+     */
+    @Column(name = "last_used_at")
+    private LocalDateTime lastUsedAt;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
@@ -50,6 +58,12 @@ public class BillingKey {
         this.cardName = cardName;
         this.cardNumberMasked = cardNumberMasked;
         this.issuedAt = issuedAt;
+        this.lastUsedAt = issuedAt;
+    }
+
+    /** 청구에 성공할 때마다 호출. 정기결제가 도는 동안에는 미사용 정리 대상이 되지 않는다. */
+    public void markUsed(LocalDateTime usedAt) {
+        this.lastUsedAt = usedAt;
     }
 
     public boolean isActive() {

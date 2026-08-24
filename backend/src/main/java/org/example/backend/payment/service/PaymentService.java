@@ -294,7 +294,9 @@ public class PaymentService {
             return false;
         }
 
-        payment.markPaid(LocalDateTime.now());
+        LocalDateTime paidAt = LocalDateTime.now();
+        payment.markPaid(paidAt);
+        billingKey.markUsed(paidAt);
         if (mode.isRenewal()) {
             // 갱신 기준일은 구독이 정한다 — 만료 전에 미리 청구된 경우 남은 기간에 이어 붙어야 한다.
             subscriptionService.renewExisting(user.getId());
