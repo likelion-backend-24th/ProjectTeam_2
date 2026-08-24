@@ -57,6 +57,18 @@ jobs:
             secret: test-secret-for-ci-only-not-real-do-not-use-in-prod
             access-token-expiration: 3600000
             refresh-token-expiration: 1209600000
+          portone:
+            store-id: store-ci-test
+            channel-key-payment: channel-key-ci-payment
+            channel-key-billing: channel-key-ci-billing
+            api-secret: ci-api-secret-not-real
+            billing-key-secret: ci-billing-key-secret-not-real
+            payment-id-prefix: ci-test-
+            test-mode: true
+            subscription:
+              amount: 9900
+              currency: KRW
+              order-name: 프리미엄 구독 1개월
           cloud:
             aws:
               s3:

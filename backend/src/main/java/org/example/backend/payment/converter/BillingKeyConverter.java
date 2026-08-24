@@ -73,6 +73,10 @@ public class BillingKeyConverter implements AttributeConverter<String, String> {
     }
 
     private static SecretKeySpec deriveKey(String secret) {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException(
+                    "portone.billing-key-secret 이 설정되지 않았습니다. 빌링키를 암호화할 수 없어 기동할 수 없습니다.");
+        }
         try {
             byte[] hashed = MessageDigest.getInstance("SHA-256").digest(secret.getBytes(StandardCharsets.UTF_8));
             return new SecretKeySpec(hashed, "AES");
