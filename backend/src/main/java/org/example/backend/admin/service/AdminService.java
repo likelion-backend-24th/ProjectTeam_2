@@ -62,15 +62,6 @@ public class AdminService {
         userRepository.save(user);
     }
 
-    //유저 role 변경
-    @Transactional
-    public void changeUserRole(Long userId, Role role){
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(AdminErrorCode.USER_NOT_FOUND));
-        user.setRole(role);
-        userRepository.save(user);
-    }
-
     // 게시글 소프트 딜리트 (게시물에 딸린 댓글도 소프트 딜리트)
     @Transactional
     public void deletePost(Long postId){
