@@ -28,7 +28,14 @@ export default function LoginForm() {
       await login({ username, password })
       navigate(from, { replace: true })
     } catch (err) {
-      setError(err.response?.data?.message ?? '이메일 또는 비밀번호를 확인해주세요.')
+      const errorCode = err.response?.data?.errorCode
+      const message = err.response?.data?.message ?? '이메일 또는 비밀번호를 확인해주세요.'
+
+      if (errorCode === 'ACCOUNT_SUSPENDED' || errorCode === 'ACCOUNT_WITHDRAWN') {
+        window.alert(message)
+      } else {
+        setError(message)
+      }
     } finally {
       setIsSubmitting(false)
     }

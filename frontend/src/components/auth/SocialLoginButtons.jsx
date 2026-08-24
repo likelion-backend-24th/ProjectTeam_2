@@ -46,17 +46,19 @@ export default function SocialLoginButtons({ mode }) {
       client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
       scope: 'email profile',
       callback: async (response) => {
-        if (response.error) {
-          console.error('구글 로그인 실패', response)
-          return
-        }
-        try {
-          await googleLogin(response.access_token)
-          navigate('/', { replace: true })
-        } catch (err) {
-          console.error('구글 로그인 처리 실패', err)
-        }
-      },
+  if (response.error) {
+    console.error('구글 로그인 실패', response)
+    return
+  }
+  try {
+    await googleLogin(response.access_token)
+    navigate('/', { replace: true })
+  } catch (err) {
+    const message = err.response?.data?.message ?? '구글 로그인에 실패했습니다.'
+    console.error('구글 로그인 처리 실패', err)
+    window.alert(message)
+  }
+},
     })
     client.requestAccessToken()
   }

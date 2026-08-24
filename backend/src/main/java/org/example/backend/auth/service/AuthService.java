@@ -98,10 +98,9 @@ public class AuthService {
         //로그인 성공하면 다시 초기화
         user.setFailedLoginAttempts(0);
         user.setLockedUntil(null);
+        // 회원 탈퇴/정지 계정인지 체크
+        checkAccountActive(user);
 
-        if (user.getStatus() != AccountStatus.ACTIVE) {
-            throw new BusinessException(AuthErrorCode.INACTIVE_ACCOUNT);
-        }
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String refreshTokenValue = jwtTokenProvider.generateRefreshToken(user.getUsername());
 
@@ -130,9 +129,8 @@ public class AuthService {
 
         User user = savedRefreshToken.getUser();
 
-        if (user.getStatus() != AccountStatus.ACTIVE){
-            throw  new BusinessException(AuthErrorCode.INACTIVE_ACCOUNT);
-        }
+        // 회원 탈퇴/정지 계정인지 체크
+        checkAccountActive(user);
 
         String newAccessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getUsername());
@@ -208,9 +206,8 @@ public class AuthService {
                 .map(oauthAccount -> oauthAccount.getUser())
                 .orElseGet(() -> registerKakaoUser(kakaoUserInfo, providerId));
 
-        if (user.getStatus() != AccountStatus.ACTIVE) {
-            throw new BusinessException(AuthErrorCode.INACTIVE_ACCOUNT);
-        }
+        // 회원 탈퇴/정지 계정인지 체크
+        checkAccountActive(user);
 
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String refreshTokenValue = jwtTokenProvider.generateRefreshToken(user.getUsername());
@@ -273,9 +270,8 @@ public class AuthService {
                 .map(oauthAccount -> oauthAccount.getUser())
                 .orElseGet(() -> registerGoogleUser(googleUserInfo, providerId));
 
-        if (user.getStatus() != AccountStatus.ACTIVE) {
-            throw new BusinessException(AuthErrorCode.INACTIVE_ACCOUNT);
-        }
+        // 회원 탈퇴/정지 계정인지 체크
+        checkAccountActive(user);
 
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String refreshTokenValue = jwtTokenProvider.generateRefreshToken(user.getUsername());
@@ -336,9 +332,8 @@ public class AuthService {
                 .map(oauthAccount -> oauthAccount.getUser())
                 .orElseGet(() -> registerNaverUser(naverUserInfo, providerId));
 
-        if (user.getStatus() != AccountStatus.ACTIVE) {
-            throw new BusinessException(AuthErrorCode.INACTIVE_ACCOUNT);
-        }
+        // 회원 탈퇴/정지 계정인지 체크
+        checkAccountActive(user);
 
         String accessToken = jwtTokenProvider.generateAccessToken(user.getUsername());
         String refreshTokenValue = jwtTokenProvider.generateRefreshToken(user.getUsername());
@@ -366,6 +361,16 @@ public class AuthService {
         }while (userRepository.existsByNickname(nickname));
 
         return nickname;
+    }
+
+    // 계정 상태 확인 (정지/탈퇴 여부에 따라 다른 메시지로 응답)
+    private void checkAccountActive(User user) {
+        if (user.getStatus() == AccountStatus.SUSPENDED) {
+            throw new BusinessException(AuthErrorCode.ACCOUNT_SUSPENDED);
+        }
+        if (user.getStatus() == AccountStatus.WITHDRAWN) {
+            throw new BusinessException(AuthErrorCode.ACCOUNT_WITHDRAWN);
+        }
     }
 
 }

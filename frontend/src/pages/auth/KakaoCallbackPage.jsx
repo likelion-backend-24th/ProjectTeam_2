@@ -41,7 +41,9 @@ export default function KakaoCallbackPage() {
         await kakaoLogin(tokenData.access_token)
         navigate('/', { replace: true })
       } catch (err) {
+        const message = err.response?.data?.message ?? '카카오 로그인에 실패했습니다.'
         console.error('카카오 로그인 처리 실패', err)
+        window.alert(message)
         navigate('/login', { replace: true })
       }
     }
