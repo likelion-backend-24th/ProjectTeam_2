@@ -25,6 +25,7 @@ import { useAuth } from '../context/AuthContext'
 import { getAvatarColor } from '../utils/avatarColor'
 import { formatDate, formatDateTime } from '../utils/formatDate'
 import { registerCard } from '../components/subscription/registerCard'
+import { formatCardTail } from '../utils/formatCard'
 import styles from './MyPage.module.css'
 
 const ROLE_META = {
@@ -827,7 +828,7 @@ function PaymentMethodSection() {
           <div className={styles.paymentMethodInfo}>
             <p className={styles.paymentMethodName}>
               {card.cardName ?? '등록된 카드'}
-              {card.cardNumberMasked && <span className={styles.paymentMethodNumber}>{card.cardNumberMasked}</span>}
+              {card.cardNumberMasked && <span className={styles.paymentMethodNumber}>{formatCardTail(card.cardNumberMasked)}</span>}
             </p>
             <p className={styles.paymentMethodMeta}>
               {formatDate(card.issuedAt)} 등록
