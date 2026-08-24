@@ -14,6 +14,8 @@ import org.example.backend.payment.entity.PaymentStatus;
 import org.example.backend.payment.exception.PaymentErrorCode;
 import org.example.backend.payment.repository.BillingKeyRepository;
 import org.example.backend.payment.repository.PaymentRepository;
+import org.example.backend.payment.repository.WebhookEventRepository;
+import io.portone.sdk.server.webhook.WebhookVerifier;
 import org.example.backend.subscription.dto.response.SubscriptionResponse;
 import org.example.backend.subscription.exception.SubscriptionErrorCode;
 import org.example.backend.subscription.service.SubscriptionService;
@@ -53,6 +55,10 @@ class PaymentServiceTest {
     private SubscriptionService subscriptionService;
     @Mock
     private PortOnePaymentClient portOnePaymentClient;
+    @Mock
+    private WebhookVerifier webhookVerifier;
+    @Mock
+    private WebhookEventRepository webhookEventRepository;
 
     private PortOneProperties portOneProperties;
     private PaymentService paymentService;
@@ -84,7 +90,8 @@ class PaymentServiceTest {
 
         paymentService = new PaymentService(
                 paymentRepository, billingKeyRepository, userRepository,
-                subscriptionService, portOnePaymentClient, portOneProperties
+                subscriptionService, portOnePaymentClient, portOneProperties,
+                webhookVerifier, webhookEventRepository
         );
     }
 
