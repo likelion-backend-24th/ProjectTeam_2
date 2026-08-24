@@ -141,9 +141,7 @@ public class PaymentService {
         verifyBillingKeyOwnership(billingKey);
 
         // 이전에 남아있던 활성 빌링키가 있으면 정리하고 새로 저장 (결제 실패로 끊긴 경우 등)
-        billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE)
-                .ifPresent(old -> cleanUpBillingKey(old, "새 빌링키로 교체"));
-        billingKeyRepository.save(new BillingKey(user, billingKey));
+        replaceActiveBillingKey(user, billingKey, "새 빌링키로 교체");
 
         // 저장된 빌링키로 첫 결제 시도
         Payment payment = chargeWithBillingKey(user, billingKey, planType, null, "빌링키 결제 실패");
@@ -255,14 +253,26 @@ public class PaymentService {
 
         // 동시성 가드: 스케줄러(하루 1회)와 사용자의 수동 재시도(retryPastDueChargeNow)가 같은
         // 유저에 대해 거의 동시에 들어와도 순서대로 처리되게 유저 행에 락을 검. 안 걸면 두 시도가
-        // 동시에 같은 빌링키로 이중 결제를 시도할 수 있음 (completePayment/attachBillingKey와 동일한 이유).
+        // 동시에 같은 빌링키로 이중 결제를 시도할 수 있음 (completePayment/replaceBillingKey와 동일한 이유).
         userRepository.findByIdForUpdate(user.getId());
+
+        // 해지 예약된 구독이 만료 시점에 도달한 경우 - 카드는 아직 살아있지만(해지 시 안 지움) 청구하지
+        // 않고 바로 확정 취소한다. cancelRequested는 ACTIVE 상태에서만 세팅되므로(SubscriptionService.
+        // cancel() 참고), PAST_DUE 대상으로 이 메서드를 부르는 processPastDueSubscription/
+        // retryPastDueChargeNow 경로에서는 항상 false라 이 분기에 걸릴 일이 없다.
+        if (subscription.isCancelRequested()) {
+            log.info("갱신 시점에 해지 예약 확인 - 청구 없이 확정 취소 (subscriptionId={})", subscription.getId());
+            finalizeCancellation(subscription, user, false);
+            return;
+        }
 
         BillingKey billingKey = billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE).orElse(null);
         if (billingKey == null) {
             // 빌링키가 아예 없으면 재시도해봤자 의미가 없으니 유예기간 없이 바로 최종 취소.
-            // 이 경로는 사실상 사용자가 직접 해지한 경우뿐이라(빌링키가 사라지는 다른 경로가 없음)
-            // "결제 실패" 메일이 아니라 cancel() 시점에 이미 보낸 "해지 완료" 메일로 충분함 -> 메일 재발송 안 함
+            // ACTIVE 중 해지한 경우는 위 cancelRequested 분기에서 이미 걸러지므로, 여기 도달하는 건
+            // PAST_DUE 중 해지(카드를 즉시 지움 - SubscriptionService.cancel() 참고)나 그 밖의 예외적으로
+            // 카드가 사라진 경우뿐이다. 어느 쪽이든 "결제 실패" 메일이 아니라 cancel() 시점에 이미 보낸
+            // "해지 완료" 메일로 충분함 -> 메일 재발송 안 함
             log.info("갱신 실패 - 활성 빌링키 없음 (subscriptionId={})", subscription.getId());
             finalizeCancellation(subscription, user, false);
             return;
@@ -372,13 +382,23 @@ public class PaymentService {
         billingKey.setDeletedAt(LocalDateTime.now());
     }
 
-    // 활성 빌링키(=다음 자동갱신 예정) 여부. 프론트에 "해지 예약" 상태를 보여줄 때 씀.
+    // 활성 빌링키(=청구 가능한 카드가 등록돼 있는지) 여부. PAST_DUE의 "재시도할 카드가 있는지"
+    // 판단이나 카드 변경 전제조건 체크에 씀 - ACTIVE의 "다음에 갱신될지"는 이제 이 값이 아니라
+    // Subscription.cancelRequested로 판단한다(해지해도 만료 전까지는 카드를 살려두므로).
     public boolean hasActiveBillingKey(User user) {
         return billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE).isPresent();
     }
 
+    // 기존 활성 빌링키가 있으면 정리하고 새 빌링키로 교체 저장한다.
+    // completePayment(재구독 시 예전 빌링키 정리)와 replaceBillingKey(결제수단 변경)가 공유하는 헬퍼.
+    private void replaceActiveBillingKey(User user, String newBillingKey, String cleanupReason) {
+        billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE)
+                .ifPresent(old -> cleanUpBillingKey(old, cleanupReason));
+        billingKeyRepository.save(new BillingKey(user, newBillingKey));
+    }
+
     // PortOne에 실제로 발급된 빌링키가 맞는지, 우리 상점/채널의 빌링키가 맞는지 검증.
-    // completePayment/attachBillingKey가 공유 (원래 completePayment 안에 있던 로직을 그대로 분리한 것).
+    // completePayment/replaceBillingKey가 공유 (원래 completePayment 안에 있던 로직을 그대로 분리한 것).
     private void verifyBillingKeyOwnership(String billingKey) {
         BillingKeyInfo billingKeyInfo = portOneClient.getPayment().getBillingKey().getBillingKeyInfo(billingKey).join();
 
@@ -389,27 +409,23 @@ public class PaymentService {
         }
     }
 
-    // 해지 예약 취소(자동갱신 재개) - 새 결제 없이 빌링키만 다시 등록한다.
-    // completePayment와 달리 기존 빌링키를 교체하지 않고, 이미 활성 빌링키가 있으면(중복 요청/이미
-    // 재개된 상태) 그대로 조용히 종료한다 - SubscriptionService.cancel()의 멱등성 처리와 대칭되는 설계.
-    // (그 사이 새로 발급된 billingKey는 그냥 버려짐: PortOne 쪽엔 남지만 우리 쪽에 등록되지 않으므로
-    //  실사용되지 않음 - completePayment의 중복 클릭 케이스에서도 동일한 트레이드오프를 이미 감수하고 있음)
+    // 결제수단 변경 - 이미 자동갱신 중(활성 빌링키 있음)인 구독자가 카드를 교체한다.
+    // completePayment와 달리 즉시 결제는 발생하지 않고, 다음 정상 갱신부터 새 카드로 청구된다.
+    // (해지 예약 취소(SubscriptionService.resume())는 더 이상 이 메서드를 쓰지 않는다 - 해지 시 카드를
+    // 지우지 않으므로 재개는 SubscriptionResponse 플래그만 되돌리면 되고, 새 카드 등록 자체가 필요 없다.)
     @Transactional
-    public void attachBillingKey(User user, String billingKey) {
-        // completePayment와 동일한 이유로 동시성 가드 - 중복 요청이 동시에 "활성 빌링키 없음"을
-        // 통과해서 같은 유저에게 빌링키가 두 번 저장되는 걸 방지.
+    public void replaceBillingKey(User user, String newBillingKey) {
+        // completePayment와 동일한 이유로 동시성 가드 - 중복 요청(더블클릭/여러 탭)이
+        // 동시에 들어와도 순서대로 처리되게 함.
         userRepository.findByIdForUpdate(user.getId());
 
         if (user.getStatus() != AccountStatus.ACTIVE) {
             throw new BusinessException(SubscriptionErrorCode.USER_INACTIVE);
         }
 
-        if (billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE).isPresent()) {
-            return;
-        }
-
-        verifyBillingKeyOwnership(billingKey);
-        billingKeyRepository.save(new BillingKey(user, billingKey));
+        // PortOne에 실제로 발급된 우리 상점 키가 맞는지 재확인 (프론트 응답은 단서일 뿐)
+        verifyBillingKeyOwnership(newBillingKey);
+        replaceActiveBillingKey(user, newBillingKey, "사용자 요청에 의한 결제수단 변경");
     }
 
     // 웹훅

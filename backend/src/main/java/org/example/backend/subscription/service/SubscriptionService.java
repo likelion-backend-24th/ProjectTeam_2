@@ -36,40 +36,62 @@ public class SubscriptionService {
 
     @Transactional
     public SubscriptionResponse cancel(Long userId) {
-        Subscription subscription = subscriptionRepository.findByUserIdAndStatusIn(userId, LIVE_STATUSES)
+        // "해지"는 두 번(중복 클릭/여러 탭, 또는 정말 동시에 도착하는 두 요청) 호출해도 결과가 같아야
+        // 하는(멱등) 액션이다. 구독 행에 락을 걸고 조회해서, 동시에 도착한 두 번째 요청은 첫 번째 요청이
+        // 커밋될 때까지 여기서 블록됐다가 이미 반영된 최신 상태(cancelRequested=true 등)를 보고
+        // 자연스럽게 "이미 해지 처리됨"으로 넘어가게 한다.
+        Subscription subscription = subscriptionRepository.findByUserIdAndStatusInForUpdate(userId, LIVE_STATUSES)
                 .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND));
 
-        // (설계) 구독을 즉시 CANCELLED로 바꾸지 않고 빌링키만 삭제함 -> "해지 예약" 방식.
-        // 환불 정책이 없어서 이미 낸 돈만큼(expiredAt까지)은 계속 이용하게 해주는 게 맞다고 판단.
-        // 이번 결제 기간이 끝나면 renewSubscription이 "활성 빌링키 없음"으로 알아서 CANCELLED 처리함
-        // -> 별도 Subscription 상태/필드 없이 기존 갱신 실패 로직을 그대로 재사용.
-        // PAST_DUE 중인 구독도 동일하게 빌링키만 지우면 됨: 다음 스케줄러 실행 때
-        // attemptRenewalCharge가 "활성 빌링키 없음"을 보고 finalizeCancellation으로 확정 취소해준다
-        // (알림 메일도 "자진 해지"로 정확히 분기됨 - PaymentService.attemptRenewalCharge 참고).
-        //
-        // "해지"는 두 번(중복 클릭/여러 탭, 또는 정말 동시에 도착하는 두 요청) 호출해도 결과가 같아야
-        // 하는(멱등) 액션이다. 구독 자체는 (ACTIVE든 PAST_DUE든) 상태가 바로 안 바뀌므로 두 번째
-        // 요청도 여전히 같은 구독을 찾아 여기까지 들어온다.
-        //
-        // 활성 빌링키 행에 락을 걸고 조회해서 이 판단을 여기서 직접 내린다: 동시에 도착한 두 번째
-        // 요청은 첫 번째 요청이 커밋될 때까지 이 조회에서 블록됐다가, 락이 풀리면 빌링키가 이미
-        // 없어진 걸 보고 자연스럽게 "이미 해지됨"으로 처리된다.
-        // (예전엔 PaymentService.deleteBillingKey(User,..)가 빌링키 없음을 예외로 던지고 여기서
-        // catch해서 판단했는데, 그 호출이 다른 빈(bean)의 @Transactional 경계를 넘는 크로스빈 호출이라
-        // Spring이 예외가 나가는 순간 공유 트랜잭션을 rollback-only로 표시해버려서, catch로 잡아 정상
-        // 처리해도 커밋 시점에 UnexpectedRollbackException이 나는 문제가 있었음. 판단을 이 메서드 안에서
-        // 끝내면 그 문제 자체가 생기지 않는다.)
+        if (subscription.getStatus() == SubscriptionStatus.ACTIVE) {
+            // (설계) 구독을 즉시 CANCELLED로 바꾸지 않고, 빌링키(카드)도 안 지운 채 "해지 예약" 플래그만
+            // 세운다. 환불 정책이 없어서 이미 낸 돈만큼(expiredAt까지)은 계속 이용하게 해주는 게 맞고,
+            // 카드를 살려두면 만료 전에 마음이 바뀌었을 때 재등록 없이 바로 되돌릴 수 있다(resume() 참고).
+            // 이번 결제 기간이 끝나면 PaymentService.attemptRenewalCharge가 이 플래그를 보고 청구 없이
+            // 바로 CANCELLED로 확정한다 - 별도 상태 전이 없이 기존 갱신 로직에 분기 하나만 추가한 것.
+            if (!subscription.isCancelRequested()) {
+                subscription.requestCancel();
+                emailService.sendSubscriptionCancelled(subscription.getUser().getUsername());
+            }
+            // 이미 해지 예약된 상태면 조용히 넘어감 (이메일도 첫 요청 때 이미 보냈음)
+        } else {
+            // PAST_DUE: 이미 결제가 한 번 실패해서 재시도 중이던 카드라 살려둘 이유가 없다(재개(resume)도
+            // 지금 재시도(retryPastDueNow)도 이 카드를 다시 쓰는 경로가 없음 - 둘 다 ACTIVE 전용이거나
+            // 별도 재시도 액션이다) - 기존과 동일하게 빌링키를 즉시 정리해 확정 취소한다.
+            deleteBillingKeyIfPresent(subscription, "사용자 요청에 의한 구독 해지");
+        }
+
+        return SubscriptionResponse.from(subscription, false);
+    }
+
+    // 회원 탈퇴 전용 해지. 일반 cancel()과 달리 상태와 무관하게 항상 카드를 즉시 정리한다 - 탈퇴는
+    // 재개 가능성이 없으므로, 일반 해지처럼 만료 시점까지 카드를 남겨둘 이유가 없다(불필요하게 오래
+    // 들고 있지 않기 위함). UserService.withdrawAccount()가 "정리할 구독이 있는지"를 hasLiveSubscription()
+    // 으로 먼저 확인한 뒤에만 부른다.
+    @Transactional
+    public void cancelForWithdrawal(Long userId) {
+        Subscription subscription = subscriptionRepository.findByUserIdAndStatusInForUpdate(userId, LIVE_STATUSES)
+                .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND));
+
+        deleteBillingKeyIfPresent(subscription, "회원 탈퇴에 따른 구독 해지");
+    }
+
+    // cancel()의 PAST_DUE 분기/cancelForWithdrawal이 공유하는 즉시 정리 로직.
+    // (예전엔 PaymentService.deleteBillingKey(User,..)가 빌링키 없음을 예외로 던지고 호출부에서
+    // catch해서 판단했는데, 그 호출이 다른 빈(bean)의 @Transactional 경계를 넘는 크로스빈 호출이라
+    // Spring이 예외가 나가는 순간 공유 트랜잭션을 rollback-only로 표시해버려 커밋 시점에
+    // UnexpectedRollbackException이 나는 문제가 있었음. 판단을 호출자 쪽에서 먼저 끝내 그 문제 자체가
+    // 생기지 않게 한다.)
+    private void deleteBillingKeyIfPresent(Subscription subscription, String reason) {
         BillingKey billingKey = billingKeyRepository
                 .findByUserAndStatusForUpdate(subscription.getUser(), BillingKeyStatus.ACTIVE)
                 .orElse(null);
 
         if (billingKey != null) {
-            paymentService.deleteBillingKey(billingKey, "사용자 요청에 의한 구독 해지");
+            paymentService.deleteBillingKey(billingKey, reason);
             emailService.sendSubscriptionCancelled(subscription.getUser().getUsername());
         }
         // billingKey가 없으면 이미 해지된 상태 -> 조용히 넘어감 (이메일도 첫 요청 때 이미 보냈음)
-
-        return SubscriptionResponse.from(subscription, false);
     }
 
     // UserService.withdrawAccount()가 "정리할 구독이 있는지"를 먼저 확인할 때 씀.
@@ -87,25 +109,18 @@ public class SubscriptionService {
         // 접근 권한이 끊긴 사용자가 "구독 없음"(404)으로만 보여서 본인 상태를 확인할 방법이 없었음.
         Subscription subscription = subscriptionRepository.findByUserIdAndStatusIn(userId, LIVE_STATUSES)
                 .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND));
-        boolean autoRenew = paymentService.hasActiveBillingKey(subscription.getUser());
-        return SubscriptionResponse.from(subscription, autoRenew);
+        return SubscriptionResponse.from(subscription, resolveAutoRenew(subscription));
     }
 
-    // 해지 예약 취소(자동갱신 재개)를 위한 새 빌링키 발급 파라미터 준비.
-    // PAST_DUE(유예기간 중)는 여기 대상이 아님 - 그쪽은 접근 권한이 이미 끊긴 상태라 완전히 새로
-    // 결제하는 completePayment 경로로 복구하는 게 맞고(카드 실패 이력이 있어 재시도 가치 판단이 다름),
-    // 여기는 "아직 멀쩡히 ACTIVE인데 해지만 예약된" 경우만 다룬다.
-    public PaymentPrepareResponse prepareResume(Long userId) {
-        Subscription subscription = subscriptionRepository.findByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
-                .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND));
-
-        // 이미 자동갱신 중이면(해지 예약 자체를 안 했거나 이미 재개됨) 굳이 PortOne 발급창을 띄울
-        // 이유가 없으니 여기서 먼저 막는다. (실제 저장 시점의 중복 방지는 attachBillingKey가 별도로 함)
-        if (paymentService.hasActiveBillingKey(subscription.getUser())) {
-            throw new BusinessException(SubscriptionErrorCode.AUTO_RENEW_ALREADY_ON);
+    // "다음 결제일에 자동 갱신되는지" 판단. 상태별로 근거가 다르다.
+    //  - ACTIVE: 이제 카드 유무가 아니라 해지 예약 여부로 판단한다. 해지해도 카드는 만료 시점까지
+    //    살려두므로(cancel() 참고), hasActiveBillingKey만으론 더 이상 "갱신될지"를 구분할 수 없다.
+    //  - PAST_DUE: 여전히 "재시도할 카드가 남아있는지"가 관심사라 카드 유무를 그대로 쓴다.
+    private boolean resolveAutoRenew(Subscription subscription) {
+        if (subscription.getStatus() == SubscriptionStatus.ACTIVE) {
+            return !subscription.isCancelRequested();
         }
-
-        return paymentService.prepareBillingKeyReissue(subscription.getUser(), subscription.getPlanType());
+        return paymentService.hasActiveBillingKey(subscription.getUser());
     }
 
     // 유예기간(PAST_DUE) 중 사용자가 스케줄러(최대 하루 1회)를 기다리지 않고, 이미 등록된 카드로
@@ -114,22 +129,54 @@ public class SubscriptionService {
     @Transactional
     public SubscriptionResponse retryPastDueNow(Long userId) {
         Subscription subscription = paymentService.retryPastDueChargeNow(userId);
-        boolean autoRenew = paymentService.hasActiveBillingKey(subscription.getUser());
-        return SubscriptionResponse.from(subscription, autoRenew);
+        return SubscriptionResponse.from(subscription, resolveAutoRenew(subscription));
     }
 
-    // 해지 예약 취소(자동갱신 재개) - 새 결제 없이 빌링키만 다시 등록한다.
-    // 이미 결제한 기간(expiredAt)은 그대로 유지되고, 다음 자동갱신부터 다시 청구된다.
+    // 해지 예약 취소(자동갱신 재개) - cancel()이 카드를 지우지 않으므로, 이제 새 카드 등록 없이
+    // "해지 예약" 플래그만 되돌리면 된다(PortOne 호출 자체가 필요 없음). 이미 결제한 기간(expiredAt)은
+    // 그대로 유지되고, 다음 자동갱신부터 이 카드로 다시 청구된다.
     @Transactional
-    public SubscriptionResponse resume(Long userId, String billingKey) {
+    public SubscriptionResponse resume(Long userId) {
         Subscription subscription = subscriptionRepository.findByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND));
 
-        // 중복 요청(더블클릭/여러 탭)이 와도 결과가 같도록 attachBillingKey가 멱등하게 처리함
-        // (이미 활성 빌링키가 있으면 조용히 넘어감 - cancel()과 대칭되는 설계).
-        paymentService.attachBillingKey(subscription.getUser(), billingKey);
+        if (subscription.isCancelRequested()) {
+            // 정상 흐름에서는 cancel()이 카드를 지우지 않으므로 항상 있어야 하지만, 예외적으로 카드가
+            // 사라진 경우(PortOne 콘솔에서 수동 삭제 등)를 대비한 방어적 체크.
+            if (!paymentService.hasActiveBillingKey(subscription.getUser())) {
+                throw new BusinessException(SubscriptionErrorCode.NO_ACTIVE_BILLING_KEY);
+            }
+            subscription.revokeCancelRequest();
+        }
+        // 이미 해지 예약 자체를 안 했거나 이미 재개된 상태면 조용히 넘어감 (cancel()과 대칭되는 멱등 처리)
 
-        boolean autoRenew = paymentService.hasActiveBillingKey(subscription.getUser());
-        return SubscriptionResponse.from(subscription, autoRenew);
+        return SubscriptionResponse.from(subscription, resolveAutoRenew(subscription));
+    }
+
+    // 결제수단 변경 준비 - 이미 자동갱신 중(활성 빌링키 있음)인 사용자가 카드를 바꾸고 싶을 때, 새 빌링키
+    // 발급에 필요한 값만 내려줌. 아직 자동갱신을 등록한 적 없으면(카드 자체가 없음) NO_ACTIVE_BILLING_KEY로
+    // 막는다 - 그 경우는 여기가 아니라 최초 구독(completePayment) 대상이다.
+    public PaymentPrepareResponse prepareCardChange(Long userId) {
+        Subscription subscription = subscriptionRepository.findByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND));
+
+        if (!paymentService.hasActiveBillingKey(subscription.getUser())) {
+            throw new BusinessException(SubscriptionErrorCode.NO_ACTIVE_BILLING_KEY);
+        }
+
+        return paymentService.prepareBillingKeyReissue(subscription.getUser(), subscription.getPlanType());
+    }
+
+    // 결제수단 변경 - prepareCardChange에서 발급받은 새 billingKey로 기존 카드를 교체한다.
+    // resume과 달리 즉시 결제는 없지만 "카드 교체"가 목적이라 기존 활성 빌링키는 유지가 아니라 정리된다
+    // (PaymentService.replaceBillingKey 참고).
+    @Transactional
+    public SubscriptionResponse changeCard(Long userId, String billingKey) {
+        Subscription subscription = subscriptionRepository.findByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND));
+
+        paymentService.replaceBillingKey(subscription.getUser(), billingKey);
+
+        return SubscriptionResponse.from(subscription, resolveAutoRenew(subscription));
     }
 }

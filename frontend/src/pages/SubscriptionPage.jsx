@@ -24,11 +24,13 @@ export default function SubscriptionPage() {
 
   // subscription: undefined(조회 전) | null(구독 없음) | { status, startedAt, expiredAt, autoRenew }
   const [subscription, setSubscription] = useState(undefined)
-  const [modalMode, setModalMode] = useState(null) // null(닫힘) | 'subscribe' | 'resume'
+  const [modalMode, setModalMode] = useState(null) // null(닫힘) | 'subscribe' | 'changeCard'
   const [isCancelling, setIsCancelling] = useState(false)
   const [cancelError, setCancelError] = useState('')
   const [isRetrying, setIsRetrying] = useState(false)
   const [retryError, setRetryError] = useState('')
+  const [isResuming, setIsResuming] = useState(false)
+  const [resumeError, setResumeError] = useState('')
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -63,10 +65,27 @@ export default function SubscriptionPage() {
     setModalMode('subscribe')
   }
 
-  // 해지 예약 취소(자동갱신 재개). 로그인 안 된 상태로는 애초에 이 버튼이 보일 일이 없어서
-  // handleSubscribeClick과 달리 인증 체크는 안 함.
-  function handleResumeClick() {
-    setModalMode('resume')
+  // 해지 예약 취소(자동갱신 재개). 해지 시 서버가 카드를 지우지 않으므로 새 카드 등록 없이 API 한 번
+  // 이면 끝난다 - PaymentModal(PortOne 발급창) 없이 바로 처리. 로그인 안 된 상태로는 애초에 이 버튼이
+  // 보일 일이 없어서 handleSubscribeClick과 달리 인증 체크는 안 함.
+  async function handleResume() {
+    setResumeError('')
+    setIsResuming(true)
+    try {
+      const { data } = await subscriptionApi.resume()
+      setSubscription(data.data)
+      await refetchMe()
+    } catch (err) {
+      setResumeError(err.response?.data?.message ?? err.message ?? '해지 예약 취소에 실패했어요.')
+    } finally {
+      setIsResuming(false)
+    }
+  }
+
+  // 결제수단 변경. resume과 달리 이미 자동갱신 중(카드 등록됨)인 사용자만 이 버튼을 보게 되므로
+  // 마찬가지로 인증 체크는 안 함.
+  function handleChangeCardClick() {
+    setModalMode('changeCard')
   }
 
   async function handleSubscribed(newSubscription) {
@@ -219,15 +238,21 @@ export default function SubscriptionPage() {
                   </p>
                 )}
                 {cancelError && <p className={styles.cancelError}>{cancelError}</p>}
+                {resumeError && <p className={styles.cancelError}>{resumeError}</p>}
                 {subscription.autoRenew ? (
-                  <button type="button" className={styles.cancelButton} onClick={handleCancel} disabled={isCancelling}>
-                    {isCancelling ? '처리 중...' : '구독 해지'}
-                  </button>
+                  <>
+                    <button type="button" className={styles.resumeButton} onClick={handleChangeCardClick}>
+                      결제수단 변경
+                    </button>
+                    <button type="button" className={styles.cancelButton} onClick={handleCancel} disabled={isCancelling}>
+                      {isCancelling ? '처리 중...' : '구독 해지'}
+                    </button>
+                  </>
                 ) : (
-                  // 해지 예약된 상태(빌링키 없음) - 이미 결제한 기간은 그대로 살아있으니 새로 결제할
-                  // 필요 없이 카드만 다시 등록하면 됨(PaymentModal mode="resume" 참고).
-                  <button type="button" className={styles.resumeButton} onClick={handleResumeClick}>
-                    해지 예약 취소
+                  // 해지 예약된 상태 - 해지 시 서버가 카드를 지우지 않았으므로 새로 등록할 필요 없이
+                  // 바로 되돌릴 수 있음(handleResume 참고).
+                  <button type="button" className={styles.resumeButton} onClick={handleResume} disabled={isResuming}>
+                    {isResuming ? '처리 중...' : '해지 예약 취소'}
                   </button>
                 )}
               </div>

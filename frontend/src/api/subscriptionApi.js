@@ -11,15 +11,10 @@ function cancel() {
   return apiClient.delete('/api/subscriptions')
 }
 
-// POST /api/subscriptions/resume/prepare — 해지 예약 취소(자동갱신 재개)용 빌링키 발급 파라미터.
-// paymentApi.prepare와 달리 새 결제가 발생하지 않는다 - 이미 낸 기간은 그대로 유지됨.
-function prepareResume() {
-  return apiClient.post('/api/subscriptions/resume/prepare')
-}
-
-// POST /api/subscriptions/resume — 발급받은 billingKey를 등록해 해지 예약을 취소한다. 결제는 안 함.
-function resume(billingKey) {
-  return apiClient.post('/api/subscriptions/resume', { billingKey })
+// POST /api/subscriptions/resume — 해지 예약 취소(자동갱신 재개). 해지 시 카드를 지우지 않으므로
+// 새 카드 등록/결제 없이 바로 반영된다(파라미터도 없음).
+function resume() {
+  return apiClient.post('/api/subscriptions/resume')
 }
 
 // POST /api/subscriptions/retry — 유예기간(PAST_DUE) 중 스케줄러(최대 하루 1회)를 기다리지 않고
@@ -29,10 +24,23 @@ function retryPastDueNow() {
   return apiClient.post('/api/subscriptions/retry')
 }
 
+// POST /api/subscriptions/card/prepare — 결제수단 변경용 빌링키 발급 파라미터. 이미 자동갱신
+// 중이어야만 가능(최초 등록은 paymentApi.prepare/resume 쪽 대상).
+function prepareCardChange() {
+  return apiClient.post('/api/subscriptions/card/prepare')
+}
+
+// POST /api/subscriptions/card — 발급받은 billingKey로 기존 카드를 교체한다. 결제는 안 함(다음
+// 정상 갱신부터 새 카드로 청구).
+function changeCard(billingKey) {
+  return apiClient.post('/api/subscriptions/card', { billingKey })
+}
+
 export const subscriptionApi = {
   getMy,
   cancel,
-  prepareResume,
   resume,
   retryPastDueNow,
+  prepareCardChange,
+  changeCard,
 }

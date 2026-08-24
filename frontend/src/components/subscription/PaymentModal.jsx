@@ -7,10 +7,12 @@ import styles from './PaymentModal.module.css'
 const PLAN_TYPE = 'BASIC'
 
 // mode='subscribe': 신규 구독 - prepare/complete를 호출하고, complete가 그 자리에서 첫 결제까지 실행함.
-// mode='resume': 해지 예약 취소(자동갱신 재개) - resume/prepare/resume을 호출하고, 새 결제는 발생하지
-// 않음(이미 낸 기간을 그대로 쓰다가 다음 자동갱신부터 이 카드로 청구됨).
+// mode='changeCard': 결제수단 변경 - 새 결제는 발생하지 않지만, 이미 자동갱신 중(카드 등록됨)인
+// 경우에만 가능하다.
+// (해지 예약 취소는 더 이상 이 모달을 쓰지 않는다 - 해지 시 카드를 지우지 않으므로 재개는 플래그만
+// 되돌리면 되고, PortOne 발급창 자체가 필요 없다. SubscriptionPage의 handleResumeClick 참고.)
 // 두 흐름 다 PortOne 발급창을 띄우는 부분(requestIssueBillingKey)과 에러 처리는 동일해서 문구/호출할
-// API만 여기서 갈라준다.
+// API만 아래 두 맵으로 갈라준다.
 const MODE_TEXT = {
   subscribe: {
     title: '프리미엄 구독',
@@ -22,16 +24,28 @@ const MODE_TEXT = {
     resultSubtitle: '프리미엄 기능을 바로 이용할 수 있어요.',
     genericError: '결제에 실패했습니다.',
   },
-  resume: {
-    title: '해지 예약 취소',
-    priceLabel: '다음 결제일에 9,900원이 청구돼요',
-    payButtonLabel: '결제수단 등록하고 재개하기',
+  changeCard: {
+    title: '결제수단 변경',
+    priceLabel: '다음 결제일부터 새 카드로 청구돼요',
+    payButtonLabel: '새 카드 등록하기',
     payButtonLoadingLabel: '처리 중...',
     disclaimer: '지금 결제가 발생하지 않아요. 카드 등록창만 열려요.',
-    resultTitle: '해지 예약이 취소됐어요',
-    resultSubtitle: '이용 중인 기간이 끝나면 자동으로 갱신돼요.',
-    genericError: '결제수단 등록에 실패했습니다.',
+    resultTitle: '결제수단이 변경됐어요',
+    resultSubtitle: '다음 자동갱신부터 새 카드로 청구돼요.',
+    genericError: '결제수단 변경에 실패했습니다.',
   },
+}
+
+// mode별로 호출할 prepare/완료 API. PortOne 발급창 호출 자체는 mode와 무관하게 동일해서, 갈라지는
+// 지점(어떤 API를 부를지)만 이 두 맵에 몰아두면 handlePay 본문은 mode 분기 없이 그대로 재사용된다.
+const PREPARE_BY_MODE = {
+  subscribe: () => paymentApi.prepare(PLAN_TYPE),
+  changeCard: () => subscriptionApi.prepareCardChange(),
+}
+
+const COMPLETE_BY_MODE = {
+  subscribe: (billingKey) => paymentApi.complete(billingKey, PLAN_TYPE),
+  changeCard: (billingKey) => subscriptionApi.changeCard(billingKey),
 }
 
 // PortOne V2 빌링키 발급 연동.
@@ -53,10 +67,9 @@ export default function PaymentModal({ mode = 'subscribe', onClose, onSubscribed
     setStage('processing')
 
     try {
-      // 1. 발급 준비 — 서버가 issueId(발급 식별자)를 내려준다. resume은 결제가 없으니 서버가 금액을
-      // 새로 계산하지 않고 현재 플랜 정보를 그대로 내려줄 뿐이다.
-      const { data: prepareRes } =
-        mode === 'resume' ? await subscriptionApi.prepareResume() : await paymentApi.prepare(PLAN_TYPE)
+      // 1. 발급 준비 — 서버가 issueId(발급 식별자)를 내려준다. changeCard는 결제가 없으니
+      // 서버가 금액을 새로 계산하지 않고 현재 플랜 정보를 그대로 내려줄 뿐이다.
+      const { data: prepareRes } = await PREPARE_BY_MODE[mode]()
       const { issueId, storeId, channelKey, amount, orderName } = prepareRes.data
 
       // 2. PortOne 빌링키 발급 창 호출 — 카드 정보는 여기서만 입력된다. 결제는 아직 일어나지 않는다.
@@ -84,14 +97,10 @@ export default function PaymentModal({ mode = 'subscribe', onClose, onSubscribed
       }
 
       // 3. 완료 API — 발급받은 billingKey를 서버가 검증·저장한다.
-      // subscribe는 그 빌링키로 첫 결제까지 서버가 바로 실행하고, resume은 등록만 하고 끝난다.
-      // 이 호출이 성공하면 서버 쪽 처리는 이미 다 끝난 것이므로, 아래 구독 재조회는 별도
-      // try/catch로 분리해 실패해도 "실패"로 보이지 않게 한다.
-      if (mode === 'resume') {
-        await subscriptionApi.resume(response.billingKey)
-      } else {
-        await paymentApi.complete(response.billingKey, PLAN_TYPE)
-      }
+      // subscribe는 그 빌링키로 첫 결제까지 서버가 바로 실행하고, changeCard는 교체만 하고 끝난다.
+      // 이 호출이 성공하면 서버 쪽 처리는 이미 다 끝난 것이므로, 아래 구독 재조회는 별도 try/catch로
+      // 분리해 실패해도 "실패"로 보이지 않게 한다.
+      await COMPLETE_BY_MODE[mode](response.billingKey)
     } catch (err) {
       setStage('error')
       setError(err.response?.data?.message ?? err.message ?? text.genericError)

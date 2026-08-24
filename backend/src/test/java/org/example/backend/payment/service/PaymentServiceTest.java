@@ -201,52 +201,40 @@ class PaymentServiceTest {
     }
 
     // ------------------------------------------------------------------
-    // attachBillingKey (해지 예약 취소 - 새 결제 없이 빌링키만 재등록)
+    // replaceBillingKey (결제수단 변경)
     // ------------------------------------------------------------------
 
     @Test
-    void attachBillingKey_정지회원이면_예외() {
+    void replaceBillingKey_정지회원이면_예외() {
         user.setStatus(AccountStatus.SUSPENDED);
 
         BusinessException e = assertThrows(BusinessException.class,
-                () -> paymentService.attachBillingKey(user, "billing-key-abc"));
+                () -> paymentService.replaceBillingKey(user, "billing-key-new"));
 
         assertThat(e.getErrorCode()).isEqualTo(SubscriptionErrorCode.USER_INACTIVE);
         verifyNoInteractions(billingKeyRepository);
     }
 
     @Test
-    void attachBillingKey_이미활성빌링키있으면_검증없이_조용히종료() {
-        // 중복 요청/이미 재개된 상태 - cancel()의 멱등성 처리와 대칭되는 설계.
-        when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
-                .thenReturn(Optional.of(new BillingKey(user, "old-billing-key")));
-
-        paymentService.attachBillingKey(user, "billing-key-new");
-
-        verifyNoInteractions(portOneClient);
-        verify(billingKeyRepository, never()).save(any());
-    }
-
-    @Test
-    void attachBillingKey_빌링키검증실패하면_예외이고_저장안함() {
-        when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
-                .thenReturn(Optional.empty());
+    void replaceBillingKey_빌링키검증실패하면_예외이고_저장안함() {
         IssuedBillingKeyInfo wrongStore = mock(IssuedBillingKeyInfo.class);
         when(wrongStore.getStoreId()).thenReturn("다른-상점-id");
         when(portOneClient.getPayment().getBillingKey().getBillingKeyInfo(anyString()))
                 .thenReturn(CompletableFuture.<BillingKeyInfo>completedFuture(wrongStore));
 
         BusinessException e = assertThrows(BusinessException.class,
-                () -> paymentService.attachBillingKey(user, "billing-key-new"));
+                () -> paymentService.replaceBillingKey(user, "billing-key-new"));
 
         assertThat(e.getErrorCode()).isEqualTo(PaymentErrorCode.BILLING_KEY_VERIFICATION_FAILED);
         verify(billingKeyRepository, never()).save(any());
     }
 
     @Test
-    void attachBillingKey_정상이면_새빌링키저장_결제는안함() {
+    void replaceBillingKey_기존활성빌링키있으면_PortOne에도_삭제요청하고_새로저장() {
+        BillingKey oldKey = new BillingKey(user, "old-billing-key");
         when(billingKeyRepository.findByUserAndStatus(user, BillingKeyStatus.ACTIVE))
-                .thenReturn(Optional.empty());
+                .thenReturn(Optional.of(oldKey));
+
         IssuedBillingKeyInfo issued = mock(IssuedBillingKeyInfo.class);
         when(issued.getStoreId()).thenReturn(STORE_ID);
         SelectedChannel channel = mock(SelectedChannel.class);
@@ -254,11 +242,17 @@ class PaymentServiceTest {
         when(issued.getChannels()).thenReturn(List.of(channel));
         when(portOneClient.getPayment().getBillingKey().getBillingKeyInfo(anyString()))
                 .thenReturn(CompletableFuture.<BillingKeyInfo>completedFuture(issued));
+        when(portOneClient.getPayment().getBillingKey()
+                .deleteBillingKey(eq("old-billing-key"), eq("사용자 요청에 의한 결제수단 변경"), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(mock(DeleteBillingKeyResponse.class)));
 
-        paymentService.attachBillingKey(user, "billing-key-new");
+        paymentService.replaceBillingKey(user, "billing-key-new");
 
+        verify(portOneClient.getPayment().getBillingKey())
+                .deleteBillingKey(eq("old-billing-key"), eq("사용자 요청에 의한 결제수단 변경"), any(), any());
+        assertThat(oldKey.getStatus()).isEqualTo(BillingKeyStatus.DELETED);
         verify(billingKeyRepository).save(any(BillingKey.class));
-        // 재개는 새 결제를 만들지 않는다 - 이미 낸 기간을 계속 쓰는 것뿐이므로
+        // 재개와 마찬가지로 카드 변경 자체는 새 결제를 만들지 않는다 - 다음 정상 갱신부터 새 카드로 청구됨
         verifyNoInteractions(paymentRepository);
     }
 
@@ -519,6 +513,24 @@ class PaymentServiceTest {
         // -> 여기서 "결제 실패" 메일을 또 보내면 안 됨
         verify(emailService, never()).sendSubscriptionRenewalFailed(anyString());
         verifyNoInteractions(portOneClient);
+    }
+
+    @Test
+    void renewSubscription_해지예약된구독이면_청구없이바로최종취소() {
+        // cancel()이 ACTIVE 구독의 카드를 즉시 지우지 않고 requestCancel() 플래그만 세우므로(카드 재등록
+        // 없이 재개할 수 있게), 만료 시점엔 이 플래그를 보고 청구 자체를 시도하지 않아야 한다.
+        Subscription subscription = dueSubscription();
+        subscription.requestCancel();
+        when(subscriptionRepository.findByIdForUpdate(nullable(Long.class))).thenReturn(Optional.of(subscription));
+
+        paymentService.renewSubscription(subscription);
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELLED);
+        assertThat(user.isSubscribed()).isFalse();
+        // 청구 자체를 시도하지 않아야 함 - finalizeCancellation의 빌링키 정리 조회 외엔 결제 관련 상호작용이 없어야 함
+        verifyNoInteractions(portOneClient, paymentRepository);
+        // 해지 예약 시점에 이미 "해지 완료" 메일을 보냈음 -> 여기서 "결제 실패" 메일을 또 보내면 안 됨
+        verify(emailService, never()).sendSubscriptionRenewalFailed(anyString());
     }
 
     @Test

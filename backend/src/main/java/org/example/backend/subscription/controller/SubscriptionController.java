@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.security.CustomUserDetails;
 import org.example.backend.common.dto.ApiResponse;
 import org.example.backend.payment.dto.PaymentPrepareResponse;
-import org.example.backend.subscription.dto.request.SubscriptionResumeRequest;
+import org.example.backend.subscription.dto.request.SubscriptionCardChangeRequest;
 import org.example.backend.subscription.dto.response.SubscriptionResponse;
 import org.example.backend.subscription.service.SubscriptionService;
 import org.springframework.http.ResponseEntity;
@@ -52,22 +52,31 @@ public class SubscriptionController {
         return ResponseEntity.ok(ApiResponse.success("재시도가 완료되었습니다.", response));
     }
 
-    @Operation(summary = "해지 예약 취소(자동갱신 재개) 준비 - 새 빌링키 발급에 필요한 값 반환. 새 결제는 발생하지 않음")
-    @PostMapping("/api/subscriptions/resume/prepare")
-    public ResponseEntity<ApiResponse<PaymentPrepareResponse>> prepareResume(
-            @AuthenticationPrincipal CustomUserDetails userDetails
-    ) {
-        PaymentPrepareResponse response = subscriptionService.prepareResume(userDetails.getUser().getId());
-        return ResponseEntity.ok(ApiResponse.success("재개 준비가 완료되었습니다.", response));
-    }
-
-    @Operation(summary = "해지 예약 취소(자동갱신 재개) - prepare에서 발급받은 빌링키를 등록. 남은 이용기간/다음 결제일은 그대로 유지됨")
+    @Operation(summary = "해지 예약 취소(자동갱신 재개) - 해지 시 지우지 않은 카드를 그대로 되살린다. 새 카드 등록/결제 없음")
     @PostMapping("/api/subscriptions/resume")
     public ResponseEntity<ApiResponse<SubscriptionResponse>> resume(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Valid @RequestBody SubscriptionResumeRequest request
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        SubscriptionResponse response = subscriptionService.resume(userDetails.getUser().getId(), request.getBillingKey());
+        SubscriptionResponse response = subscriptionService.resume(userDetails.getUser().getId());
         return ResponseEntity.ok(ApiResponse.success("해지 예약이 취소되었습니다.", response));
+    }
+
+    @Operation(summary = "결제수단 변경 준비 - 새 빌링키 발급에 필요한 값 반환. 이미 자동갱신 중인 경우에만 가능(새 결제는 발생하지 않음)")
+    @PostMapping("/api/subscriptions/card/prepare")
+    public ResponseEntity<ApiResponse<PaymentPrepareResponse>> prepareCardChange(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        PaymentPrepareResponse response = subscriptionService.prepareCardChange(userDetails.getUser().getId());
+        return ResponseEntity.ok(ApiResponse.success("결제수단 변경 준비가 완료되었습니다.", response));
+    }
+
+    @Operation(summary = "결제수단 변경 - prepare에서 발급받은 빌링키로 기존 카드를 교체. 새 결제는 발생하지 않음")
+    @PostMapping("/api/subscriptions/card")
+    public ResponseEntity<ApiResponse<SubscriptionResponse>> changeCard(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody SubscriptionCardChangeRequest request
+    ) {
+        SubscriptionResponse response = subscriptionService.changeCard(userDetails.getUser().getId(), request.getBillingKey());
+        return ResponseEntity.ok(ApiResponse.success("결제수단이 변경되었습니다.", response));
     }
 }

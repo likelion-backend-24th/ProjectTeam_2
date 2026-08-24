@@ -34,4 +34,12 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM Subscription s WHERE s.user.id = :userId AND s.status = :status")
     Optional<Subscription> findByUserIdAndStatusForUpdate(@Param("userId") Long userId, @Param("status") SubscriptionStatus status);
+
+    // cancel()이 "해지 예약" 플래그를 세울지/빌링키를 바로 지울지 판단하기 전에 거는 락.
+    // 두 번(중복 클릭/여러 탭) 들어와도 두 번째가 첫 번째가 커밋될 때까지 기다렸다가 이미 반영된
+    // 최신 상태(cancelRequested=true 등)를 보고 멱등하게 넘어가게 하기 위함 - findByIdForUpdate와
+    // 동일한 이유로 이 조회 자체가 "제일 처음 읽는 조회"여야 한다.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM Subscription s WHERE s.user.id = :userId AND s.status IN :statuses")
+    Optional<Subscription> findByUserIdAndStatusInForUpdate(@Param("userId") Long userId, @Param("statuses") Collection<SubscriptionStatus> statuses);
 }

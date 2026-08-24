@@ -48,6 +48,12 @@ public class Subscription {
     @Column(name = "last_retry_at")
     private LocalDateTime lastRetryAt; // 마지막 재시도 시각. 스케줄러가 하루에 한 번만 재시도하게 걸러내는 용도.
 
+    // 해지 예약 여부. ACTIVE 상태에서만 의미가 있다: true면 다음 만료 시점에 자동갱신을 시도하지 않고
+    // 바로 CANCELLED로 확정한다(PaymentService.attemptRenewalCharge 참고). 해지 즉시 빌링키를 지우지
+    // 않고 이 플래그만 세워서, 만료 전에 재개하면 카드 재등록 없이 바로 되돌릴 수 있게 한다.
+    @Column(name = "cancel_requested", nullable = false)
+    private boolean cancelRequested;
+
     @Builder
     public Subscription(User user, SubscriptionPlanType planType, LocalDateTime startedAt, LocalDateTime expiredAt) {
         this.user = user;
@@ -59,6 +65,17 @@ public class Subscription {
 
     public void cancel() {
         this.status = SubscriptionStatus.CANCELLED;
+    }
+
+    // 해지 예약 - 즉시 취소하지 않고 "다음 자동갱신을 하지 않겠다"는 의사만 기록한다. 빌링키(카드)는
+    // 여기서 건드리지 않는다 - 재개할 때 카드 재등록 없이 바로 되돌릴 수 있게 하기 위함.
+    public void requestCancel() {
+        this.cancelRequested = true;
+    }
+
+    // 해지 예약 취소(자동갱신 재개) - 아직 만료 전, 카드가 살아있는 상태에서만 호출된다.
+    public void revokeCancelRequest() {
+        this.cancelRequested = false;
     }
 
     // 만료일에 첫 재결제 시도가 실패하면 여기로. 접근 권한은 바로 꺼지지만
