@@ -15,18 +15,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class SubscriptionService {
-
-    // 정기결제가 이 횟수만큼 연속 실패하면 구독을 만료 처리한다.
-    private static final int MAX_RETRY = 3;
-
-    private static final List<SubscriptionStatus> USABLE_STATUSES =
-            List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE);
 
     private final SubscriptionRepository subscriptionRepository;
     private final UserRepository userRepository;
@@ -67,11 +60,14 @@ public class SubscriptionService {
         emailService.sendSubscriptionStarted(user.getUsername());
     }
 
-    /** 정기결제 성공(정상 갱신 또는 실패 후 재시도 성공) 시 이용 기간을 연장한다. */
+    /**
+     * 정기결제 성공(정상 갱신 또는 실패 후 재시도 성공) 시 이용 기간을 연장한다.
+     * 연장 기준일은 구독 자신이 정한다 — 만료 전 갱신이면 남은 기간에 이어 붙는다.
+     */
     @Transactional
-    public void renewExisting(Long userId, LocalDateTime newExpiredAt) {
+    public void renewExisting(Long userId) {
         Subscription subscription = findUsableOrThrow(userId);
-        subscription.renew(newExpiredAt);
+        subscription.renew(LocalDateTime.now());
     }
 
     /** 정기결제 실패 시 호출. 재시도 한도를 넘기면 구독을 만료시킨다. */
@@ -79,7 +75,7 @@ public class SubscriptionService {
     public void recordPaymentFailure(Long userId) {
         Subscription subscription = findUsableOrThrow(userId);
         subscription.markPaymentFailed();
-        if (subscription.getRetryCount() >= MAX_RETRY) {
+        if (subscription.hasExhaustedRetries()) {
             subscription.expire();
             subscription.getUser().setSubscribed(false);
         }
@@ -114,11 +110,11 @@ public class SubscriptionService {
     }
 
     public boolean hasUsableSubscription(Long userId) {
-        return subscriptionRepository.findFirstByUserIdAndStatusIn(userId, USABLE_STATUSES).isPresent();
+        return subscriptionRepository.findFirstByUserIdAndStatusIn(userId, SubscriptionStatus.USABLE).isPresent();
     }
 
     public boolean isPastDue(Long userId) {
-        return subscriptionRepository.findFirstByUserIdAndStatusIn(userId, USABLE_STATUSES)
+        return subscriptionRepository.findFirstByUserIdAndStatusIn(userId, SubscriptionStatus.USABLE)
                 .map(subscription -> subscription.getStatus() == SubscriptionStatus.PAST_DUE)
                 .orElse(false);
     }
@@ -131,14 +127,14 @@ public class SubscriptionService {
             throw new BusinessException(SubscriptionErrorCode.USER_INACTIVE);
         }
 
-        subscriptionRepository.findFirstByUserIdAndStatusIn(userId, USABLE_STATUSES)
+        subscriptionRepository.findFirstByUserIdAndStatusIn(userId, SubscriptionStatus.USABLE)
                 .ifPresent(s -> { throw new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_ALREADY_ACTIVE); });
 
         return user;
     }
 
     private Subscription findUsableOrThrow(Long userId) {
-        return subscriptionRepository.findFirstByUserIdAndStatusIn(userId, USABLE_STATUSES)
+        return subscriptionRepository.findFirstByUserIdAndStatusIn(userId, SubscriptionStatus.USABLE)
                 .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_NOT_FOUND));
     }
 }

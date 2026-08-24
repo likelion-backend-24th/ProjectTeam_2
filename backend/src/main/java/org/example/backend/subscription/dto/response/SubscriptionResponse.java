@@ -23,12 +23,17 @@ public class SubscriptionResponse {
     @Schema(description = "다음 회차 자동 결제 여부", example = "true")
     private boolean autoRenew;
 
+    @Schema(description = "결제 실패(PAST_DUE) 상태에서 만료까지 남은 자동 재시도 횟수. "
+            + "0이 되는 시점에 이용이 중단된다. 재시도는 하루 한 번.", example = "2")
+    private int remainingRetryCount;
+
     public static SubscriptionResponse from(Subscription subscription) {
         return SubscriptionResponse.builder()
                 .status(subscription.getStatus())
                 .startedAt(subscription.getStartedAt())
                 .expiredAt(subscription.getExpiredAt())
                 .autoRenew(subscription.isAutoRenew())
+                .remainingRetryCount(subscription.getRemainingRetryCount())
                 .build();
     }
 }

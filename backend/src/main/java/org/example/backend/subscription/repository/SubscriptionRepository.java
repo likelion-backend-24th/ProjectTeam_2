@@ -11,7 +11,12 @@ import java.util.Optional;
 
 public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
     Optional<Subscription> findFirstByUserIdAndStatusIn(Long userId, Collection<SubscriptionStatus> statuses);
-    List<Subscription> findByStatusAndExpiredAtBefore(SubscriptionStatus status, LocalDateTime time);
+
+    /** 만료 대상. 자동 갱신이 켜진 구독은 갱신 스케줄러가 책임지므로 여기서 제외한다. */
+    List<Subscription> findByStatusInAndAutoRenewFalseAndExpiredAtBefore(
+            Collection<SubscriptionStatus> statuses, LocalDateTime time);
+
     List<Subscription> findByStatusAndAutoRenewTrueAndExpiredAtBefore(SubscriptionStatus status, LocalDateTime time);
+
     List<Subscription> findByStatusAndAutoRenewTrue(SubscriptionStatus status);
 }

@@ -123,17 +123,28 @@ class SubscriptionServiceTest {
     // ---------- renewExisting / recordPaymentFailure (정기결제 갱신/실패) ----------
 
     @Test
-    void renewExisting_이용기간연장_및_실패횟수초기화() {
-        Subscription subscription = Subscription.builder().user(user).startedAt(LocalDateTime.now()).expiredAt(LocalDateTime.now()).build();
+    void renewExisting_만료가지났으면_지금부터_한달연장_및_실패횟수초기화() {
+        LocalDateTime expiredAt = LocalDateTime.now().minusHours(1);
+        Subscription subscription = Subscription.builder().user(user).startedAt(LocalDateTime.now()).expiredAt(expiredAt).build();
         subscription.markPaymentFailed();
         when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.of(subscription));
 
-        LocalDateTime newExpiredAt = LocalDateTime.now().plusMonths(1);
-        subscriptionService.renewExisting(1L, newExpiredAt);
+        subscriptionService.renewExisting(1L);
 
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
-        assertThat(subscription.getExpiredAt()).isEqualTo(newExpiredAt);
+        assertThat(subscription.getExpiredAt()).isAfter(expiredAt.plusMonths(1));
         assertThat(subscription.getRetryCount()).isZero();
+    }
+
+    @Test
+    void renewExisting_만료전_미리갱신하면_남은기간에_이어붙는다() {
+        LocalDateTime expiredAt = LocalDateTime.now().plusDays(1);
+        Subscription subscription = Subscription.builder().user(user).startedAt(LocalDateTime.now()).expiredAt(expiredAt).build();
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.of(subscription));
+
+        subscriptionService.renewExisting(1L);
+
+        assertThat(subscription.getExpiredAt()).isEqualTo(expiredAt.plusMonths(1));
     }
 
     @Test

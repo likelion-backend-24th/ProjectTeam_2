@@ -38,6 +38,9 @@ public class PaymentService {
 
     private static final String BILLING_KEY_ISSUED_STATUS = "ISSUED";
 
+    /** 수동 재시도 최소 간격. 실패해도 횟수 제한에 걸리지 않으므로 연타만 막는다. */
+    private static final long MANUAL_RETRY_COOLDOWN_SECONDS = 60;
+
     private final PaymentRepository paymentRepository;
     private final BillingKeyRepository billingKeyRepository;
     private final UserRepository userRepository;
@@ -164,34 +167,43 @@ public class PaymentService {
             throw new BusinessException(PaymentErrorCode.SUBSCRIPTION_ALREADY_ACTIVE);
         }
 
-        if (!chargeSubscription(user, false)) {
+        if (!chargeSubscription(user, SubscriptionChargeMode.INITIAL)) {
             throw new BusinessException(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED);
         }
         return subscriptionService.getMy(userId);
     }
 
-    /** PAST_DUE 상태에서 사용자가 수동으로 다시 결제를 시도한다. 실패해도 예외 없이 현재 상태를 반환한다 (자동 재시도 대상으로 남음). */
+    /**
+     * PAST_DUE 상태에서 사용자가 수동으로 다시 결제를 시도한다. 실패해도 예외 없이 현재 상태를 반환한다.
+     * 실패를 재시도 횟수로 세지 않으므로(MANUAL_RETRY) 스케줄러의 자동 재시도 기회는 그대로 남는다.
+     * 대신 횟수 제한이 없어지는 만큼, 연타로 PG를 반복 호출하지 않도록 직전 청구와의 간격만 확인한다.
+     */
     @Transactional
     public SubscriptionResponse retrySubscriptionPayment(Long userId) {
         if (!subscriptionService.isPastDue(userId)) {
             throw new BusinessException(SubscriptionErrorCode.SUBSCRIPTION_NOT_PAST_DUE);
         }
+        if (paymentRepository.existsByUserIdAndBillingKeyIsNotNullAndCreatedAtAfter(
+                userId, LocalDateTime.now().minusSeconds(MANUAL_RETRY_COOLDOWN_SECONDS))) {
+            throw new BusinessException(PaymentErrorCode.PAYMENT_RETRY_TOO_SOON);
+        }
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.USER_NOT_FOUND));
 
-        chargeSubscription(user, true);
+        chargeSubscription(user, SubscriptionChargeMode.MANUAL_RETRY);
         return subscriptionService.getMy(userId);
     }
 
     /**
-     * 빌링키로 청구를 시도한다. 최초 구독/수동 재시도/정기 스케줄러 재시도가 모두 이 메서드를 공유한다.
+     * 빌링키로 청구를 시도한다. 최초 구독/수동 재시도/정기 스케줄러 재시도가 모두 이 메서드를 공유하고,
+     * 성공·실패 후처리만 mode에 따라 갈린다.
      * 카드사 거절 등 "정상적으로 실패할 수 있는" 케이스는 예외를 던지지 않고 boolean으로만 알린다 —
      * 예외를 던지면 트랜잭션이 롤백되어 방금 늘어난 실패 횟수(retryCount)까지 함께 사라지기 때문이다.
      *
      * @return 청구 성공 여부
      */
     @Transactional
-    public boolean chargeSubscription(User user, boolean isRenewal) {
+    public boolean chargeSubscription(User user, SubscriptionChargeMode mode) {
         BillingKey billingKey = billingKeyRepository.findByUserIdAndDeletedAtIsNull(user.getId())
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.BILLING_KEY_NOT_FOUND));
 
@@ -210,19 +222,20 @@ public class PaymentService {
         String failReason = chargeAndVerify(payment, billingKey);
         if (failReason != null) {
             payment.markFailed(failReason);
-            log.warn("정기결제 청구 실패: paymentId={}, userId={}, reason={}", paymentId, user.getId(), failReason);
-            if (isRenewal) {
+            log.warn("정기결제 청구 실패: paymentId={}, userId={}, mode={}, reason={}",
+                    paymentId, user.getId(), mode, failReason);
+            if (mode.countsFailure()) {
                 subscriptionService.recordPaymentFailure(user.getId());
             }
             return false;
         }
 
         payment.markPaid(LocalDateTime.now());
-        LocalDateTime newExpiredAt = LocalDateTime.now().plusMonths(1);
-        if (isRenewal) {
-            subscriptionService.renewExisting(user.getId(), newExpiredAt);
+        if (mode.isRenewal()) {
+            // 갱신 기준일은 구독이 정한다 — 만료 전에 미리 청구된 경우 남은 기간에 이어 붙어야 한다.
+            subscriptionService.renewExisting(user.getId());
         } else {
-            subscriptionService.startWithAutoRenew(user.getId(), newExpiredAt);
+            subscriptionService.startWithAutoRenew(user.getId(), LocalDateTime.now().plusMonths(1));
         }
         return true;
     }

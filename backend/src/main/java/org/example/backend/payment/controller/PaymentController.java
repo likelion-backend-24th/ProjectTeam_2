@@ -10,6 +10,7 @@ import org.example.backend.payment.dto.request.PaymentCompleteRequest;
 import org.example.backend.payment.dto.response.PaymentReadyResponse;
 import org.example.backend.payment.service.PaymentService;
 import org.example.backend.subscription.dto.response.SubscriptionResponse;
+import org.example.backend.subscription.entity.SubscriptionStatus;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -54,12 +55,19 @@ public class PaymentController {
                 .body(ApiResponse.success("구독이 시작되었습니다.", response));
     }
 
-    @Operation(summary = "정기결제 재시도", description = "결제 실패(PAST_DUE) 상태에서 등록된 카드로 즉시 재결제를 시도한다.")
+    @Operation(summary = "정기결제 재시도",
+            description = "결제 실패(PAST_DUE) 상태에서 등록된 카드로 즉시 재결제를 시도한다. "
+                    + "실패해도 자동 재시도 횟수는 줄지 않으며, 직전 청구로부터 1분이 지나야 다시 호출할 수 있다.")
     @PostMapping("/retry")
     public ResponseEntity<ApiResponse<SubscriptionResponse>> retry(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         SubscriptionResponse response = paymentService.retrySubscriptionPayment(userDetails.getUser().getId());
-        return ResponseEntity.ok(ApiResponse.success("재결제를 시도했습니다.", response));
+        // 이 API는 PAST_DUE에서만 호출되므로, 돌아온 상태가 ACTIVE면 이번 시도가 성공한 것이다.
+        // 실패를 예외로 알리면 방금 남긴 FAILED 결제 기록까지 롤백되므로 메시지로만 구분한다.
+        boolean succeeded = response.getStatus() == SubscriptionStatus.ACTIVE;
+        return ResponseEntity.ok(succeeded
+                ? ApiResponse.success("결제가 완료되었습니다.", response)
+                : ApiResponse.success("결제에 실패했습니다. 카드 상태를 확인한 뒤 다시 시도해주세요.", response));
     }
 }

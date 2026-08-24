@@ -16,6 +16,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Subscription {
 
+    /** 정기결제가 이 횟수만큼 연속 실패하면 구독을 만료시킨다. */
+    public static final int MAX_RETRY = 3;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -53,6 +56,16 @@ public class Subscription {
         this.retryCount = 0;
     }
 
+    /** 만료까지 남은 자동 재시도 횟수. 사용자에게 "언제 끊기는지"를 알려주는 값이다. */
+    public int getRemainingRetryCount() {
+        return Math.max(0, MAX_RETRY - this.retryCount);
+    }
+
+    /** 재시도 기회를 모두 소진했는지. */
+    public boolean hasExhaustedRetries() {
+        return this.retryCount >= MAX_RETRY;
+    }
+
     public boolean isUsable() {
         return this.status == SubscriptionStatus.ACTIVE || this.status == SubscriptionStatus.PAST_DUE;
     }
@@ -73,10 +86,15 @@ public class Subscription {
         this.retryCount++;
     }
 
-    /** 결제 성공(최초 구독/정상 갱신/재시도 성공 공통) 시 이용 기간을 연장하고 실패 상태를 초기화한다. */
-    public void renew(LocalDateTime newExpiredAt) {
+    /**
+     * 결제 성공(정상 갱신/재시도 성공 공통) 시 이용 기간을 한 달 연장하고 실패 상태를 초기화한다.
+     * 만료 전에 미리 갱신한 경우 남은 기간에 이어 붙여야 매달 결제일이 조금씩 앞당겨지지 않는다.
+     * 이미 만료일이 지난 뒤의 갱신(재시도 성공)은 기준을 현재 시각으로 잡는다.
+     */
+    public void renew(LocalDateTime now) {
+        LocalDateTime base = (this.expiredAt != null && this.expiredAt.isAfter(now)) ? this.expiredAt : now;
         this.status = SubscriptionStatus.ACTIVE;
-        this.expiredAt = newExpiredAt;
+        this.expiredAt = base.plusMonths(1);
         this.retryCount = 0;
     }
 

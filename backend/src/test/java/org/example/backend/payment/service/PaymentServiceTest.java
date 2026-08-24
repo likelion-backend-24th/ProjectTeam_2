@@ -342,7 +342,7 @@ class PaymentServiceTest {
         when(portOnePaymentClient.getPayment(anyString()))
                 .thenReturn(paidResponse("PAID", STORE_ID, BILLING_CHANNEL_KEY, "KRW", 9900L));
 
-        boolean success = paymentService.chargeSubscription(user, false);
+        boolean success = paymentService.chargeSubscription(user, SubscriptionChargeMode.INITIAL);
 
         assertThat(success).isTrue();
         verify(subscriptionService).startWithAutoRenew(eq(1L), any());
@@ -350,17 +350,44 @@ class PaymentServiceTest {
     }
 
     @Test
-    void chargeSubscription_재시도이고_검증실패하면_실패기록만하고_예외없음() {
+    void chargeSubscription_자동갱신이고_검증실패하면_실패기록만하고_예외없음() {
         when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeBillingKey()));
         when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
         when(portOnePaymentClient.getPayment(anyString()))
                 .thenReturn(paidResponse("FAILED", STORE_ID, BILLING_CHANNEL_KEY, "KRW", 9900L));
 
-        boolean success = paymentService.chargeSubscription(user, true);
+        boolean success = paymentService.chargeSubscription(user, SubscriptionChargeMode.SCHEDULED_RENEWAL);
 
         assertThat(success).isFalse();
         verify(subscriptionService).recordPaymentFailure(1L);
-        verify(subscriptionService, never()).renewExisting(anyLong(), any());
+        verify(subscriptionService, never()).renewExisting(anyLong());
+    }
+
+    @Test
+    void chargeSubscription_수동재시도는_실패해도_재시도횟수를_올리지않는다() {
+        when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeBillingKey()));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(portOnePaymentClient.getPayment(anyString()))
+                .thenReturn(paidResponse("FAILED", STORE_ID, BILLING_CHANNEL_KEY, "KRW", 9900L));
+
+        boolean success = paymentService.chargeSubscription(user, SubscriptionChargeMode.MANUAL_RETRY);
+
+        assertThat(success).isFalse();
+        verify(subscriptionService, never()).recordPaymentFailure(anyLong());
+    }
+
+    @Test
+    void chargeSubscription_수동재시도_성공하면_기존구독을_연장한다() {
+        when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeBillingKey()));
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(portOnePaymentClient.getPayment(anyString()))
+                .thenReturn(paidResponse("PAID", STORE_ID, BILLING_CHANNEL_KEY, "KRW", 9900L));
+
+        boolean success = paymentService.chargeSubscription(user, SubscriptionChargeMode.MANUAL_RETRY);
+
+        assertThat(success).isTrue();
+        verify(subscriptionService).renewExisting(1L);
+        verify(subscriptionService, never()).startWithAutoRenew(anyLong(), any());
     }
 
     @Test
@@ -368,7 +395,7 @@ class PaymentServiceTest {
         when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.empty());
 
         BusinessException e = assertThrows(BusinessException.class,
-                () -> paymentService.chargeSubscription(user, false));
+                () -> paymentService.chargeSubscription(user, SubscriptionChargeMode.INITIAL));
         assertThat(e.getErrorCode()).isEqualTo(PaymentErrorCode.BILLING_KEY_NOT_FOUND);
         verifyNoInteractions(paymentRepository);
     }
@@ -386,9 +413,23 @@ class PaymentServiceTest {
     }
 
     @Test
-    void retrySubscriptionPayment_실패해도_예외없이_현재상태반환() {
+    void retrySubscriptionPayment_직전청구가_쿨다운이내면_예외() {
+        when(subscriptionService.isPastDue(1L)).thenReturn(true);
+        when(paymentRepository.existsByUserIdAndBillingKeyIsNotNullAndCreatedAtAfter(eq(1L), any()))
+                .thenReturn(true);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> paymentService.retrySubscriptionPayment(1L));
+        assertThat(e.getErrorCode()).isEqualTo(PaymentErrorCode.PAYMENT_RETRY_TOO_SOON);
+        verifyNoInteractions(billingKeyRepository);
+    }
+
+    @Test
+    void retrySubscriptionPayment_실패해도_예외없이_현재상태반환_및_재시도횟수유지() {
         SubscriptionResponse expected = mock(SubscriptionResponse.class);
         when(subscriptionService.isPastDue(1L)).thenReturn(true);
+        when(paymentRepository.existsByUserIdAndBillingKeyIsNotNullAndCreatedAtAfter(eq(1L), any()))
+                .thenReturn(false);
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeBillingKey()));
         when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -399,6 +440,6 @@ class PaymentServiceTest {
         SubscriptionResponse result = paymentService.retrySubscriptionPayment(1L);
 
         assertThat(result).isSameAs(expected);
-        verify(subscriptionService).recordPaymentFailure(1L);
+        verify(subscriptionService, never()).recordPaymentFailure(anyLong());
     }
 }

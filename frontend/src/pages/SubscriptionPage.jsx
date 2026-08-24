@@ -27,6 +27,7 @@ export default function SubscriptionPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isActionLoading, setIsActionLoading] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [actionNotice, setActionNotice] = useState('')
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -57,6 +58,7 @@ export default function SubscriptionPage() {
       return
     }
     setActionError('')
+    setActionNotice('')
     setIsModalOpen(true)
   }
 
@@ -69,10 +71,13 @@ export default function SubscriptionPage() {
   async function runAction(action, confirmMessage) {
     if (confirmMessage && !window.confirm(confirmMessage)) return
     setActionError('')
+    setActionNotice('')
     setIsActionLoading(true)
     try {
       const { data } = await action()
       setSubscription(data.data)
+      // 재결제는 성공이든 실패든 200으로 돌아온다. 서버가 내려준 메시지가 결과를 알려주는 유일한 단서다.
+      setActionNotice(data.message ?? '')
       await refetchMe()
     } catch (err) {
       setActionError(err.response?.data?.message ?? '요청 처리에 실패했어요.')
@@ -88,6 +93,7 @@ export default function SubscriptionPage() {
 
   const isSubscribed = Boolean(subscription)
   const isPastDue = subscription?.status === 'PAST_DUE'
+  const remainingRetryCount = subscription?.remainingRetryCount ?? 0
 
   return (
     <>
@@ -137,7 +143,13 @@ export default function SubscriptionPage() {
                 {isPastDue ? (
                   <>
                     <p className={styles.pastDueLabel}>⚠ 결제에 실패했어요</p>
-                    <p className={styles.activeExpiry}>등록된 카드로 자동으로 다시 시도돼요. 지금 바로 재시도할 수도 있어요.</p>
+                    <p className={styles.activeExpiry}>
+                      등록된 카드로 하루에 한 번 자동으로 다시 시도돼요.
+                      {remainingRetryCount > 0
+                        ? ` 남은 자동 재시도 ${remainingRetryCount}회가 모두 실패하면 프리미엄 이용이 중단돼요.`
+                        : ' 다음 시도에 실패하면 프리미엄 이용이 중단돼요.'}
+                    </p>
+                    <p className={styles.activeExpiry}>그때까지는 프리미엄 기능을 그대로 쓸 수 있어요.</p>
                   </>
                 ) : subscription.autoRenew ? (
                   <p className={styles.activeLabel}>✓ 구독 중이에요</p>
@@ -145,13 +157,14 @@ export default function SubscriptionPage() {
                   <p className={styles.activeLabel}>해지 예약됨</p>
                 )}
 
-                {subscription?.expiredAt && (
+                {!isPastDue && subscription?.expiredAt && (
                   <p className={styles.activeExpiry}>
-                    {isPastDue ? '만료 예정일 ' : subscription.autoRenew ? '다음 결제일 ' : '이용 종료 예정일 '}
+                    {subscription.autoRenew ? '다음 결제일 ' : '이용 종료 예정일 '}
                     {formatDate(subscription.expiredAt)}
                   </p>
                 )}
 
+                {actionNotice && <p className={styles.actionNotice}>{actionNotice}</p>}
                 {actionError && <p className={styles.cancelError}>{actionError}</p>}
 
                 {isPastDue ? (

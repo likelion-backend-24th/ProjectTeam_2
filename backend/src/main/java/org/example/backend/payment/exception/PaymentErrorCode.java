@@ -18,7 +18,8 @@ public enum PaymentErrorCode implements ErrorCode {
     PORTONE_API_ERROR(HttpStatus.BAD_GATEWAY, "결제사(PortOne) 통신 중 오류가 발생했습니다."),
     BILLING_KEY_NOT_FOUND(HttpStatus.NOT_FOUND, "등록된 카드가 없습니다."),
     BILLING_KEY_VERIFICATION_FAILED(HttpStatus.CONFLICT, "카드 등록 검증에 실패했습니다."),
-    BILLING_PAYMENT_FAILED(HttpStatus.CONFLICT, "카드 결제에 실패했습니다.");
+    BILLING_PAYMENT_FAILED(HttpStatus.CONFLICT, "카드 결제에 실패했습니다."),
+    PAYMENT_RETRY_TOO_SOON(HttpStatus.TOO_MANY_REQUESTS, "방금 결제를 시도했습니다. 잠시 후 다시 시도해주세요.");
 
     private final HttpStatus httpStatus;
     private final String message;
