@@ -15,6 +15,12 @@ function subscribeWithBillingKey() {
   return apiClient.post('/api/payments/subscriptions/billing-key')
 }
 
+// POST /api/payments/subscriptions/resume — 해지 예약 상태에서 자동 갱신을 다시 켠다.
+// 등록된 카드가 없으면 404(BILLING_KEY_NOT_FOUND) — 카드 없이 자동 갱신만 켜지는 것을 서버가 막는다.
+function resumeAutoRenew() {
+  return apiClient.post('/api/payments/subscriptions/resume')
+}
+
 // POST /api/payments/subscriptions/retry — 결제 실패(PAST_DUE) 상태에서 수동으로 재결제를 시도한다.
 function retrySubscriptionPayment() {
   return apiClient.post('/api/payments/subscriptions/retry')
@@ -24,5 +30,6 @@ export const paymentApi = {
   readySubscriptionPayment,
   completeSubscriptionPayment,
   subscribeWithBillingKey,
+  resumeAutoRenew,
   retrySubscriptionPayment,
 }

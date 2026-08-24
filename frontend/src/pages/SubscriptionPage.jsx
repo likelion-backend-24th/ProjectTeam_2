@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { paymentApi, subscriptionApi } from '../api'
+import { billingKeyApi, paymentApi, subscriptionApi } from '../api'
 import SiteHeader from '../components/common/SiteHeader'
 import PaymentModal from '../components/subscription/PaymentModal'
 import { useAuth } from '../context/AuthContext'
@@ -24,6 +24,8 @@ export default function SubscriptionPage() {
 
   // subscription: undefined(조회 전) | null(이용 중인 구독 없음) | { status, startedAt, expiredAt, autoRenew }
   const [subscription, setSubscription] = useState(undefined)
+  // 카드가 없으면 재개·재결제 버튼이 눌러도 실패하므로, 버튼 대신 안내를 띄우기 위해 등록 여부만 조회한다.
+  const [hasCard, setHasCard] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isActionLoading, setIsActionLoading] = useState(false)
   const [actionError, setActionError] = useState('')
@@ -32,6 +34,7 @@ export default function SubscriptionPage() {
   useEffect(() => {
     if (!isAuthenticated) {
       setSubscription(null)
+      setHasCard(false)
       return
     }
     let ignore = false
@@ -45,6 +48,15 @@ export default function SubscriptionPage() {
         if (ignore) return
         // 이용 중인 구독이 없으면 404(SUBSCRIPTION_NOT_FOUND) — 정상적인 "무료 회원" 상태라 에러로 취급하지 않는다.
         setSubscription(null)
+      })
+
+    billingKeyApi
+      .getMy()
+      .then(({ data }) => {
+        if (!ignore) setHasCard(Boolean(data.data.registered))
+      })
+      .catch(() => {
+        if (!ignore) setHasCard(false)
       })
 
     return () => {
@@ -88,12 +100,16 @@ export default function SubscriptionPage() {
 
   const handleCancel = () =>
     runAction(subscriptionApi.cancel, '다음 회차부터 자동 갱신을 멈출까요? 만료일까지는 계속 이용할 수 있어요.')
-  const handleResume = () => runAction(subscriptionApi.resume)
+  const handleResume = () => runAction(paymentApi.resumeAutoRenew)
   const handleRetry = () => runAction(paymentApi.retrySubscriptionPayment)
+
 
   const isSubscribed = Boolean(subscription)
   const isPastDue = subscription?.status === 'PAST_DUE'
   const remainingRetryCount = subscription?.remainingRetryCount ?? 0
+  // 결제에 실패해도 이미 결제된 기간(expiredAt)까지는 그대로 이용할 수 있다.
+  // 그 시각을 넘기면 결제될 때까지 이용이 막힌다 — 안내 문구가 이 둘을 구분해야 한다.
+  const isAccessBlocked = isPastDue && subscription?.expiredAt && new Date(subscription.expiredAt) < new Date()
 
   return (
     <>
@@ -142,14 +158,20 @@ export default function SubscriptionPage() {
               <div className={isPastDue ? `${styles.activeBox} ${styles.pastDueBox}` : styles.activeBox}>
                 {isPastDue ? (
                   <>
-                    <p className={styles.pastDueLabel}>⚠ 결제에 실패했어요</p>
+                    <p className={styles.pastDueLabel}>
+                      {isAccessBlocked ? '⚠ 결제가 안 돼 이용이 멈췄어요' : '⚠ 결제에 실패했어요'}
+                    </p>
+                    <p className={styles.activeExpiry}>
+                      {isAccessBlocked
+                        ? '결제가 완료되면 프리미엄 기능이 바로 다시 열려요.'
+                        : `결제된 ${formatDate(subscription.expiredAt)}까지는 프리미엄 기능을 그대로 쓸 수 있어요.`}
+                    </p>
                     <p className={styles.activeExpiry}>
                       등록된 카드로 하루에 한 번 자동으로 다시 시도돼요.
                       {remainingRetryCount > 0
-                        ? ` 남은 자동 재시도 ${remainingRetryCount}회가 모두 실패하면 프리미엄 이용이 중단돼요.`
-                        : ' 다음 시도에 실패하면 프리미엄 이용이 중단돼요.'}
+                        ? ` 남은 자동 재시도 ${remainingRetryCount}회가 모두 실패하면 구독이 종료돼요.`
+                        : ' 다음 시도에 실패하면 구독이 종료돼요.'}
                     </p>
-                    <p className={styles.activeExpiry}>그때까지는 프리미엄 기능을 그대로 쓸 수 있어요.</p>
                   </>
                 ) : subscription.autoRenew ? (
                   <p className={styles.activeLabel}>✓ 구독 중이에요</p>
@@ -167,7 +189,13 @@ export default function SubscriptionPage() {
                 {actionNotice && <p className={styles.actionNotice}>{actionNotice}</p>}
                 {actionError && <p className={styles.cancelError}>{actionError}</p>}
 
-                {isPastDue ? (
+                {/* 재결제·재개는 등록된 카드가 있어야 한다. 없으면 눌러도 실패하므로 등록 경로를 안내한다. */}
+                {!hasCard && (isPastDue || !subscription.autoRenew) ? (
+                  <p className={styles.cardHint}>
+                    등록된 카드가 없어요. <Link to="/mypage">마이페이지 &gt; 설정</Link>에서 카드를 등록하면
+                    {isPastDue ? ' 다시 결제할 수 있어요.' : ' 자동 결제를 다시 켤 수 있어요.'}
+                  </p>
+                ) : isPastDue ? (
                   <button type="button" className={styles.cancelButton} onClick={handleRetry} disabled={isActionLoading}>
                     {isActionLoading ? '처리 중...' : '지금 다시 결제'}
                   </button>
@@ -185,6 +213,12 @@ export default function SubscriptionPage() {
               <button type="button" className={styles.premiumButton} onClick={handleSubscribeClick}>
                 지금 구독
               </button>
+            )}
+
+            {isSubscribed && (
+              <p className={styles.cardHint}>
+                결제수단은 <Link to="/mypage">마이페이지 &gt; 설정</Link>에서 확인하고 삭제할 수 있어요.
+              </p>
             )}
           </section>
         </div>

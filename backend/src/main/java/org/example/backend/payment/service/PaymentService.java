@@ -8,6 +8,7 @@ import org.example.backend.payment.client.dto.PortOneBillingKeyResponse;
 import org.example.backend.payment.client.dto.PortOnePaymentResponse;
 import org.example.backend.payment.config.PortOneProperties;
 import org.example.backend.payment.dto.response.BillingKeyPrepareResponse;
+import org.example.backend.payment.dto.response.BillingKeyResponse;
 import org.example.backend.payment.dto.response.PaymentReadyResponse;
 import org.example.backend.payment.entity.BillingKey;
 import org.example.backend.payment.entity.Payment;
@@ -135,27 +136,77 @@ public class PaymentService {
     public void completeBillingKeyIssue(Long userId, String billingKey, String billingIssueToken) {
         User user = loadActiveUser(userId, PaymentErrorCode.USER_NOT_FOUND, PaymentErrorCode.USER_INACTIVE);
 
-        String verifiedBillingKey = (billingIssueToken != null && !billingIssueToken.isBlank())
-                ? portOnePaymentClient.confirmBillingKeyIssue(billingIssueToken)
-                : verifyIssuedBillingKey(billingKey);
+        String verifiedBillingKey;
+        PortOneBillingKeyResponse issued;
+        if (billingIssueToken != null && !billingIssueToken.isBlank()) {
+            verifiedBillingKey = portOnePaymentClient.confirmBillingKeyIssue(billingIssueToken);
+            issued = findBillingKeyForDisplay(verifiedBillingKey);
+        } else {
+            issued = portOnePaymentClient.getBillingKey(billingKey);
+            verifyIssuedBillingKey(issued);
+            verifiedBillingKey = billingKey;
+        }
 
         billingKeyRepository.findByUserIdAndDeletedAtIsNull(userId).ifPresent(BillingKey::delete);
 
         BillingKey entity = BillingKey.builder()
                 .user(user)
                 .billingKeyToken(verifiedBillingKey)
+                .cardName(issued == null ? null : issued.cardName())
+                .cardNumberMasked(issued == null ? null : issued.maskedCardNumber())
                 .issuedAt(LocalDateTime.now())
                 .build();
         billingKeyRepository.save(entity);
     }
 
-    private String verifyIssuedBillingKey(String billingKey) {
-        PortOneBillingKeyResponse issued = portOnePaymentClient.getBillingKey(billingKey);
+    /**
+     * 마이페이지에 보여줄 카드 정보를 읽어온다. 발급 확정 경로에서는 이미 서버 인증으로 신뢰가 확보돼 있어
+     * 검증 목적이 아니라 표시 목적의 조회다. 실패해도 카드 등록 자체를 막지는 않는다.
+     */
+    private PortOneBillingKeyResponse findBillingKeyForDisplay(String billingKey) {
+        try {
+            return portOnePaymentClient.getBillingKey(billingKey);
+        } catch (BusinessException e) {
+            log.warn("빌링키 카드 정보 조회 실패 - 카드 표시 정보 없이 등록한다.", e);
+            return null;
+        }
+    }
+
+    /** 등록된 카드 조회. 카드번호·카드사는 보관하지 않으므로 등록 여부와 등록 시각만 알려준다. */
+    public BillingKeyResponse getMyBillingKey(Long userId) {
+        return billingKeyRepository.findByUserIdAndDeletedAtIsNull(userId)
+                .map(BillingKeyResponse::of)
+                .orElseGet(BillingKeyResponse::empty);
+    }
+
+    /**
+     * 등록된 카드를 삭제한다. PortOne에서도 함께 지우고, 이용 중인 구독이 있으면 자동 갱신을 끈다 —
+     * 카드를 지운 사용자는 다음 회차를 결제할 의사가 없다고 보는 게 맞고,
+     * 청구할 카드 없이 자동 갱신만 켜져 있으면 결제 실패만 쌓인다.
+     * 이미 결제된 이용 기간은 만료일까지 그대로 유지된다(환불 없음).
+     */
+    @Transactional
+    public void deleteBillingKey(Long userId) {
+        BillingKey billingKey = billingKeyRepository.findByUserIdAndDeletedAtIsNull(userId)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.BILLING_KEY_NOT_FOUND));
+
+        try {
+            portOnePaymentClient.deleteBillingKey(billingKey.getBillingKeyToken());
+        } catch (BusinessException e) {
+            // PG 삭제가 실패해도 우리 기록은 지운다. 우리가 보관한 빌링키가 없으면 청구 자체가 불가능하므로
+            // "더 이상 청구하지 말라"는 요청은 지켜진다. PortOne에 남은 키는 콘솔에서 정리해야 한다.
+            log.error("PortOne 빌링키 삭제 실패 - 로컬 기록만 삭제한다. userId={}", userId, e);
+        }
+
+        billingKey.delete();
+        subscriptionService.disableAutoRenewIfUsable(userId);
+    }
+
+    private void verifyIssuedBillingKey(PortOneBillingKeyResponse issued) {
         boolean channelMatches = issued.hasChannel(portOneProperties.getChannelKeyBilling());
         if (!BILLING_KEY_ISSUED_STATUS.equalsIgnoreCase(issued.status()) || !channelMatches) {
             throw new BusinessException(PaymentErrorCode.BILLING_KEY_VERIFICATION_FAILED);
         }
-        return billingKey;
     }
 
     /** 카드 등록 + 즉시 청구로 정기결제 구독을 시작한다. */
@@ -192,6 +243,19 @@ public class PaymentService {
 
         chargeSubscription(user, SubscriptionChargeMode.MANUAL_RETRY);
         return subscriptionService.getMy(userId);
+    }
+
+    /**
+     * 해지 예약 상태에서 자동 갱신을 다시 켠다.
+     * 등록된 카드가 없으면 켜지 못하게 막는다 — 카드 없이 자동 갱신만 켜면 스케줄러가 매일 청구에 실패하고,
+     * 3회 만에 아직 남아 있던 이용 기간까지 만료시켜 버린다.
+     */
+    @Transactional
+    public SubscriptionResponse resumeAutoRenew(Long userId) {
+        if (billingKeyRepository.findByUserIdAndDeletedAtIsNull(userId).isEmpty()) {
+            throw new BusinessException(PaymentErrorCode.BILLING_KEY_NOT_FOUND);
+        }
+        return subscriptionService.resume(userId);
     }
 
     /**

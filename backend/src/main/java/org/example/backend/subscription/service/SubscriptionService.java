@@ -68,6 +68,8 @@ public class SubscriptionService {
     public void renewExisting(Long userId) {
         Subscription subscription = findUsableOrThrow(userId);
         subscription.renew(LocalDateTime.now());
+        // 만료 시각을 넘겨 이용이 막혔던 구독이라면 결제 성공과 동시에 다시 열어준다.
+        subscription.getUser().setSubscribed(true);
     }
 
     /** 정기결제 실패 시 호출. 재시도 한도를 넘기면 구독을 만료시킨다. */
@@ -86,12 +88,29 @@ public class SubscriptionService {
     public SubscriptionResponse cancel(Long userId) {
         Subscription subscription = findUsableOrThrow(userId);
         subscription.disableAutoRenew();
+        notifyCancelled(userId);
 
+        return SubscriptionResponse.from(subscription);
+    }
+
+    /**
+     * 카드 삭제처럼 "더 이상 청구하지 말라"는 요청에 딸려오는 해지.
+     * 해지할 구독이 없거나 이미 해지 예약 상태면 아무 것도 하지 않는다 (카드만 지우면 되는 상황).
+     */
+    @Transactional
+    public void disableAutoRenewIfUsable(Long userId) {
+        subscriptionRepository.findFirstByUserIdAndStatusIn(userId, SubscriptionStatus.USABLE)
+                .filter(Subscription::isAutoRenew)
+                .ifPresent(subscription -> {
+                    subscription.disableAutoRenew();
+                    notifyCancelled(userId);
+                });
+    }
+
+    private void notifyCancelled(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.USER_NOT_FOUND));
         emailService.sendSubscriptionCancelled(user.getUsername());
-
-        return SubscriptionResponse.from(subscription);
     }
 
     /** 만료 전 상태에서 자동 갱신을 다시 켠다. 카드 유효성은 실제 결제 시점에 확인된다. */

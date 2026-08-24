@@ -55,6 +55,16 @@ public class PaymentController {
                 .body(ApiResponse.success("구독이 시작되었습니다.", response));
     }
 
+    @Operation(summary = "자동 갱신 재개",
+            description = "해지 예약 상태에서 다음 회차부터 다시 자동 결제한다. 등록된 카드가 없으면 재개할 수 없다.")
+    @PostMapping("/resume")
+    public ResponseEntity<ApiResponse<SubscriptionResponse>> resume(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        SubscriptionResponse response = paymentService.resumeAutoRenew(userDetails.getUser().getId());
+        return ResponseEntity.ok(ApiResponse.success("자동 갱신이 재개되었습니다.", response));
+    }
+
     @Operation(summary = "정기결제 재시도",
             description = "결제 실패(PAST_DUE) 상태에서 등록된 카드로 즉시 재결제를 시도한다. "
                     + "실패해도 자동 재시도 횟수는 줄지 않으며, 직전 청구로부터 1분이 지나야 다시 호출할 수 있다.")

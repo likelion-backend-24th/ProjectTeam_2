@@ -1,8 +1,8 @@
-import { requestIssueBillingKey } from '@portone/browser-sdk/v2'
 import { CheckCircle2, CreditCard, X } from 'lucide-react'
 import { useState } from 'react'
-import { billingKeyApi, paymentApi } from '../../api'
+import { paymentApi } from '../../api'
 import styles from './PaymentModal.module.css'
+import { registerCard } from './registerCard'
 
 const PLAN_FEATURES = ['전문가 1:1 상담 무제한', '스터디 개설·참여 무제한', '구독자 전용 스터디 참여']
 
@@ -22,25 +22,7 @@ export default function PaymentModal({ onClose, onSubscribed }) {
     setStage('processing')
 
     try {
-      const { data: prepareRes } = await billingKeyApi.prepareIssue()
-      const { storeId, channelKey, issueId, customerId } = prepareRes.data
-
-      const issued = await requestIssueBillingKey({
-        storeId,
-        channelKey,
-        billingKeyMethod: 'CARD',
-        issueId,
-        issueName: 'prep2gether 정기결제 카드 등록',
-        customer: { customerId },
-      })
-
-      if (!issued || issued.code) {
-        throw new Error(issued?.message ?? '카드 등록이 취소되었어요.')
-      }
-
-      // 채널이 수동 승인이면 billingKey는 'NEEDS_CONFIRMATION' 자리표시자로 오고,
-      // billingIssueToken으로 서버가 PortOne에 발급을 확정해야 진짜 빌링키를 받을 수 있다.
-      await billingKeyApi.completeIssue(issued.billingKey, issued.billingIssueToken)
+      await registerCard()
       const { data } = await paymentApi.subscribeWithBillingKey()
 
       setStage('success')

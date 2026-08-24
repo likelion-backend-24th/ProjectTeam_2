@@ -137,6 +137,20 @@ class SubscriptionServiceTest {
     }
 
     @Test
+    void renewExisting_만료로_막혀있던_이용권한을_다시_열어준다() {
+        user.setSubscribed(false); // 만료 시각을 넘겨 이용이 차단된 상태
+        Subscription subscription = Subscription.builder()
+                .user(user).startedAt(LocalDateTime.now()).expiredAt(LocalDateTime.now().minusHours(1)).build();
+        subscription.markPaymentFailed();
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.of(subscription));
+
+        subscriptionService.renewExisting(1L);
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(user.isSubscribed()).isTrue();
+    }
+
+    @Test
     void renewExisting_만료전_미리갱신하면_남은기간에_이어붙는다() {
         LocalDateTime expiredAt = LocalDateTime.now().plusDays(1);
         Subscription subscription = Subscription.builder().user(user).startedAt(LocalDateTime.now()).expiredAt(expiredAt).build();
@@ -188,6 +202,29 @@ class SubscriptionServiceTest {
         assertThat(response.isAutoRenew()).isFalse();
         assertThat(user.isSubscribed()).isTrue(); // 만료일까지는 계속 이용 가능
         verify(emailService).sendSubscriptionCancelled(user.getUsername());
+    }
+
+    @Test
+    void disableAutoRenewIfUsable_이용중구독있으면_자동갱신만꺼짐() {
+        Subscription subscription = Subscription.builder()
+                .user(user).startedAt(LocalDateTime.now()).expiredAt(LocalDateTime.now().plusMonths(1)).build();
+        subscription.enableAutoRenew();
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.of(subscription));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        subscriptionService.disableAutoRenewIfUsable(1L);
+
+        assertThat(subscription.isAutoRenew()).isFalse();
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+    }
+
+    @Test
+    void disableAutoRenewIfUsable_이용중구독없으면_아무것도하지않음() {
+        when(subscriptionRepository.findFirstByUserIdAndStatusIn(1L, USABLE)).thenReturn(Optional.empty());
+
+        subscriptionService.disableAutoRenewIfUsable(1L);
+
+        verifyNoInteractions(emailService);
     }
 
     @Test

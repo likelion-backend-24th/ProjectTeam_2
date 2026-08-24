@@ -28,6 +28,14 @@ public class BillingKey {
     @Column(name = "billing_key_token", nullable = false, length = 500)
     private String billingKeyToken;
 
+    /** 카드전표인자명(예: 신한카드). 표시 전용이며 PG가 주지 않으면 null이다. */
+    @Column(name = "card_name", length = 50)
+    private String cardName;
+
+    /** 마스킹된 카드번호. 표시 전용이며 PG가 주지 않으면 null이다. */
+    @Column(name = "card_number_masked", length = 30)
+    private String cardNumberMasked;
+
     @Column(name = "issued_at", nullable = false)
     private LocalDateTime issuedAt;
 
@@ -35,9 +43,12 @@ public class BillingKey {
     private LocalDateTime deletedAt;
 
     @Builder
-    public BillingKey(User user, String billingKeyToken, LocalDateTime issuedAt) {
+    public BillingKey(User user, String billingKeyToken, String cardName, String cardNumberMasked,
+                      LocalDateTime issuedAt) {
         this.user = user;
         this.billingKeyToken = billingKeyToken;
+        this.cardName = cardName;
+        this.cardNumberMasked = cardNumberMasked;
         this.issuedAt = issuedAt;
     }
 

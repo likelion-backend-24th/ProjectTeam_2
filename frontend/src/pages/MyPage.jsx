@@ -1,5 +1,6 @@
 import {
   ChevronRight,
+  CreditCard,
   Crown,
   Eye,
   LayoutGrid,
@@ -16,13 +17,14 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { feedbackApi, postApi, studyApi, userApi } from '../api'
+import { billingKeyApi, feedbackApi, postApi, studyApi, subscriptionApi, userApi } from '../api'
 import Pagination from '../components/common/Pagination'
 import SiteHeader from '../components/common/SiteHeader'
 import { getPostCategoryMeta } from '../constants/postCategory'
 import { useAuth } from '../context/AuthContext'
 import { getAvatarColor } from '../utils/avatarColor'
-import { formatDateTime } from '../utils/formatDate'
+import { formatDate, formatDateTime } from '../utils/formatDate'
+import { registerCard } from '../components/subscription/registerCard'
 import styles from './MyPage.module.css'
 
 const ROLE_META = {
@@ -700,6 +702,8 @@ function SettingsTab({ user, onNicknameChanged, onLogout }) {
         </button>
       </form>
 
+      <PaymentMethodSection />
+
       <h2 className={styles.sectionHeading}>계정</h2>
       <div className={styles.accountActions}>
         <div className={styles.withdrawBox}>
@@ -717,5 +721,154 @@ function SettingsTab({ user, onNicknameChanged, onLogout }) {
         </div>
       </div>
     </section>
+  )
+}
+
+/**
+ * 정기결제 카드는 유저당 한 장만 등록된다. 카드번호는 우리 서버가 보관하지 않아
+ * PortOne이 내려준 표시용 정보(카드전표인자명·마스킹 번호)만 보여준다 — 둘 다 없을 수 있다.
+ */
+function PaymentMethodSection() {
+  const [card, setCard] = useState(undefined) // undefined(조회 전) | null(없음) | { ... }
+  const [subscription, setSubscription] = useState(null)
+  const [message, setMessage] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isRegistering, setIsRegistering] = useState(false)
+
+  useEffect(() => {
+    let ignore = false
+
+    billingKeyApi
+      .getMy()
+      .then(({ data }) => {
+        if (!ignore) setCard(data.data.registered ? data.data : null)
+      })
+      .catch(() => {
+        if (!ignore) setCard(null)
+      })
+
+    // 카드 삭제가 자동 갱신 해지로 이어지는지 안내하려면 구독 상태가 필요하다. 없으면 404.
+    subscriptionApi
+      .getMy()
+      .then(({ data }) => {
+        if (!ignore) setSubscription(data.data)
+      })
+      .catch(() => {
+        if (!ignore) setSubscription(null)
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  const willCancelRenewal = Boolean(subscription?.autoRenew)
+
+  async function refetchCard() {
+    try {
+      const { data } = await billingKeyApi.getMy()
+      setCard(data.data.registered ? data.data : null)
+    } catch {
+      setCard(null)
+    }
+  }
+
+  // 카드만 등록한다. 구독 시작은 구독 페이지가 맡는다 — 여기서는 결제수단 교체·재등록이 목적이다.
+  async function handleRegister() {
+    setMessage('')
+    setIsRegistering(true)
+    try {
+      await registerCard()
+      await refetchCard()
+      setMessage(
+        subscription && !subscription.autoRenew
+          ? '카드가 등록되었어요. 구독 페이지에서 자동 결제를 다시 켤 수 있어요.'
+          : '카드가 등록되었어요.',
+      )
+    } catch (err) {
+      setMessage(err.response?.data?.message ?? err.message ?? '카드 등록에 실패했어요.')
+    } finally {
+      setIsRegistering(false)
+    }
+  }
+
+  async function handleDelete() {
+    const confirmMessage = willCancelRenewal
+      ? '등록된 카드를 삭제할까요? 다음 회차 자동 결제가 멈추고, 남은 이용 기간이 끝나면 프리미엄이 종료돼요.'
+      : '등록된 카드를 삭제할까요?'
+    if (!window.confirm(confirmMessage)) return
+
+    setMessage('')
+    setIsDeleting(true)
+    try {
+      const { data } = await billingKeyApi.remove()
+      setCard(null)
+      setMessage(data.message ?? '카드가 삭제되었습니다.')
+      // 카드 삭제는 자동 갱신도 함께 끄므로 구독 상태를 다시 읽어온다.
+      const { data: refreshed } = await subscriptionApi.getMy().catch(() => ({ data: { data: null } }))
+      setSubscription(refreshed.data)
+    } catch (err) {
+      setMessage(err.response?.data?.message ?? '카드 삭제에 실패했어요.')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  if (card === undefined) return null
+
+  return (
+    <>
+      <h2 className={styles.sectionHeading}>결제수단</h2>
+      {card ? (
+        <div className={styles.paymentMethodCard}>
+          <span className={styles.paymentMethodIcon}>
+            <CreditCard size={18} />
+          </span>
+          <div className={styles.paymentMethodInfo}>
+            <p className={styles.paymentMethodName}>
+              {card.cardName ?? '등록된 카드'}
+              {card.cardNumberMasked && <span className={styles.paymentMethodNumber}>{card.cardNumberMasked}</span>}
+            </p>
+            <p className={styles.paymentMethodMeta}>
+              {formatDate(card.issuedAt)} 등록
+              {willCancelRenewal && subscription?.expiredAt && ` · 다음 결제일 ${formatDate(subscription.expiredAt)}`}
+            </p>
+          </div>
+          <div className={styles.paymentMethodActions}>
+            <button
+              type="button"
+              className={styles.paymentMethodChange}
+              onClick={handleRegister}
+              disabled={isRegistering || isDeleting}
+            >
+              {isRegistering ? '등록 중...' : '변경'}
+            </button>
+            <button
+              type="button"
+              className={styles.paymentMethodDelete}
+              onClick={handleDelete}
+              disabled={isDeleting || isRegistering}
+            >
+              {isDeleting ? '삭제 중...' : '삭제'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className={styles.paymentMethodEmptyBox}>
+          <p className={styles.paymentMethodEmpty}>
+            {subscription
+              ? '등록된 카드가 없어요. 카드를 등록하면 정기결제를 이어갈 수 있어요.'
+              : '등록된 카드가 없어요.'}
+          </p>
+          <button type="button" className={styles.secondaryButton} onClick={handleRegister} disabled={isRegistering}>
+            {isRegistering ? '등록 중...' : '카드 등록'}
+          </button>
+        </div>
+      )}
+      {card && willCancelRenewal && (
+        <p className={styles.paymentMethodMeta}>카드를 삭제하면 다음 회차 자동 결제가 함께 해지돼요.</p>
+      )}
+      {message && <p className={styles.settingsMessage}>{message}</p>}
+    </>
   )
 }

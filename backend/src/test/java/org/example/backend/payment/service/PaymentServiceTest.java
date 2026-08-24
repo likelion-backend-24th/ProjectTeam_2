@@ -6,6 +6,7 @@ import org.example.backend.payment.client.dto.PortOneBillingKeyResponse;
 import org.example.backend.payment.client.dto.PortOnePaymentResponse;
 import org.example.backend.payment.config.PortOneProperties;
 import org.example.backend.payment.dto.response.BillingKeyPrepareResponse;
+import org.example.backend.payment.dto.response.BillingKeyResponse;
 import org.example.backend.payment.dto.response.PaymentReadyResponse;
 import org.example.backend.payment.entity.BillingKey;
 import org.example.backend.payment.entity.Payment;
@@ -297,24 +298,21 @@ class PaymentServiceTest {
     @Test
     void completeBillingKeyIssue_PortOne이ISSUED로응답하면_기존카드소프트삭제하고새카드저장() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(portOnePaymentClient.getBillingKey("new-key"))
-                .thenReturn(new PortOneBillingKeyResponse("new-key", "ISSUED",
-                        java.util.List.of(new PortOneBillingKeyResponse.Channel(BILLING_CHANNEL_KEY))));
+        when(portOnePaymentClient.getBillingKey("new-key")).thenReturn(issuedBillingKey(BILLING_CHANNEL_KEY));
         BillingKey existing = activeBillingKey();
         when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(existing));
 
         paymentService.completeBillingKeyIssue(1L, "new-key", null);
 
         assertThat(existing.isActive()).isFalse();
-        verify(billingKeyRepository).save(any(BillingKey.class));
+        verify(billingKeyRepository).save(argThat(bk ->
+                "신한카드".equals(bk.getCardName()) && "433012******1234".equals(bk.getCardNumberMasked())));
     }
 
     @Test
     void completeBillingKeyIssue_채널불일치면_예외() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(portOnePaymentClient.getBillingKey("new-key"))
-                .thenReturn(new PortOneBillingKeyResponse("new-key", "ISSUED",
-                        java.util.List.of(new PortOneBillingKeyResponse.Channel("다른-채널"))));
+        when(portOnePaymentClient.getBillingKey("new-key")).thenReturn(issuedBillingKey("다른-채널"));
 
         BusinessException e = assertThrows(BusinessException.class,
                 () -> paymentService.completeBillingKeyIssue(1L, "new-key", null));
@@ -327,10 +325,78 @@ class PaymentServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(portOnePaymentClient.confirmBillingKeyIssue("issue-token")).thenReturn("real-billing-key");
 
+        when(portOnePaymentClient.getBillingKey("real-billing-key")).thenReturn(issuedBillingKey(BILLING_CHANNEL_KEY));
+
         paymentService.completeBillingKeyIssue(1L, "NEEDS_CONFIRMATION", "issue-token");
 
-        verify(portOnePaymentClient, never()).getBillingKey(anyString());
-        verify(billingKeyRepository).save(argThat(bk -> bk.getBillingKeyToken().equals("real-billing-key")));
+        verify(billingKeyRepository).save(argThat(bk ->
+                bk.getBillingKeyToken().equals("real-billing-key") && "신한카드".equals(bk.getCardName())));
+    }
+
+    @Test
+    void completeBillingKeyIssue_수동승인에서_카드정보조회실패해도_등록은진행() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(portOnePaymentClient.confirmBillingKeyIssue("issue-token")).thenReturn("real-billing-key");
+        when(portOnePaymentClient.getBillingKey("real-billing-key"))
+                .thenThrow(new BusinessException(PaymentErrorCode.PORTONE_API_ERROR));
+
+        paymentService.completeBillingKeyIssue(1L, "NEEDS_CONFIRMATION", "issue-token");
+
+        verify(billingKeyRepository).save(argThat(bk ->
+                bk.getBillingKeyToken().equals("real-billing-key") && bk.getCardName() == null));
+    }
+
+    private PortOneBillingKeyResponse issuedBillingKey(String channelKey) {
+        return new PortOneBillingKeyResponse("new-key", "ISSUED",
+                java.util.List.of(new PortOneBillingKeyResponse.Channel(channelKey)),
+                java.util.List.of(new PortOneBillingKeyResponse.Method(
+                        new PortOneBillingKeyResponse.Method.Card("신한카드", "433012******1234"))));
+    }
+
+    // ---------- 카드 조회 / 삭제 ----------
+
+    @Test
+    void getMyBillingKey_등록된카드없으면_registered가_false() {
+        when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.empty());
+
+        BillingKeyResponse response = paymentService.getMyBillingKey(1L);
+
+        assertThat(response.isRegistered()).isFalse();
+        assertThat(response.getIssuedAt()).isNull();
+    }
+
+    @Test
+    void deleteBillingKey_PortOne삭제후_소프트삭제_및_자동갱신해제() {
+        BillingKey billingKey = activeBillingKey();
+        when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(billingKey));
+
+        paymentService.deleteBillingKey(1L);
+
+        verify(portOnePaymentClient).deleteBillingKey(billingKey.getBillingKeyToken());
+        assertThat(billingKey.isActive()).isFalse();
+        verify(subscriptionService).disableAutoRenewIfUsable(1L);
+    }
+
+    @Test
+    void deleteBillingKey_PortOne삭제가_실패해도_로컬기록은_삭제한다() {
+        BillingKey billingKey = activeBillingKey();
+        when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(billingKey));
+        doThrow(new BusinessException(PaymentErrorCode.PORTONE_API_ERROR))
+                .when(portOnePaymentClient).deleteBillingKey(anyString());
+
+        paymentService.deleteBillingKey(1L);
+
+        assertThat(billingKey.isActive()).isFalse();
+        verify(subscriptionService).disableAutoRenewIfUsable(1L);
+    }
+
+    @Test
+    void deleteBillingKey_등록된카드없으면_예외() {
+        when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.empty());
+
+        BusinessException e = assertThrows(BusinessException.class, () -> paymentService.deleteBillingKey(1L));
+        assertThat(e.getErrorCode()).isEqualTo(PaymentErrorCode.BILLING_KEY_NOT_FOUND);
+        verifyNoInteractions(portOnePaymentClient);
     }
 
     // ---------- 빌링키 청구 (최초 구독 / 재시도 / 스케줄러 공용) ----------
@@ -398,6 +464,26 @@ class PaymentServiceTest {
                 () -> paymentService.chargeSubscription(user, SubscriptionChargeMode.INITIAL));
         assertThat(e.getErrorCode()).isEqualTo(PaymentErrorCode.BILLING_KEY_NOT_FOUND);
         verifyNoInteractions(paymentRepository);
+    }
+
+    // ---------- 자동 갱신 재개 ----------
+
+    @Test
+    void resumeAutoRenew_등록된카드없으면_예외() {
+        when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.empty());
+
+        BusinessException e = assertThrows(BusinessException.class, () -> paymentService.resumeAutoRenew(1L));
+        assertThat(e.getErrorCode()).isEqualTo(PaymentErrorCode.BILLING_KEY_NOT_FOUND);
+        verify(subscriptionService, never()).resume(anyLong());
+    }
+
+    @Test
+    void resumeAutoRenew_카드있으면_구독재개() {
+        SubscriptionResponse expected = mock(SubscriptionResponse.class);
+        when(billingKeyRepository.findByUserIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(activeBillingKey()));
+        when(subscriptionService.resume(1L)).thenReturn(expected);
+
+        assertThat(paymentService.resumeAutoRenew(1L)).isSameAs(expected);
     }
 
     // ---------- 정기결제 재시도 API ----------

@@ -183,6 +183,18 @@
   color: #f59e0b;
 }
 
+.cardHint {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.cardHint a {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
 .actionNotice {
   font-size: 12px;
   color: var(--color-text);

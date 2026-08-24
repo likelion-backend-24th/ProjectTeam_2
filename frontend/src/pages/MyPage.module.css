@@ -396,6 +396,128 @@
   gap: 20px;
 }
 
+.paymentMethodCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-elevated-2);
+}
+
+.paymentMethodIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.paymentMethodInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.paymentMethodName {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.paymentMethodNumber {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.paymentMethodMeta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.paymentMethodActions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.paymentMethodChange {
+  padding: 7px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.paymentMethodChange:hover {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.paymentMethodChange:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.paymentMethodEmptyBox .secondaryButton {
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.paymentMethodEmptyBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--color-border);
+}
+
+/* 행 안에 들어가는 삭제 버튼 — dangerButton의 flex-start 정렬과 큰 여백을 쓰지 않는다. */
+.paymentMethodDelete {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: var(--radius-full);
+  background-color: transparent;
+  color: #f87171;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.paymentMethodDelete:hover {
+  background-color: rgba(248, 113, 113, 0.1);
+}
+
+.paymentMethodDelete:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.paymentMethodEmpty {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.paymentMethodEmpty a {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
 .withdrawBox {
   display: flex;
   flex-direction: column;

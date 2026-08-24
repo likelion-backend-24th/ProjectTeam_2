@@ -3,6 +3,8 @@ package org.example.backend.payment.client.dto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 /**
  * PortOne 빌링키 단건 조회 응답 중 검증에 필요한 최소 필드만 매핑한다.
@@ -13,10 +15,36 @@ import java.util.List;
 public record PortOneBillingKeyResponse(
         String billingKey,
         String status,
-        List<Channel> channels
+        List<Channel> channels,
+        List<Method> methods
 ) {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Channel(String key) {
+    }
+
+    /** 등록된 결제수단. 카드 등록만 지원하므로 사실상 카드 한 건이다. */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Method(Card card) {
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public record Card(String name, String number) {
+        }
+    }
+
+    /** 카드전표인자명(예: 신한카드). 카드사·채널에 따라 내려오지 않을 수 있어 null을 허용한다. */
+    public String cardName() {
+        return firstCard().map(Method.Card::name).orElse(null);
+    }
+
+    /** 마스킹된 카드번호. 마찬가지로 항상 오지는 않는다. */
+    public String maskedCardNumber() {
+        return firstCard().map(Method.Card::number).orElse(null);
+    }
+
+    private Optional<Method.Card> firstCard() {
+        if (methods == null) {
+            return Optional.empty();
+        }
+        return methods.stream().map(Method::card).filter(Objects::nonNull).findFirst();
     }
 
     public boolean hasChannel(String channelKey) {

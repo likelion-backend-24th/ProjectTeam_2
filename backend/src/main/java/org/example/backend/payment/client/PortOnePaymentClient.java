@@ -131,6 +131,31 @@ public class PortOnePaymentClient {
     }
 
     /**
+     * 빌링키를 PortOne에서 삭제한다. 우리 DB의 소프트 삭제와 별개로, PG에 남은 카드도 정리해야 한다.
+     * 이미 삭제됐거나 존재하지 않는 키(404/409)는 우리가 원하는 상태와 같으므로 실패로 보지 않는다.
+     */
+    public void deleteBillingKey(String billingKey) {
+        try {
+            restClient.delete()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/billing-keys/{billingKey}")
+                            .queryParam("storeId", storeId)
+                            .build(billingKey))
+                    .header("Authorization", "PortOne " + apiSecret)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (HttpClientErrorException.NotFound | HttpClientErrorException.Conflict e) {
+            log.info("PortOne 빌링키가 이미 삭제된 상태. body={}", e.getResponseBodyAsString());
+        } catch (HttpClientErrorException e) {
+            log.error("PortOne 빌링키 삭제 실패. status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new BusinessException(PaymentErrorCode.PORTONE_API_ERROR);
+        } catch (Exception e) {
+            log.error("PortOne API 통신 오류(빌링키 삭제)", e);
+            throw new BusinessException(PaymentErrorCode.PORTONE_API_ERROR);
+        }
+    }
+
+    /**
      * 빌링키로 즉시 청구한다.
      * 청구 성공 여부는 이 응답이 아니라 이후 getPayment() 재조회 결과로 판단한다 (일반결제와 동일한 검증 경로 재사용).
      */

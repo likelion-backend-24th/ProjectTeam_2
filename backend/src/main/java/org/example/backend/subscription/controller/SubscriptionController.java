@@ -38,15 +38,6 @@ public class SubscriptionController {
         return ResponseEntity.ok(ApiResponse.success("자동 갱신이 해지되었습니다.", response));
     }
 
-    @Operation(summary = "구독 재개", description = "해지 예약 상태에서 자동 갱신을 다시 켠다.")
-    @PostMapping("/api/subscriptions/resume")
-    public ResponseEntity<ApiResponse<SubscriptionResponse>> resume(
-            @AuthenticationPrincipal CustomUserDetails userDetails
-    ) {
-        SubscriptionResponse response = subscriptionService.resume(userDetails.getUser().getId());
-        return ResponseEntity.ok(ApiResponse.success("자동 갱신이 재개되었습니다.", response));
-    }
-
     @Operation(summary = "내 구독 조회")
     @GetMapping("/api/subscriptions/me")
     public ResponseEntity<ApiResponse<SubscriptionResponse>> getMy(
