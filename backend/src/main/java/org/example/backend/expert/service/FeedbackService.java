@@ -172,6 +172,15 @@ public class FeedbackService {
         openThreads.forEach(feedback -> feedback.close(FeedbackCloseReason.EXPERT_REVOKED));
     }
 
+    /**
+     * 요청자가 탈퇴할 때 그가 연 진행 중 스레드를 모두 닫는다.
+     * 닫지 않으면 답변할 상대가 없는 스레드가 전문가 목록에 계속 남는다.
+     */
+    public void closeThreadsByRequester(Long requesterId) {
+        List<Feedback> openThreads = feedbackRepository.findByRequesterIdAndClosedAtIsNull(requesterId);
+        openThreads.forEach(feedback -> feedback.close(FeedbackCloseReason.REQUESTER_WITHDRAWN));
+    }
+
     @Transactional
     public FeedbackResponse closeThread(Long requesterId, Long feedbackId) {
         Feedback feedback = getFeedbackOrThrow(feedbackId);

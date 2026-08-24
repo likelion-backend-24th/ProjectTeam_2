@@ -3,6 +3,7 @@ package org.example.backend.user.service;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.repository.RefreshTokenRepository;
 import org.example.backend.common.exception.BusinessException;
+import org.example.backend.expert.service.FeedbackService;
 import org.example.backend.study.entity.Study;
 import org.example.backend.study.repository.StudyMemberRepository;
 import org.example.backend.study.repository.StudyPostCommentRepository;
@@ -35,6 +36,7 @@ public class UserService {
     private final StudyPostRepository studyPostRepository;
     private final StudyPostCommentRepository studyPostCommentRepository;
     private final SubscriptionService subscriptionService;
+    private final FeedbackService feedbackService;
     // 내 정보 조회
     public UserResponse getMyInfo(String username) {
         User user = userRepository.findByUsername(username)
@@ -94,10 +96,12 @@ public class UserService {
         if(user.getPassword() != null && !passwordEncoder.matches(password,user.getPassword())){
             throw new BusinessException(UserErrorCode.INVALID_CURRENT_PASSWORD);
         }
-        // 구독중이면 구독 취소
-        if (user.isSubscribed()){
-            subscriptionService.cancel(user.getId());
-        }
+
+        // 탈퇴 후 추가 청구가 발생하지 않도록 자동 갱신을 해지한다.
+        subscriptionService.disableAutoRenewIfUsable(user.getId());
+
+        // 진행 중인 상담 스레드 종료. 답변받을 사람이 없는 스레드를 남기지 않는다.
+        feedbackService.closeThreadsByRequester(user.getId());
 
         // 회원탈퇴자가 스터디 방장인 스터디는 소프트 딜리트
         List<Study> leadingStudies = studyRepository.findAllByLeaderId(user.getId());
