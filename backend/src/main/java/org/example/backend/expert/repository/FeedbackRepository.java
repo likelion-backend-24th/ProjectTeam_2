@@ -21,6 +21,7 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
             countQuery = "SELECT COUNT(f) FROM Feedback f WHERE f.requester.id = :requesterId")
     Page<Feedback> findByRequesterId(@Param("requesterId") Long requesterId, Pageable pageable);
     List<Feedback> findByExpertProfileIdAndClosedAtIsNull(Long expertProfileId);
+    List<Feedback> findByRequesterIdAndClosedAtIsNull(Long requesterId);
     boolean existsByRequesterIdAndExpertProfileIdAndClosedAtIsNull(Long requesterId, Long expertProfileId);
     long countByRequesterIdAndClosedAtIsNull(Long requesterId);
 }
