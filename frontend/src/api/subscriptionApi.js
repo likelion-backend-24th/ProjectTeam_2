@@ -1,10 +1,5 @@
 import apiClient from './client'
 
-// POST /api/subscriptions — 프론트에서 결제 성공 처리 후 호출. 실제 PG 연동 없이 서버 상태만 ACTIVE로 반영(Mock).
-function subscribe() {
-  return apiClient.post('/api/subscriptions')
-}
-
 // DELETE /api/subscriptions — 다음 회차 자동 갱신만 멈춘다. 만료일까지는 계속 이용 가능하다.
 function cancel() {
   return apiClient.delete('/api/subscriptions')
@@ -16,7 +11,6 @@ function getMy() {
 }
 
 export const subscriptionApi = {
-  subscribe,
   cancel,
   getMy,
 }
