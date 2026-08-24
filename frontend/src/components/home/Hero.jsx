@@ -1,7 +1,10 @@
 import { ArrowRight, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import styles from './Hero.module.css'
 export default function Hero() {
+  const { isAuthenticated } = useAuth()
+
   return (
     <section className={styles.hero}>
       <div className={styles.glow} aria-hidden="true" />
@@ -28,10 +31,12 @@ export default function Hero() {
           </p>
 
           <div className={styles.ctaGroup}>
-            <Link to="/signup" className={styles.primaryButton}>
-              무료로 시작하기
-              <ArrowRight size={18} />
-            </Link>
+            {!isAuthenticated && (
+              <Link to="/signup" className={styles.primaryButton}>
+                무료로 시작하기
+                <ArrowRight size={18} />
+              </Link>
+            )}
             <Link to="/posts" className={styles.secondaryButton}>
               게시글 둘러보기
               <ChevronRight size={18} />
