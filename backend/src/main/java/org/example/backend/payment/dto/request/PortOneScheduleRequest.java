@@ -1,4 +1,4 @@
-package org.example.backend.payment.dto;
+package org.example.backend.payment.dto.request;
 
 import lombok.Getter;
 

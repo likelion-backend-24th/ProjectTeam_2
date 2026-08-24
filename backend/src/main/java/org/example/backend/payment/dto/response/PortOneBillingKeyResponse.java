@@ -1,4 +1,4 @@
-package org.example.backend.payment.dto;
+package org.example.backend.payment.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;

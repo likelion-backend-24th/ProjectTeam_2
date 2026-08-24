@@ -1,9 +1,9 @@
 package org.example.backend.payment.client;
 
-import org.example.backend.payment.dto.PortOneBillingKeyChargeRequest;
-import org.example.backend.payment.dto.PortOneCancelScheduleRequest;
-import org.example.backend.payment.dto.PortOnePaymentResponse;
-import org.example.backend.payment.dto.PortOneScheduleRequest;
+import org.example.backend.payment.dto.request.PortOneBillingKeyChargeRequest;
+import org.example.backend.payment.dto.request.PortOneCancelScheduleRequest;
+import org.example.backend.payment.dto.response.PortOnePaymentResponse;
+import org.example.backend.payment.dto.request.PortOneScheduleRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;

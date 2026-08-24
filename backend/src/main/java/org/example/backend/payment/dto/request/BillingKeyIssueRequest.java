@@ -1,4 +1,4 @@
-package org.example.backend.payment.dto;
+package org.example.backend.payment.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;

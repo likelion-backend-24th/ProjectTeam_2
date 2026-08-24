@@ -3,9 +3,9 @@ package org.example.backend.payment.service;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.payment.client.PortOneBillingKeyClient;
-import org.example.backend.payment.dto.BillingKeyPrepareResponse;
-import org.example.backend.payment.dto.BillingKeyResponse;
-import org.example.backend.payment.dto.PortOneBillingKeyResponse;
+import org.example.backend.payment.dto.response.BillingKeyPrepareResponse;
+import org.example.backend.payment.dto.response.BillingKeyResponse;
+import org.example.backend.payment.dto.response.PortOneBillingKeyResponse;
 import org.example.backend.payment.entity.BillingKey;
 import org.example.backend.payment.entity.BillingKeyIssuanceIntent;
 import org.example.backend.payment.entity.BillingKeyIssuanceIntentStatus;
@@ -67,15 +67,17 @@ public class BillingKeyService {
         BillingKeyIssuanceIntent intent = billingKeyIssuanceIntentRepository.findByIssueId(issueId)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.BILLING_KEY_ISSUANCE_INTENT_NOT_FOUND));
 
+        // 발급 의도를 만들었던 유저와 지금 검증 요청한 사람이 같은지!! 즉 발급요청은 내가 한게 맞다
         if (!intent.getUser().getId().equals(userId)) {
             throw new BusinessException(PaymentErrorCode.FORBIDDEN);
         }
 
+        // 핵심인데 프론트가 등록 성공했다고 보낸 빌링키를 그대로 믿지않고 서버가 직접 포트원한테 재조회 검증
         PortOneBillingKeyResponse portOneBillingKey = portOneBillingKeyClient.getBillingKey(billingKey);
 
         boolean channelMatched = false;
         for (PortOneBillingKeyResponse.Channel channel : portOneBillingKey.getChannels()) {
-            if (billingChannelKey.equals(channel.getKey())) {
+            if (billingChannelKey.equals(channel.getKey())) { //순회중인 채널키가 내 상점 채널키랑 같은지
                 channelMatched = true;
                 break;
             }

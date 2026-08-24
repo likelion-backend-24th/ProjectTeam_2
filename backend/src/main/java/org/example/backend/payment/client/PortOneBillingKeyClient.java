@@ -1,6 +1,6 @@
 package org.example.backend.payment.client;
 
-import org.example.backend.payment.dto.PortOneBillingKeyResponse;
+import org.example.backend.payment.dto.response.PortOneBillingKeyResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
