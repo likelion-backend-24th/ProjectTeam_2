@@ -38,7 +38,9 @@ export default function NaverCallbackPage() {
         await naverLogin(naverAccessToken)
         navigate('/', { replace: true })
       } catch (err) {
+        const message = err.response?.data?.message ?? '네이버 로그인에 실패했습니다.'
         console.error('네이버 로그인 처리 실패', err)
+        window.alert(message)
         navigate('/login', { replace: true })
       }
     })
