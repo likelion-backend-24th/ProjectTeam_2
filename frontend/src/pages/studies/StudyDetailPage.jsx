@@ -27,11 +27,8 @@ function isRecruitClosed(recruitEnd) {
 const BUMP_COOLDOWN_MS = 24 * 60 * 60 * 1000
 
 // 끌올 가능 여부와 버튼 라벨을 계산한다. 쿨다운은 "마지막 끌올 시각 + 24시간" 기준.
-// 구독자 전용 기능이라, 비구독자에게는 disabled 대신 클릭 시 구독 플랜으로 안내하는 상태를 준다.
-function getBumpState(study, closed, isSubscribed, now) {
-  if (!isSubscribed) {
-    return { disabled: false, label: '끌올 (구독자 전용)', subscriberOnly: true }
-  }
+// 구독 여부는 라벨에 미리 드러내지 않고, 클릭 시 handleBump에서 안내 후 리다이렉트한다.
+function getBumpState(study, closed, now) {
   if (closed) {
     return { disabled: true, label: '모집 마감으로 끌올 불가' }
   }
@@ -192,6 +189,7 @@ export default function StudyDetailPage() {
 
   async function handleBump() {
     if (!user.subscribed) {
+      window.alert('끌올은 구독 후 이용할 수 있어요. 구독 플랜 페이지로 이동할게요.')
       navigate('/subscription')
       return
     }
@@ -245,7 +243,7 @@ export default function StudyDetailPage() {
   const categoryMeta = getStudyCategoryMeta(study.category)
   const closed = isRecruitClosed(study.recruitEnd)
   const isFull = study.currentMemberCount >= study.capacity
-  const bumpState = getBumpState(study, closed, user?.subscribed, now)
+  const bumpState = getBumpState(study, closed, now)
 
   return (
     <>
