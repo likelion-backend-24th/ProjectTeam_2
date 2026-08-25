@@ -5,6 +5,7 @@ import org.example.backend.auth.service.EmailService;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.common.file.FileStorageService;
 import org.example.backend.common.file.ImageValidator;
+import org.example.backend.common.util.AfterCommitExecutor;
 import org.example.backend.expert.dto.request.FeedbackCreateRequest;
 import org.example.backend.expert.dto.request.FeedbackMessageRequest;
 import org.example.backend.expert.dto.response.FeedbackMessageResponse;
@@ -159,8 +160,7 @@ public class FeedbackService {
         // 전문가가 지금 답변하고 있다면 → 답변완료 처리한다.
         if (isExpertAnswering) {
             feedback.markAnswered();
-            emailService.sendFeedbackAnswered(feedback.getRequester().getUsername(), feedback.getTopic());
-        } else if (isRequester) {
+            AfterCommitExecutor.run(() -> emailService.sendFeedbackAnswered(feedback.getRequester().getUsername(), feedback.getTopic()));        } else if (isRequester) {
             feedback.markPending();
         }
         return FeedbackMessageResponse.from(message, imageUrls);

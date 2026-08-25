@@ -3,6 +3,7 @@ package org.example.backend.expert.service;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.service.EmailService;
 import org.example.backend.common.exception.BusinessException;
+import org.example.backend.common.util.AfterCommitExecutor;
 import org.example.backend.expert.dto.response.*;
 import org.example.backend.expert.dto.request.ExpertSignupRequest;
 import org.example.backend.expert.entity.ExpertProfile;
@@ -56,16 +57,14 @@ public class ExpertProfileService {
         ExpertProfile profile = getProfileOrThrow(expertProfileId);
         profile.approve();
         profile.getUser().setRole(Role.EXPERT); // dirty checking
-        emailService.sendExpertApproved(profile.getUser().getUsername());
-        return ExpertProfileResponse.from(profile);
+        AfterCommitExecutor.run(() -> emailService.sendExpertApproved(profile.getUser().getUsername()));        return ExpertProfileResponse.from(profile);
     }
 
     @Transactional
     public ExpertProfileResponse reject(Long expertProfileId, String reason) {
         ExpertProfile profile = getProfileOrThrow(expertProfileId);
         profile.reject(reason);
-        emailService.sendExpertRejected(profile.getUser().getUsername());
-        return ExpertProfileResponse.from(profile);
+        AfterCommitExecutor.run(() -> emailService.sendExpertRejected(profile.getUser().getUsername()));        return ExpertProfileResponse.from(profile);
     }
 
     public Page<ExpertProfileResponse> getList(ExpertStatus status, Pageable pageable) {
