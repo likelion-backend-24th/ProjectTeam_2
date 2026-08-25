@@ -3,6 +3,7 @@ package org.example.backend.subscription.service;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.auth.service.EmailService;
 import org.example.backend.common.exception.BusinessException;
+import org.example.backend.common.util.AfterCommitExecutor;
 import org.example.backend.subscription.dto.response.SubscriptionResponse;
 import org.example.backend.subscription.entity.Subscription;
 import org.example.backend.subscription.entity.SubscriptionStatus;
@@ -38,8 +39,7 @@ public class SubscriptionService {
         subscriptionRepository.save(subscription);
 
         user.setSubscribed(true);
-        emailService.sendSubscriptionStarted(user.getUsername());
-
+        AfterCommitExecutor.run(() -> emailService.sendSubscriptionStarted(user.getUsername()));
         return SubscriptionResponse.from(subscription);
     }
 
@@ -57,7 +57,7 @@ public class SubscriptionService {
         subscriptionRepository.save(subscription);
 
         user.setSubscribed(true);
-        emailService.sendSubscriptionStarted(user.getUsername());
+        AfterCommitExecutor.run(() -> emailService.sendSubscriptionStarted(user.getUsername()));
     }
 
     /**
@@ -110,7 +110,7 @@ public class SubscriptionService {
     private void notifyCancelled(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(SubscriptionErrorCode.USER_NOT_FOUND));
-        emailService.sendSubscriptionCancelled(user.getUsername());
+        AfterCommitExecutor.run(() -> emailService.sendSubscriptionCancelled(user.getUsername()));
     }
 
     /** 만료 전 상태에서 자동 갱신을 다시 켠다. 카드 유효성은 실제 결제 시점에 확인된다. */
