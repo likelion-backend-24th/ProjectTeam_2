@@ -37,6 +37,7 @@ export default function ExpertConsultPage() {
 
   const [profileExpertId, setProfileExpertId] = useState(null)
   const [consultModal, setConsultModal] = useState(null) // null | { preselected }
+  const [allExperts, setAllExperts] = useState([])       // 모달 선택용 전체 목록
 
   // 전문가가 아닌 로그인 유저의 신청 이력(심사중/반려)을 조회한다. 신청한 적 없으면 404.
   const [applicationStatus, setApplicationStatus] = useState(null)
@@ -75,6 +76,22 @@ export default function ExpertConsultPage() {
       ignore = true
     }
   }, [expertsPage])
+  // 화면 그리드는 페이지 단위로 보여주지만, "새 상담 추가" 모달에서는 전체 전문가를 고를 수 있어야 한다.
+  // 페이지 상태를 공유하면 현재 페이지의 전문가만 선택 가능해지므로 목록을 따로 받아둔다.
+  useEffect(() => {
+    let ignore = false
+    expertApi
+        .getPublicExperts({ page: 0, size: 200 })
+        .then(({ data }) => {
+          if (!ignore) setAllExperts(data.data)
+        })
+        .catch(() => {
+          // 실패해도 화면 자체는 동작해야 한다. 모달은 빈 목록으로 뜬다.
+        })
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!isAuthenticated || !user?.subscribed) return
@@ -284,7 +301,7 @@ export default function ExpertConsultPage() {
 
       {consultModal && (
         <NewConsultModal
-          experts={experts}
+          experts={allExperts}
           preselected={consultModal.preselected}
           onClose={() => setConsultModal(null)}
           onCreated={handleConsultCreated}
