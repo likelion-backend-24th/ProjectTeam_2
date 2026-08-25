@@ -12,6 +12,8 @@ import org.example.backend.subscription.repository.SubscriptionRepository;
 import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.User;
 import org.example.backend.user.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -130,6 +132,12 @@ public class SubscriptionService {
 
     public boolean hasUsableSubscription(Long userId) {
         return subscriptionRepository.findFirstByUserIdAndStatusIn(userId, SubscriptionStatus.USABLE).isPresent();
+    }
+
+    // 관리자 구독 현황 조회 (상태 필터 + 유저 닉네임/이메일 검색). AdminService에서 사용
+    public Page<Subscription> searchSubscriptionsForAdmin(String keyword, SubscriptionStatus status, Pageable pageable) {
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword;
+        return subscriptionRepository.searchSubscriptionsForAdmin(status, normalizedKeyword, pageable);
     }
 
     public boolean isPastDue(Long userId) {

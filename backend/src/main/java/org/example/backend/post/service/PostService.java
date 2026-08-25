@@ -56,6 +56,12 @@ public class PostService {
         return posts.map(post -> PostResponse.from(post, getImageUrls(post.getId())));
     }
 
+    // 관리자 게시글 목록 조회 (제목/내용 검색 + 카테고리 필터). AdminService에서 사용
+    public Page<Post> searchPostsForAdmin(String keyword, PostCategory category, Pageable pageable) {
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword;
+        return postRepository.searchPosts(category, normalizedKeyword, pageable);
+    }
+
     public Page<PostResponse> getMyPosts(Long userId, Pageable pageable) {
         Page<Post> posts = postRepository.findByUserId(userId, pageable);
         return posts.map(post -> PostResponse.from(post, getImageUrls(post.getId())));

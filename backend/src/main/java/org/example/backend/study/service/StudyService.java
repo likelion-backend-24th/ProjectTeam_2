@@ -10,6 +10,7 @@ import org.example.backend.study.dto.request.StudyUpdateRequest;
 import org.example.backend.study.dto.response.StudyDetailResponse;
 import org.example.backend.study.dto.response.StudyResponse;
 import org.example.backend.study.entity.Study;
+import org.example.backend.study.entity.StudyCategory;
 import org.example.backend.study.entity.StudyImage;
 import org.example.backend.study.entity.StudyMember;
 import org.example.backend.study.exception.StudyErrorCode;
@@ -69,6 +70,17 @@ public class StudyService {
             List<String> imageUrls = getImageUrls(study.getId());
             return StudyResponse.from(study, memberCount, imageUrls);
         });
+    }
+
+    // 관리자 스터디 목록 조회 (제목 검색 + 카테고리 필터). AdminService에서 사용
+    public Page<Study> searchStudiesForAdmin(String keyword, StudyCategory category, Pageable pageable) {
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword;
+        return studyRepository.searchStudiesForAdmin(normalizedKeyword, category, pageable);
+    }
+
+    // 관리자 스터디 목록 조회에서 회원 수 표시용. AdminService에서 사용
+    public int getMemberCount(Long studyId) {
+        return studyMemberRepository.countByStudyId(studyId);
     }
 
     public StudyDetailResponse getStudyById(Long id) {

@@ -15,24 +15,21 @@ import org.example.backend.expert.entity.ExpertStatus;
 import org.example.backend.expert.service.ExpertProfileService;
 import org.example.backend.payment.entity.Payment;
 import org.example.backend.payment.entity.PaymentStatus;
-import org.example.backend.payment.repository.PaymentRepository;
+import org.example.backend.payment.service.PaymentService;
 import org.example.backend.post.entity.Post;
 import org.example.backend.post.entity.PostCategory;
-import org.example.backend.post.repository.PostRepository;
 import org.example.backend.post.service.PostService;
 import org.example.backend.report.dto.ReportResponse;
 import org.example.backend.report.entity.ReportStatus;
 import org.example.backend.report.service.ReportService;
 import org.example.backend.study.entity.Study;
 import org.example.backend.study.entity.StudyCategory;
-import org.example.backend.study.repository.StudyMemberRepository;
-import org.example.backend.study.repository.StudyRepository;
 import org.example.backend.study.service.StudyPostCommentService;
 import org.example.backend.study.service.StudyPostService;
 import org.example.backend.study.service.StudyService;
 import org.example.backend.subscription.entity.Subscription;
 import org.example.backend.subscription.entity.SubscriptionStatus;
-import org.example.backend.subscription.repository.SubscriptionRepository;
+import org.example.backend.subscription.service.SubscriptionService;
 import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
@@ -52,7 +49,6 @@ public class AdminService {
 
     private final UserRepository userRepository;
     private final PostService postService;
-    private final PostRepository postRepository;
     private final CommentService commentService;
     private final ReportService reportService;
     private final ExpertProfileService expertProfileService;
@@ -60,10 +56,8 @@ public class AdminService {
     private final StudyService studyService;
     private final StudyPostService studyPostService;
     private final StudyPostCommentService studyPostCommentService;
-    private final StudyRepository studyRepository;
-    private final StudyMemberRepository studyMemberRepository;
-    private final SubscriptionRepository subscriptionRepository;
-    private final PaymentRepository paymentRepository;
+    private final SubscriptionService subscriptionService;
+    private final PaymentService paymentService;
     private final RefreshTokenRepository refreshTokenRepository;
     //유저 목록 조회
     public Page<AdminUserResponse> getUsers(String keyword, Role role, Pageable pageable){
@@ -73,32 +67,28 @@ public class AdminService {
 
     //구독 현황 조회 (상태 필터 + 유저 닉네임/이메일 검색)
     public Page<AdminSubscriptionResponse> getSubscriptions(String keyword, SubscriptionStatus status, Pageable pageable){
-        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword;
-        Page<Subscription> page = subscriptionRepository.searchSubscriptionsForAdmin(status, normalizedKeyword, pageable);
+        Page<Subscription> page = subscriptionService.searchSubscriptionsForAdmin(keyword, status, pageable);
         return page.map(AdminSubscriptionResponse::from);
     }
 
     //결제 이력 조회 (상태 필터 + 유저 닉네임/이메일 검색)
     public Page<AdminPaymentResponse> getPayments(String keyword, PaymentStatus status, Pageable pageable){
-        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword;
-        Page<Payment> page = paymentRepository.searchPaymentsForAdmin(status, normalizedKeyword, pageable);
+        Page<Payment> page = paymentService.searchPaymentsForAdmin(keyword, status, pageable);
         return page.map(AdminPaymentResponse::from);
     }
 
     //게시글 목록 조회 (제목/내용 검색 + 카테고리 필터)
     public Page<AdminPostResponse> getPosts(String keyword, PostCategory category, Pageable pageable){
-        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword;
-        Page<Post> page = postRepository.searchPosts(category, normalizedKeyword, pageable);
+        Page<Post> page = postService.searchPostsForAdmin(keyword, category, pageable);
         return page.map(AdminPostResponse::from);
     }
 
     //스터디 목록 조회 (제목 검색 + 카테고리 필터)
     public Page<AdminStudyResponse> getStudies(String keyword, StudyCategory category, Pageable pageable){
-        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword;
-        Page<Study> page = studyRepository.searchStudiesForAdmin(normalizedKeyword, category, pageable);
+        Page<Study> page = studyService.searchStudiesForAdmin(keyword, category, pageable);
 
         return page.map(study -> {
-            int memberCount = studyMemberRepository.countByStudyId(study.getId());
+            int memberCount = studyService.getMemberCount(study.getId());
             return AdminStudyResponse.from(study, memberCount);
         });
     }
