@@ -87,6 +87,19 @@ export default function MyPage() {
     }
   }, [])
 
+  // 프로필 카드의 "전문가 상담 N개". 목록 자체는 [전문가 상담] 탭이 따로 불러오므로 개수만 필요.
+  const [consultCount, setConsultCount] = useState(0)
+
+  useEffect(() => {
+    let ignore = false
+    feedbackApi.getMyFeedbacks({ page: 0, size: 1 }).then(({ data }) => {
+      if (!ignore) setConsultCount(data.data.totalElements)
+    })
+    return () => {
+      ignore = true
+    }
+  }, [])
+
   if (!user) return null
 
   const roleMeta = ROLE_META[user.role] ?? ROLE_META.USER
@@ -122,6 +135,10 @@ export default function MyPage() {
             <div className={styles.postCountPill}>
               <strong>{studyCount}</strong>
               스터디
+            </div>
+            <div className={styles.postCountPill}>
+              <strong>{consultCount}</strong>
+              전문가 상담
             </div>
           </div>
         </section>
