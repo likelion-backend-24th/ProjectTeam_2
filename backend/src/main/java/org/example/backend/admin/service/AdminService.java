@@ -3,6 +3,7 @@ package org.example.backend.admin.service;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.admin.dto.AdminUserResponse;
 import org.example.backend.admin.exception.AdminErrorCode;
+import org.example.backend.auth.repository.RefreshTokenRepository;
 import org.example.backend.comment.service.CommentService;
 import org.example.backend.common.exception.BusinessException;
 import org.example.backend.expert.dto.response.ExpertProfileResponse;
@@ -41,7 +42,7 @@ public class AdminService {
     private final StudyService studyService;
     private final StudyPostService studyPostService;
     private final StudyPostCommentService studyPostCommentService;
-
+    private final RefreshTokenRepository refreshTokenRepository;
     //유저 목록 조회
     public Page<AdminUserResponse> getUsers(String keyword, Role role, Pageable pageable){
         return userRepository.searchUsers(keyword, role, pageable)
@@ -60,6 +61,8 @@ public class AdminService {
 
         user.setStatus(status);
         userRepository.save(user);
+
+        refreshTokenRepository.deleteByUser(user);
     }
 
     // 게시글 소프트 딜리트 (게시물에 딸린 댓글도 소프트 딜리트)

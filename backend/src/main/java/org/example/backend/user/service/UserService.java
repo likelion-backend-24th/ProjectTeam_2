@@ -86,6 +86,8 @@ public class UserService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+
+        refreshTokenRepository.deleteByUser(user);
     }
 
     //회원탈퇴

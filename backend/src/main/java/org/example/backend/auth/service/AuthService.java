@@ -156,6 +156,8 @@ public class AuthService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+
+        refreshTokenRepository.deleteByUser(user);
     }
 
     //로그아웃
