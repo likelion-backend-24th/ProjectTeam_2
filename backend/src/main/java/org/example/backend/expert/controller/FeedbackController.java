@@ -107,4 +107,14 @@ public class FeedbackController {
         FeedbackResponse response = feedbackService.closeThread(userDetails.getUser().getId(), id);
         return ResponseEntity.ok(ApiResponse.success("문의 스레드가 종료되었습니다.", response));
     }
+
+    @Operation(summary = "문의 스레드 삭제", description = "요청자 본인만 삭제할 수 있습니다. 진행 중이면 종료 처리 후 삭제됩니다.")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteFeedback(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long id
+    ) {
+        feedbackService.deleteThread(userDetails.getUser().getId(), id);
+        return ResponseEntity.ok(ApiResponse.success("문의가 삭제되었습니다.", null));
+    }
 }

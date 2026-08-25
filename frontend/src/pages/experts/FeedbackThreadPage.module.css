@@ -78,7 +78,8 @@
   gap: 8px;
 }
 
-.closeButton {
+.closeButton,
+.deleteButton {
   padding: 7px 14px;
   border-radius: var(--radius-full);
   border: 1px solid var(--color-border);
@@ -88,7 +89,8 @@
   font-weight: 600;
 }
 
-.closeButton:hover {
+.closeButton:hover,
+.deleteButton:hover {
   color: #f87171;
   border-color: #f87171;
 }

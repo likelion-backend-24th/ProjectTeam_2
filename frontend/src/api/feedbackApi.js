@@ -43,6 +43,11 @@ function closeFeedback(id) {
   return apiClient.patch(`/api/feedbacks/${id}/close`)
 }
 
+// DELETE /api/feedbacks/{id} — 요청자 본인만 삭제 가능
+function deleteFeedback(id) {
+  return apiClient.delete(`/api/feedbacks/${id}`)
+}
+
 export const feedbackApi = {
   createFeedback,
   getFeedback,
@@ -51,4 +56,5 @@ export const feedbackApi = {
   getMyFeedbacks,
   getMyExpertFeedbacks,
   closeFeedback,
+  deleteFeedback,
 }

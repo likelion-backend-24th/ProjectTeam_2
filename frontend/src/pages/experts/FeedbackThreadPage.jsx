@@ -1,6 +1,6 @@
 import { ChevronLeft, Image, Plus, Send, Star, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { expertApi, feedbackApi } from '../../api'
 import ReportButton from '../../components/common/ReportButton'
 import SiteHeader from '../../components/common/SiteHeader'
@@ -18,6 +18,7 @@ const MAX_IMAGE_COUNT = 5
 // 전문가 화면일 땐 피드백 응답에 포함된 요청자 닉네임을 그대로 사용한다.
 export default function FeedbackThreadPage() {
   const { feedbackId } = useParams()
+  const navigate = useNavigate()
   const { user } = useAuth()
   const bottomRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -36,6 +37,7 @@ export default function FeedbackThreadPage() {
   const [isSending, setIsSending] = useState(false)
   const [sendError, setSendError] = useState('')
   const [isClosing, setIsClosing] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false)
 
   const isRequesterView = feedback && user && feedback.requesterId === user.id
@@ -175,6 +177,24 @@ export default function FeedbackThreadPage() {
     }
   }
 
+  async function handleDelete() {
+    // 진행 중이면 종료까지 함께 일어나므로 문구를 나눈다.
+    const message = isClosed
+        ? '이 상담을 삭제할까요? 목록에서 사라지며 되돌릴 수 없어요.'
+        : '진행 중인 상담입니다. 삭제하면 종료되며 되돌릴 수 없어요. 계속할까요?'
+    if (!window.confirm(message)) return
+
+    setIsDeleting(true)
+    try {
+      await feedbackApi.deleteFeedback(feedbackId)
+      navigate('/experts')
+    } catch (err) {
+      window.alert(err.response?.data?.message ?? '상담 삭제에 실패했습니다.')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const isClosed = Boolean(feedback?.closedBy)
   const isBlockedBySubscription = isRequesterView && !feedback?.requesterSubscribed
   const canSend = feedback && !isClosed && !isBlockedBySubscription
@@ -213,9 +233,14 @@ export default function FeedbackThreadPage() {
               <div className={styles.headerActions}>
                 <ReportButton targetType="FEEDBACK" targetId={feedbackId} variant="icon" />
                 {isRequesterView && !isClosed && (
-                  <button type="button" className={styles.closeButton} onClick={handleClose} disabled={isClosing}>
-                    {isClosing ? '종료 중...' : '상담 종료'}
-                  </button>
+                    <button type="button" className={styles.closeButton} onClick={handleClose} disabled={isClosing}>
+                      {isClosing ? '종료 중...' : '상담 종료'}
+                    </button>
+                )}
+                {isRequesterView && (
+                    <button type="button" className={styles.deleteButton} onClick={handleDelete} disabled={isDeleting}>
+                      {isDeleting ? '삭제 중...' : '상담 삭제'}
+                    </button>
                 )}
               </div>
             </div>
