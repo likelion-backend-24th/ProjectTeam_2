@@ -116,7 +116,7 @@ export default function AdminPanelPage() {
               ADMIN ONLY
             </span>
             <h1 className={styles.title}>어드민 패널</h1>
-            <p className={styles.subtitle}>JOBtogether 운영 관리 콘솔</p>
+            <p className={styles.subtitle}>prep2gether 운영 관리 콘솔</p>
           </div>
           <span className={styles.statusPill}>
             <Activity size={14} />
