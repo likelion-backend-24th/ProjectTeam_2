@@ -15,6 +15,16 @@ function getPosts(params) {
   return apiClient.get('/api/admin/posts', { params })
 }
 
+// GET /api/admin/subscriptions?keyword=&status= (ADMIN 전용)
+function getSubscriptions(params) {
+  return apiClient.get('/api/admin/subscriptions', { params })
+}
+
+// GET /api/admin/payments?keyword=&status= (ADMIN 전용)
+function getPayments(params) {
+  return apiClient.get('/api/admin/payments', { params })
+}
+
 // PATCH /api/admin/users/:id/status  { status: 'ACTIVE' | 'SUSPENDED' }
 function updateUserStatus(id, status) {
   return apiClient.patch(`/api/admin/users/${id}/status`, { status })
@@ -69,6 +79,8 @@ export const adminApi = {
   getUsers,
   getStudies,
   getPosts,
+  getSubscriptions,
+  getPayments,
   updateUserStatus,
   deletePost,
   deleteStudy,

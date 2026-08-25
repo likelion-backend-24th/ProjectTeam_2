@@ -1,8 +1,10 @@
 package org.example.backend.admin.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.backend.admin.dto.AdminPaymentResponse;
 import org.example.backend.admin.dto.AdminPostResponse;
 import org.example.backend.admin.dto.AdminStudyResponse;
+import org.example.backend.admin.dto.AdminSubscriptionResponse;
 import org.example.backend.admin.dto.AdminUserResponse;
 import org.example.backend.admin.exception.AdminErrorCode;
 import org.example.backend.auth.repository.RefreshTokenRepository;
@@ -11,6 +13,9 @@ import org.example.backend.common.exception.BusinessException;
 import org.example.backend.expert.dto.response.ExpertProfileResponse;
 import org.example.backend.expert.entity.ExpertStatus;
 import org.example.backend.expert.service.ExpertProfileService;
+import org.example.backend.payment.entity.Payment;
+import org.example.backend.payment.entity.PaymentStatus;
+import org.example.backend.payment.repository.PaymentRepository;
 import org.example.backend.post.entity.Post;
 import org.example.backend.post.entity.PostCategory;
 import org.example.backend.post.repository.PostRepository;
@@ -25,6 +30,9 @@ import org.example.backend.study.repository.StudyRepository;
 import org.example.backend.study.service.StudyPostCommentService;
 import org.example.backend.study.service.StudyPostService;
 import org.example.backend.study.service.StudyService;
+import org.example.backend.subscription.entity.Subscription;
+import org.example.backend.subscription.entity.SubscriptionStatus;
+import org.example.backend.subscription.repository.SubscriptionRepository;
 import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.Role;
 import org.example.backend.user.entity.User;
@@ -54,11 +62,27 @@ public class AdminService {
     private final StudyPostCommentService studyPostCommentService;
     private final StudyRepository studyRepository;
     private final StudyMemberRepository studyMemberRepository;
+    private final SubscriptionRepository subscriptionRepository;
+    private final PaymentRepository paymentRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     //유저 목록 조회
     public Page<AdminUserResponse> getUsers(String keyword, Role role, Pageable pageable){
         return userRepository.searchUsers(keyword, role, pageable)
                 .map(user -> AdminUserResponse.from(user));
+    }
+
+    //구독 현황 조회 (상태 필터 + 유저 닉네임/이메일 검색)
+    public Page<AdminSubscriptionResponse> getSubscriptions(String keyword, SubscriptionStatus status, Pageable pageable){
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword;
+        Page<Subscription> page = subscriptionRepository.searchSubscriptionsForAdmin(status, normalizedKeyword, pageable);
+        return page.map(AdminSubscriptionResponse::from);
+    }
+
+    //결제 이력 조회 (상태 필터 + 유저 닉네임/이메일 검색)
+    public Page<AdminPaymentResponse> getPayments(String keyword, PaymentStatus status, Pageable pageable){
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword;
+        Page<Payment> page = paymentRepository.searchPaymentsForAdmin(status, normalizedKeyword, pageable);
+        return page.map(AdminPaymentResponse::from);
     }
 
     //게시글 목록 조회 (제목/내용 검색 + 카테고리 필터)

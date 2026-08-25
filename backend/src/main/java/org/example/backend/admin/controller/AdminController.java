@@ -5,8 +5,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.backend.admin.dto.AdminPaymentResponse;
 import org.example.backend.admin.dto.AdminPostResponse;
 import org.example.backend.admin.dto.AdminStudyResponse;
+import org.example.backend.admin.dto.AdminSubscriptionResponse;
 import org.example.backend.admin.dto.AdminUserResponse;
 import org.example.backend.admin.dto.UserStatusUpdateRequest;
 import org.example.backend.admin.service.AdminService;
@@ -16,10 +18,12 @@ import org.example.backend.common.dto.PageMeta;
 import org.example.backend.expert.dto.request.ExpertRejectRequest;
 import org.example.backend.expert.dto.response.ExpertProfileResponse;
 import org.example.backend.expert.entity.ExpertStatus;
+import org.example.backend.payment.entity.PaymentStatus;
 import org.example.backend.post.entity.PostCategory;
 import org.example.backend.report.dto.ReportResponse;
 import org.example.backend.report.entity.ReportStatus;
 import org.example.backend.study.entity.StudyCategory;
+import org.example.backend.subscription.entity.SubscriptionStatus;
 import org.example.backend.user.entity.Role;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -72,6 +76,30 @@ public class AdminController {
         Page<AdminStudyResponse> page = adminService.getStudies(keyword, category, pageable);
         Meta meta = Meta.builder().pagination(PageMeta.from(page)).build();
         return ResponseEntity.ok(ApiResponse.success("스터디 목록 조회 성공", page.getContent(), meta));
+    }
+
+    //구독 현황 조회
+    @Operation(summary = "구독 현황 조회", description = "닉네임/이메일 검색과 구독 상태 필터를 적용해 구독 목록을 페이징하여 조회합니다.")
+    @GetMapping("/subscriptions")
+    public ResponseEntity<ApiResponse<List<AdminSubscriptionResponse>>> getSubscriptions(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) SubscriptionStatus status,
+            @PageableDefault(size = 10) Pageable pageable){
+        Page<AdminSubscriptionResponse> page = adminService.getSubscriptions(keyword, status, pageable);
+        Meta meta = Meta.builder().pagination(PageMeta.from(page)).build();
+        return ResponseEntity.ok(ApiResponse.success("구독 현황 조회 성공", page.getContent(), meta));
+    }
+
+    //결제 이력 조회
+    @Operation(summary = "결제 이력 조회", description = "닉네임/이메일 검색과 결제 상태 필터를 적용해 결제 이력을 페이징하여 조회합니다.")
+    @GetMapping("/payments")
+    public ResponseEntity<ApiResponse<List<AdminPaymentResponse>>> getPayments(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) PaymentStatus status,
+            @PageableDefault(size = 10) Pageable pageable){
+        Page<AdminPaymentResponse> page = adminService.getPayments(keyword, status, pageable);
+        Meta meta = Meta.builder().pagination(PageMeta.from(page)).build();
+        return ResponseEntity.ok(ApiResponse.success("결제 이력 조회 성공", page.getContent(), meta));
     }
 
     //게시글 목록 조회

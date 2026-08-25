@@ -44,6 +44,7 @@ const TABS = [
   { key: 'members', label: '회원 관리', icon: Users },
   { key: 'studies', label: '스터디 관리', icon: BookOpen },
   { key: 'posts', label: '게시글 관리', icon: FileText },
+  { key: 'subscribers', label: '구독자 관리', icon: Crown },
   { key: 'experts', label: '전문가 심사', icon: Shield },
   { key: 'reports', label: '신고 관리', icon: AlertTriangle },
 ]
@@ -153,6 +154,7 @@ export default function AdminPanelPage() {
         {activeTab === 'members' && <MembersTab />}
         {activeTab === 'studies' && <StudiesTab />}
         {activeTab === 'posts' && <PostsTab />}
+        {activeTab === 'subscribers' && <SubscribersTab />}
         {activeTab === 'experts' && <ExpertReviewTab onPendingCountChange={setPendingCount} />}
         {activeTab === 'reports' && <ReportsTab onPendingCountChange={setReportPendingCount} />}
       </main>
@@ -864,6 +866,294 @@ function PostsTab() {
                         삭제
                       </button>
                     </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+    </>
+  )
+}
+
+// ---------------- 구독자 관리 ----------------
+
+const SUBSCRIBER_SUB_TABS = [
+  { key: 'subscriptions', label: '구독 현황' },
+  { key: 'payments', label: '결제 이력' },
+]
+
+const SUBSCRIPTION_STATUS_META = {
+  ACTIVE: { label: '활성', color: '#34d399' },
+  PAST_DUE: { label: '결제실패', color: '#f87171' },
+  EXPIRED: { label: '만료', color: '#94a3b8' },
+}
+
+const PAYMENT_STATUS_META = {
+  READY: { label: '준비', color: '#fbbf24' },
+  PAID: { label: '완료', color: '#34d399' },
+  FAILED: { label: '실패', color: '#f87171' },
+}
+
+function SubscribersTab() {
+  const [subTab, setSubTab] = useState('subscriptions')
+
+  return (
+    <>
+      <div className={styles.roleTabs} style={{ marginBottom: 16 }}>
+        {SUBSCRIBER_SUB_TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            className={`${styles.roleTab} ${subTab === tab.key ? styles.roleTabActive : ''}`}
+            onClick={() => setSubTab(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {subTab === 'subscriptions' ? <SubscriptionsSubTab /> : <PaymentsSubTab />}
+    </>
+  )
+}
+
+const SUBSCRIPTION_STATUS_FILTERS = ['ALL', 'ACTIVE', 'PAST_DUE', 'EXPIRED']
+
+function SubscriptionsSubTab() {
+  const [subscriptions, setSubscriptions] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [page, setPage] = useState(0)
+
+  useEffect(() => {
+    let ignore = false
+    adminApi
+      .getSubscriptions({ page: 0, size: 500 })
+      .then(({ data }) => {
+        if (!ignore) setSubscriptions(data.data)
+      })
+      .catch(() => {
+        if (!ignore) setError('구독 목록을 불러오지 못했습니다.')
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  const filtered = subscriptions.filter((s) => {
+    if (statusFilter !== 'ALL' && s.status !== statusFilter) return false
+    if (!keyword.trim()) return true
+    const k = keyword.trim().toLowerCase()
+    return s.userNickname.toLowerCase().includes(k) || s.userUsername.toLowerCase().includes(k)
+  })
+
+  useEffect(() => {
+    setPage(0)
+  }, [keyword, statusFilter])
+
+  const totalPages = Math.ceil(filtered.length / ADMIN_PAGE_SIZE)
+  const paged = filtered.slice(page * ADMIN_PAGE_SIZE, page * ADMIN_PAGE_SIZE + ADMIN_PAGE_SIZE)
+
+  if (isLoading) return <p className={styles.state}>불러오는 중...</p>
+  if (error) return <p className={styles.state}>{error}</p>
+
+  return (
+    <>
+      <div className={styles.filterRow}>
+        <input
+          className={styles.searchInput}
+          placeholder="닉네임, 아이디로 검색"
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+        />
+        <div className={styles.roleTabs}>
+          {SUBSCRIPTION_STATUS_FILTERS.map((status) => (
+            <button
+              key={status}
+              type="button"
+              className={`${styles.roleTab} ${statusFilter === status ? styles.roleTabActive : ''}`}
+              onClick={() => setStatusFilter(status)}
+            >
+              {status === 'ALL' ? '전체' : SUBSCRIPTION_STATUS_META[status]?.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className={styles.countLabel}>{filtered.length}건</p>
+
+      {filtered.length === 0 ? (
+        <p className={styles.emptyState}>조건에 맞는 구독이 없어요.</p>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>회원</th>
+                <th>상태</th>
+                <th>시작일</th>
+                <th>만료일</th>
+                <th>자동갱신</th>
+                <th>결제 재시도</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paged.map((s) => {
+                const statusMeta = SUBSCRIPTION_STATUS_META[s.status]
+                return (
+                  <tr key={s.id}>
+                    <td>
+                      <div className={styles.memberCell}>
+                        <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(s.userNickname) }}>
+                          {s.userNickname?.[0]}
+                        </span>
+                        <div>
+                          <p className={styles.memberName}>{s.userNickname}</p>
+                          <p className={styles.memberUsername}>@{s.userUsername}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={styles.roleBadge} style={{ color: statusMeta?.color, borderColor: statusMeta?.color }}>
+                        {statusMeta?.label ?? s.status}
+                      </span>
+                    </td>
+                    <td className={styles.dateCell}>{formatDate(s.startedAt)}</td>
+                    <td className={styles.dateCell}>{s.expiredAt ? formatDate(s.expiredAt) : '—'}</td>
+                    <td>{s.autoRenew ? <Check size={15} /> : <span className={styles.dash}>—</span>}</td>
+                    <td className={styles.dateCell}>{s.retryCount}/3</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+    </>
+  )
+}
+
+const PAYMENT_STATUS_FILTERS = ['ALL', 'READY', 'PAID', 'FAILED']
+
+function PaymentsSubTab() {
+  const [payments, setPayments] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [page, setPage] = useState(0)
+
+  useEffect(() => {
+    let ignore = false
+    adminApi
+      .getPayments({ page: 0, size: 500 })
+      .then(({ data }) => {
+        if (!ignore) setPayments(data.data)
+      })
+      .catch(() => {
+        if (!ignore) setError('결제 이력을 불러오지 못했습니다.')
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  const filtered = payments.filter((p) => {
+    if (statusFilter !== 'ALL' && p.status !== statusFilter) return false
+    if (!keyword.trim()) return true
+    const k = keyword.trim().toLowerCase()
+    return p.userNickname.toLowerCase().includes(k) || p.userUsername.toLowerCase().includes(k)
+  })
+
+  useEffect(() => {
+    setPage(0)
+  }, [keyword, statusFilter])
+
+  const totalPages = Math.ceil(filtered.length / ADMIN_PAGE_SIZE)
+  const paged = filtered.slice(page * ADMIN_PAGE_SIZE, page * ADMIN_PAGE_SIZE + ADMIN_PAGE_SIZE)
+
+  if (isLoading) return <p className={styles.state}>불러오는 중...</p>
+  if (error) return <p className={styles.state}>{error}</p>
+
+  return (
+    <>
+      <div className={styles.filterRow}>
+        <input
+          className={styles.searchInput}
+          placeholder="닉네임, 아이디로 검색"
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+        />
+        <div className={styles.roleTabs}>
+          {PAYMENT_STATUS_FILTERS.map((status) => (
+            <button
+              key={status}
+              type="button"
+              className={`${styles.roleTab} ${statusFilter === status ? styles.roleTabActive : ''}`}
+              onClick={() => setStatusFilter(status)}
+            >
+              {status === 'ALL' ? '전체' : PAYMENT_STATUS_META[status]?.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className={styles.countLabel}>{filtered.length}건</p>
+
+      {filtered.length === 0 ? (
+        <p className={styles.emptyState}>조건에 맞는 결제 내역이 없어요.</p>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>회원</th>
+                <th>주문명</th>
+                <th>금액</th>
+                <th>상태</th>
+                <th>실패 사유</th>
+                <th>결제일</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paged.map((p) => {
+                const statusMeta = PAYMENT_STATUS_META[p.status]
+                return (
+                  <tr key={p.id}>
+                    <td>
+                      <div className={styles.memberCell}>
+                        <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(p.userNickname) }}>
+                          {p.userNickname?.[0]}
+                        </span>
+                        <div>
+                          <p className={styles.memberName}>{p.userNickname}</p>
+                          <p className={styles.memberUsername}>@{p.userUsername}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{p.orderName}</td>
+                    <td className={styles.dateCell}>{p.amount.toLocaleString()}{p.currency === 'KRW' ? '원' : ` ${p.currency}`}</td>
+                    <td>
+                      <span className={styles.roleBadge} style={{ color: statusMeta?.color, borderColor: statusMeta?.color }}>
+                        {statusMeta?.label ?? p.status}
+                      </span>
+                    </td>
+                    <td className={styles.dateCell}>{p.failReason ?? <span className={styles.dash}>—</span>}</td>
+                    <td className={styles.dateCell}>{p.paidAt ? formatDate(p.paidAt) : formatDate(p.createdAt)}</td>
                   </tr>
                 )
               })}
