@@ -148,9 +148,7 @@ export default function AdminPanelPage() {
           ))}
         </nav>
 
-        {activeTab === 'dashboard' && (
-          <DashboardTab onGoToExperts={() => setActiveTab('experts')} onGoToReports={() => setActiveTab('reports')} />
-        )}
+        {activeTab === 'dashboard' && <DashboardTab onNavigate={setActiveTab} />}
         {activeTab === 'members' && <MembersTab />}
         {activeTab === 'studies' && <StudiesTab />}
         {activeTab === 'posts' && <PostsTab />}
@@ -164,7 +162,7 @@ export default function AdminPanelPage() {
 
 // ---------------- 대시보드 ----------------
 
-function DashboardTab({ onGoToExperts, onGoToReports }) {
+function DashboardTab({ onNavigate }) {
   const [stats, setStats] = useState(null)
   const [recentPosts, setRecentPosts] = useState([])
   const [expertPreview, setExpertPreview] = useState([])
@@ -237,17 +235,47 @@ function DashboardTab({ onGoToExperts, onGoToReports }) {
   return (
     <>
       <div className={styles.statsGrid}>
-        <StatCard icon={<Users size={18} />} color="#60a5fa" value={stats.totalUsers} label="총 회원" />
-        <StatCard icon={<Award size={18} />} color="#8b5cf6" value={stats.totalStudies} label="전체 스터디" />
-        <StatCard icon={<FileText size={18} />} color="#34d399" value={stats.totalPosts} label="전체 게시글" />
-        <StatCard icon={<Crown size={18} />} color="#c6ff3d" value={stats.subscriberCount} label="구독자" />
-        <StatCard icon={<ShieldAlert size={18} />} color="#fb923c" value={stats.pendingExperts} label="전문가 신청" />
+        <StatCard
+          icon={<Users size={18} />}
+          color="#60a5fa"
+          value={stats.totalUsers}
+          label="총 회원"
+          onClick={() => onNavigate('members')}
+        />
+        <StatCard
+          icon={<Award size={18} />}
+          color="#8b5cf6"
+          value={stats.totalStudies}
+          label="전체 스터디"
+          onClick={() => onNavigate('studies')}
+        />
+        <StatCard
+          icon={<FileText size={18} />}
+          color="#34d399"
+          value={stats.totalPosts}
+          label="전체 게시글"
+          onClick={() => onNavigate('posts')}
+        />
+        <StatCard
+          icon={<Crown size={18} />}
+          color="#c6ff3d"
+          value={stats.subscriberCount}
+          label="구독자"
+          onClick={() => onNavigate('subscribers')}
+        />
+        <StatCard
+          icon={<ShieldAlert size={18} />}
+          color="#fb923c"
+          value={stats.pendingExperts}
+          label="전문가 신청"
+          onClick={() => onNavigate('experts')}
+        />
         <StatCard
           icon={<AlertTriangle size={18} />}
           color="#f87171"
           value={stats.pendingReports}
           label="신고 접수"
-          onClick={onGoToReports}
+          onClick={() => onNavigate('reports')}
         />
       </div>
 
@@ -255,6 +283,9 @@ function DashboardTab({ onGoToExperts, onGoToReports }) {
         <section>
           <div className={styles.sectionHeader}>
             <p className={styles.sectionTitle}>최근 게시글</p>
+            <button type="button" className={styles.sectionLink} onClick={() => onNavigate('posts')}>
+              전체보기 →
+            </button>
           </div>
           {recentPosts.length === 0 ? (
             <p className={styles.emptyState}>게시글이 없어요.</p>
@@ -289,7 +320,7 @@ function DashboardTab({ onGoToExperts, onGoToReports }) {
         <section>
           <div className={styles.sectionHeader}>
             <p className={styles.sectionTitle}>전문가 신청 현황</p>
-            <button type="button" className={styles.sectionLink} onClick={onGoToExperts}>
+            <button type="button" className={styles.sectionLink} onClick={() => onNavigate('experts')}>
               심사하기 →
             </button>
           </div>
@@ -320,6 +351,9 @@ function DashboardTab({ onGoToExperts, onGoToReports }) {
 
       <div className={styles.sectionHeader}>
         <p className={styles.sectionTitle}>스터디 현황</p>
+        <button type="button" className={styles.sectionLink} onClick={() => onNavigate('studies')}>
+          전체보기 →
+        </button>
       </div>
       {studies.length === 0 ? (
         <p className={styles.emptyState}>스터디가 없어요.</p>
