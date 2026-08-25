@@ -44,6 +44,9 @@ import org.example.backend.report.repository.ReportRepository;
 @Transactional(readOnly = true)
 public class FeedbackService {
 
+    /** 요청자 한 명이 동시에 열어둘 수 있는 스레드 수 상한 (F-57) */
+    private static final int MAX_OPEN_THREADS = 5;
+
     private final FeedbackRepository feedbackRepository;
     private final FeedbackMessageRepository feedbackMessageRepository;
     private final ExpertProfileRepository expertProfileRepository;
@@ -76,7 +79,7 @@ public class FeedbackService {
         if (feedbackRepository.existsByRequesterIdAndExpertProfileIdAndClosedAtIsNull(requesterId, request.getExpertProfileId())) {
             throw new BusinessException(ExpertErrorCode.FEEDBACK_ALREADY_OPEN);
         }
-        if (feedbackRepository.countByRequesterIdAndClosedAtIsNull(requesterId) >= 5) {
+        if (feedbackRepository.countByRequesterIdAndClosedAtIsNull(requesterId) >= MAX_OPEN_THREADS) {
             throw new BusinessException(ExpertErrorCode.FEEDBACK_OPEN_LIMIT_EXCEEDED);
         }
 
@@ -160,7 +163,9 @@ public class FeedbackService {
         // 전문가가 지금 답변하고 있다면 → 답변완료 처리한다.
         if (isExpertAnswering) {
             feedback.markAnswered();
-            AfterCommitExecutor.run(() -> emailService.sendFeedbackAnswered(feedback.getRequester().getUsername(), feedback.getTopic()));        } else if (isRequester) {
+            AfterCommitExecutor.run(() -> emailService.sendFeedbackAnswered(
+                    feedback.getRequester().getUsername(), feedback.getTopic()));
+        } else if (isRequester) {
             feedback.markPending();
         }
         return FeedbackMessageResponse.from(message, imageUrls);
@@ -176,6 +181,7 @@ public class FeedbackService {
      * 요청자가 탈퇴할 때 그가 연 진행 중 스레드를 모두 닫는다.
      * 닫지 않으면 답변할 상대가 없는 스레드가 전문가 목록에 계속 남는다.
      */
+    @Transactional
     public void closeThreadsByRequester(Long requesterId) {
         List<Feedback> openThreads = feedbackRepository.findByRequesterIdAndClosedAtIsNull(requesterId);
         openThreads.forEach(feedback -> feedback.close(FeedbackCloseReason.REQUESTER_WITHDRAWN));
@@ -222,11 +228,11 @@ public class FeedbackService {
         Feedback feedback = getFeedbackOrThrow(feedbackId);
         validateFeedbackAccess(feedback, callerId);
         List<FeedbackMessage> messages = feedbackMessageRepository.findByFeedbackIdOrderByCreatedAtAsc(feedbackId);
-             Map<Long, List<String>> imageUrlsByMessageId = getImageUrlsByMessageIds(messages);
-             return messages.stream()
-                     .map(message -> FeedbackMessageResponse.from(message,
-                             imageUrlsByMessageId.getOrDefault(message.getId(), List.of())))
-                     .toList();
+        Map<Long, List<String>> imageUrlsByMessageId = getImageUrlsByMessageIds(messages);
+        return messages.stream()
+                .map(message -> FeedbackMessageResponse.from(message,
+                        imageUrlsByMessageId.getOrDefault(message.getId(), List.of())))
+                .toList();
     }
 
     public MyFeedbackListResponse getMyFeedbacks(Long requesterId, Pageable pageable) {
