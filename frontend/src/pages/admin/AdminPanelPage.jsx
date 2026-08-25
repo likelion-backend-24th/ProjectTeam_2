@@ -108,8 +108,6 @@ const ROLE_META = {
 
 export default function AdminPanelPage() {
   const [activeTab, setActiveTab] = useState('dashboard')
-  const [pendingCount, setPendingCount] = useState(0)
-  const [reportPendingCount, setReportPendingCount] = useState(0)
 
   return (
     <>
@@ -140,10 +138,6 @@ export default function AdminPanelPage() {
             >
               <tab.icon size={15} />
               {tab.label}
-              {tab.key === 'experts' && pendingCount > 0 && <span className={styles.tabCount}>{pendingCount}</span>}
-              {tab.key === 'reports' && reportPendingCount > 0 && (
-                <span className={styles.tabCount}>{reportPendingCount}</span>
-              )}
             </button>
           ))}
         </nav>
@@ -153,8 +147,8 @@ export default function AdminPanelPage() {
         {activeTab === 'studies' && <StudiesTab />}
         {activeTab === 'posts' && <PostsTab />}
         {activeTab === 'subscribers' && <SubscribersTab />}
-        {activeTab === 'experts' && <ExpertReviewTab onPendingCountChange={setPendingCount} />}
-        {activeTab === 'reports' && <ReportsTab onPendingCountChange={setReportPendingCount} />}
+        {activeTab === 'experts' && <ExpertReviewTab />}
+        {activeTab === 'reports' && <ReportsTab />}
       </main>
     </>
   )
@@ -1203,7 +1197,7 @@ function PaymentsSubTab() {
 
 // ---------------- 전문가 심사 ----------------
 
-function ExpertReviewTab({ onPendingCountChange }) {
+function ExpertReviewTab() {
   const [experts, setExperts] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedId, setSelectedId] = useState(null)
@@ -1219,9 +1213,8 @@ function ExpertReviewTab({ onPendingCountChange }) {
       setExperts(list)
       setPendingPage(0)
       setDonePage(0)
-      onPendingCountChange?.(list.filter((e) => e.status === 'PENDING').length)
     })
-  }, [onPendingCountChange])
+  }, [])
 
   useEffect(() => {
     let ignore = false
@@ -1528,7 +1521,7 @@ function groupReportsByTarget(reports) {
   })
 }
 
-function ReportsTab({ onPendingCountChange }) {
+function ReportsTab() {
   const [reports, setReports] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -1538,11 +1531,8 @@ function ReportsTab({ onPendingCountChange }) {
   const load = useCallback(() => {
     return adminApi.getReports({ size: 500 }).then(({ data }) => {
       setReports(data.data)
-      onPendingCountChange?.(
-        groupReportsByTarget(data.data).filter((g) => g.status === 'PENDING').length,
-      )
     })
-  }, [onPendingCountChange])
+  }, [])
 
   useEffect(() => {
     let ignore = false
