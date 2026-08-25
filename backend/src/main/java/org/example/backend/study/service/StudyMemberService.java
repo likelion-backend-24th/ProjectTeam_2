@@ -7,7 +7,6 @@ import org.example.backend.study.entity.Study;
 import org.example.backend.study.entity.StudyMember;
 import org.example.backend.study.exception.StudyErrorCode;
 import org.example.backend.study.repository.StudyMemberRepository;
-import org.example.backend.study.repository.StudyRepository;
 import org.example.backend.user.entity.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,8 +19,8 @@ import java.util.List;
 public class StudyMemberService {
 
     private final StudyMemberRepository studyMemberRepository;
-    private final StudyRepository studyRepository;
     private final StudyAccessValidator studyAccessValidator;
+    private final StudyService studyService;
 
     @Transactional
     public StudyMemberResponse joinStudy(Long userId, Long id) {
@@ -98,8 +97,7 @@ public class StudyMemberService {
         if (study.getLeader().getId().equals(userId)) {
             int memberCount = studyMemberRepository.countByStudyId(id);
             if (memberCount <= 1) {
-                studyMemberRepository.deleteByStudyId(id);
-                studyRepository.deleteById(id);
+                studyService.deleteStudyCascade(study);
             } else {
                 throw new BusinessException(StudyErrorCode.STUDY_LEADER_MUST_DELEGATE);
             }
