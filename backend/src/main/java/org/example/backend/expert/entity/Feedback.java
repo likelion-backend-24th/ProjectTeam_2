@@ -10,9 +10,12 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import org.hibernate.annotations.SoftDelete;
+import org.hibernate.annotations.SoftDeleteType;
 
 @Entity
 @Table(name = "feedback")
+@SoftDelete(columnName = "deleted", strategy = SoftDeleteType.DELETED)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Feedback {

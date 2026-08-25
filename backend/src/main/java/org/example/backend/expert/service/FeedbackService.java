@@ -194,6 +194,29 @@ public class FeedbackService {
         return FeedbackResponse.from(feedback);
     }
 
+    /**
+     * 요청자가 자기 목록에서 스레드를 삭제한다.
+     * 전문가는 삭제할 수 없다 — 상담을 요청한 쪽이 고객이고, 전문가는 그 요청에 응답하는 입장이기 때문이다.
+     *
+     * 신고가 접수된 스레드는 관리자 심사(F-72) 대상이므로 삭제를 막는다.
+     * 진행 중이어도 바로 삭제할 수 있으며, 이때 종료 처리가 함께 이뤄진다.
+     */
+    @Transactional
+    public void deleteThread(Long requesterId, Long feedbackId) {
+        Feedback feedback = getFeedbackOrThrow(feedbackId);
+
+        if (!feedback.getRequester().getId().equals(requesterId)) {
+            throw new BusinessException(ExpertErrorCode.FEEDBACK_DELETE_DENIED);
+        }
+        if (reportRepository.existsByTargetTypeAndTargetId(ReportTargetType.FEEDBACK, feedbackId)) {
+            throw new BusinessException(ExpertErrorCode.FEEDBACK_REPORTED_CANNOT_DELETE);
+        }
+
+        // 진행 중이면 먼저 닫는다. 이미 닫혀 있으면 close()가 무시한다.
+        feedback.close(FeedbackCloseReason.REQUESTER_CLOSED);
+        feedbackRepository.delete(feedback);   // @SoftDelete가 deleted=true로 처리
+    }
+
 
     public List<FeedbackMessageResponse> getMessages(Long callerId, Long feedbackId) {
         Feedback feedback = getFeedbackOrThrow(feedbackId);
