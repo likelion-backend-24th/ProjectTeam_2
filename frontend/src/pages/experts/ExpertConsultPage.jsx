@@ -35,6 +35,10 @@ export default function ExpertConsultPage() {
   // 전문가 계정은 항상 전문가 모드 화면만 본다(토글 없음).
   const expertMode = isExpert
 
+  // 요청자 화면의 진행/완료 그룹은 각각 따로 페이징한다.
+  const [myOpenPage, setMyOpenPage] = useState(0)
+  const [myClosedPage, setMyClosedPage] = useState(0)
+
   const [profileExpertId, setProfileExpertId] = useState(null)
   const [consultModal, setConsultModal] = useState(null) // null | { preselected }
   const [allExperts, setAllExperts] = useState([])       // 모달 선택용 전체 목록
@@ -96,7 +100,9 @@ export default function ExpertConsultPage() {
   useEffect(() => {
     if (!isAuthenticated || !user?.subscribed) return
     let ignore = false
-    feedbackApi.getMyFeedbacks().then(({ data }) => {
+    // 진행/완료를 화면에서 나누려면 전체 목록
+    // 이 필요하다. 서버 기본값(20건)으로는 완료 목록이 잘린다.
+    feedbackApi.getMyFeedbacks({ page: 0, size: 200 }).then(({ data }) => {
       if (!ignore) setMyFeedbacks(data.data.feedbacks)
     })
     return () => {
@@ -145,6 +151,9 @@ export default function ExpertConsultPage() {
   const inProgress = expertFeedbacks.filter((f) => f.status === 'ANSWERED' && !f.closedBy)
   const closed = expertFeedbacks.filter((f) => Boolean(f.closedBy))
 
+  const myOpen = (myFeedbacks ?? []).filter((f) => !f.closedBy)
+  const myClosed = (myFeedbacks ?? []).filter((f) => Boolean(f.closedBy))
+
   return (
     <>
       <SiteHeader />
@@ -191,9 +200,7 @@ export default function ExpertConsultPage() {
             {isAuthenticated && user.subscribed ? (
               <>
                 <div className={styles.sectionHeader}>
-                  <p className={styles.sectionTitle}>
-                    {myFeedbacks === null ? '내 상담' : `${myFeedbacks.length}개의 진행 중인 상담`}
-                  </p>
+                  <p className={styles.sectionTitle}>내 상담</p>
                   <button type="button" className={styles.newConsultButton} onClick={handleNewConsultClick}>
                     <MessageSquarePlus size={14} />
                     새 상담 추가
@@ -201,37 +208,26 @@ export default function ExpertConsultPage() {
                 </div>
 
                 {myFeedbacks === null && <p className={styles.state}>불러오는 중...</p>}
-                {myFeedbacks?.length === 0 && (
+                {myFeedbacks && myFeedbacks.length === 0 && (
                   <div className={styles.emptyState}>아직 진행 중인 상담이 없어요. 전문가에게 첫 질문을 남겨보세요.</div>
                 )}
                 {myFeedbacks && myFeedbacks.length > 0 && (
-                  <div className={styles.threadList}>
-                    {myFeedbacks.map((feedback) => (
-                      <button
-                        key={feedback.feedbackId}
-                        type="button"
-                        className={styles.threadRow}
-                        onClick={() => navigate(`/experts/consult/${feedback.feedbackId}`)}
-                      >
-                        <span
-                          className={styles.avatar}
-                          style={{ backgroundColor: getAvatarColor(feedback.expertName) }}
-                        >
-                          {feedback.expertName?.[0]}
-                        </span>
-                        <div className={styles.threadBody}>
-                          <div className={styles.threadTopRow}>
-                            <span className={styles.threadName}>{feedback.expertName}</span>
-                          </div>
-                          <p className={styles.threadTopic}>{feedback.topic}</p>
-                        </div>
-                        <div className={styles.threadMeta}>
-                          {feedback.answeredAt && <span className={styles.threadDate}>{formatDate(feedback.answeredAt)}</span>}
-                          <StatusBadge status={feedback.status} />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <MyFeedbackGroup
+                      title="진행 중인 상담"
+                      feedbacks={myOpen}
+                      page={myOpenPage}
+                      onPageChange={setMyOpenPage}
+                      onClick={(id) => navigate(`/experts/consult/${id}`)}
+                    />
+                    <MyFeedbackGroup
+                      title="완료된 상담"
+                      feedbacks={myClosed}
+                      page={myClosedPage}
+                      onPageChange={setMyClosedPage}
+                      onClick={(id) => navigate(`/experts/consult/${id}`)}
+                    />
+                  </>
                 )}
               </>
             ) : (
@@ -363,6 +359,59 @@ function FeedbackGroup({ title, feedbacks, onClick }) {
             </button>
           ))}
         </div>
+      )}
+    </div>
+  )
+}
+
+// 요청자 화면용 그룹. 전문가용 FeedbackGroup과 상대방 필드명이 달라 따로 둔다.
+// 완료된 상담은 계속 쌓이므로 그룹별로 페이지네이션을 붙였다.
+function MyFeedbackGroup({ title, feedbacks, page, onPageChange, onClick }) {
+  const PAGE_SIZE = 10
+  const totalPages = Math.ceil(feedbacks.length / PAGE_SIZE)
+  const visible = feedbacks.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+
+  return (
+    <div>
+      <div className={styles.sectionHeader}>
+        <p className={styles.sectionTitle}>
+          {title} ({feedbacks.length}건)
+        </p>
+      </div>
+      {feedbacks.length === 0 ? (
+        <div className={styles.emptyState}>해당하는 문의가 없어요.</div>
+      ) : (
+        <>
+          <div className={styles.threadList}>
+            {visible.map((feedback) => (
+              <button
+                key={feedback.feedbackId}
+                type="button"
+                className={styles.threadRow}
+                onClick={() => onClick(feedback.feedbackId)}
+              >
+                <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(feedback.expertName) }}>
+                  {feedback.expertName?.[0]}
+                </span>
+                <div className={styles.threadBody}>
+                  <div className={styles.threadTopRow}>
+                    <span className={styles.threadName}>{feedback.expertName}</span>
+                  </div>
+                  <p className={styles.threadTopic}>{feedback.topic}</p>
+                </div>
+                <div className={styles.threadMeta}>
+                  {(feedback.closedAt || feedback.answeredAt) && (
+                    <span className={styles.threadDate}>
+                      {formatDate(feedback.closedAt ?? feedback.answeredAt)}
+                    </span>
+                  )}
+                  <StatusBadge status={feedback.status} closed={Boolean(feedback.closedBy)} />
+                </div>
+              </button>
+            ))}
+          </div>
+          {totalPages > 1 && <Pagination page={page} totalPages={totalPages} onChange={onPageChange} />}
+        </>
       )}
     </div>
   )
