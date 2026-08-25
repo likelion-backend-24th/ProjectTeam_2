@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Award,
   Ban,
+  BookOpen,
   Briefcase,
   Check,
   CheckCircle2,
@@ -27,7 +28,9 @@ import { adminApi, expertApi, postApi, studyApi } from '../../api'
 import Pagination from '../../components/common/Pagination'
 import SiteHeader from '../../components/common/SiteHeader'
 import { getJobFieldLabel } from '../../constants/jobField'
+import { POST_CATEGORIES, getPostCategoryMeta } from '../../constants/postCategory'
 import { REPORT_REASONS } from '../../constants/reportReason'
+import { STUDY_CATEGORIES, getStudyCategoryMeta } from '../../constants/studyCategory'
 import { getAvatarColor } from '../../utils/avatarColor'
 import { formatDate } from '../../utils/formatDate'
 import styles from './AdminPanelPage.module.css'
@@ -39,6 +42,8 @@ const ADMIN_PAGE_SIZE = 10
 const TABS = [
   { key: 'dashboard', label: '대시보드', icon: LayoutGrid },
   { key: 'members', label: '회원 관리', icon: Users },
+  { key: 'studies', label: '스터디 관리', icon: BookOpen },
+  { key: 'posts', label: '게시글 관리', icon: FileText },
   { key: 'experts', label: '전문가 심사', icon: Shield },
   { key: 'reports', label: '신고 관리', icon: AlertTriangle },
 ]
@@ -146,6 +151,8 @@ export default function AdminPanelPage() {
           <DashboardTab onGoToExperts={() => setActiveTab('experts')} onGoToReports={() => setActiveTab('reports')} />
         )}
         {activeTab === 'members' && <MembersTab />}
+        {activeTab === 'studies' && <StudiesTab />}
+        {activeTab === 'posts' && <PostsTab />}
         {activeTab === 'experts' && <ExpertReviewTab onPendingCountChange={setPendingCount} />}
         {activeTab === 'reports' && <ReportsTab onPendingCountChange={setReportPendingCount} />}
       </main>
@@ -541,6 +548,321 @@ function MembersTab() {
                           )}
                         </button>
                       )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+    </>
+  )
+}
+
+// ---------------- 스터디 관리 ----------------
+
+const CATEGORY_FILTERS = ['ALL', ...STUDY_CATEGORIES.map((c) => c.value)]
+
+function StudiesTab() {
+  const [studies, setStudies] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('ALL')
+  const [deletingId, setDeletingId] = useState(null)
+  const [page, setPage] = useState(0)
+
+  const load = useCallback(() => {
+    return adminApi.getStudies({ page: 0, size: 500 }).then(({ data }) => {
+      setStudies(data.data)
+    })
+  }, [])
+
+  useEffect(() => {
+    let ignore = false
+    load()
+      .catch(() => {
+        if (!ignore) setError('스터디 목록을 불러오지 못했습니다.')
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [load])
+
+  async function handleDelete(study) {
+    if (!window.confirm(`"${study.title}" 스터디를 강제 삭제할까요? 연관된 게시글/댓글/멤버도 함께 숨김처리됩니다.`)) return
+
+    setDeletingId(study.id)
+    try {
+      await adminApi.deleteStudy(study.id)
+      setStudies((prev) => prev.filter((s) => s.id !== study.id))
+    } catch (err) {
+      window.alert(err.response?.data?.message ?? '스터디 삭제에 실패했습니다.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const filtered = studies.filter((s) => {
+    if (categoryFilter !== 'ALL' && s.category !== categoryFilter) return false
+    if (!keyword.trim()) return true
+    return s.title.toLowerCase().includes(keyword.trim().toLowerCase())
+  })
+
+  // 검색어/필터가 바뀌면 항상 1페이지부터 다시 보여준다.
+  useEffect(() => {
+    setPage(0)
+  }, [keyword, categoryFilter])
+
+  const totalPages = Math.ceil(filtered.length / ADMIN_PAGE_SIZE)
+  const paged = filtered.slice(page * ADMIN_PAGE_SIZE, page * ADMIN_PAGE_SIZE + ADMIN_PAGE_SIZE)
+
+  if (isLoading) return <p className={styles.state}>불러오는 중...</p>
+  if (error) return <p className={styles.state}>{error}</p>
+
+  return (
+    <>
+      <div className={styles.filterRow}>
+        <input
+          className={styles.searchInput}
+          placeholder="제목으로 검색"
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+        />
+        <div className={styles.roleTabs}>
+          {CATEGORY_FILTERS.map((category) => (
+            <button
+              key={category}
+              type="button"
+              className={`${styles.roleTab} ${categoryFilter === category ? styles.roleTabActive : ''}`}
+              onClick={() => setCategoryFilter(category)}
+            >
+              {category === 'ALL' ? '전체' : getStudyCategoryMeta(category)?.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className={styles.countLabel}>{filtered.length}개</p>
+
+      {filtered.length === 0 ? (
+        <p className={styles.emptyState}>조건에 맞는 스터디가 없어요.</p>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>스터디</th>
+                <th>카테고리</th>
+                <th>인원</th>
+                <th>모집기간</th>
+                <th>개설일</th>
+                <th>관리</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paged.map((study) => {
+                const categoryMeta = getStudyCategoryMeta(study.category)
+                return (
+                  <tr key={study.id}>
+                    <td>
+                      <div className={styles.memberCell}>
+                        <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(study.title) }}>
+                          {study.title?.[0]}
+                        </span>
+                        <div>
+                          <p className={styles.memberName}>{study.title}</p>
+                          <p className={styles.memberUsername}>{study.leaderNickname}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span
+                        className={styles.roleBadge}
+                        style={{ color: categoryMeta?.color, borderColor: categoryMeta?.color }}
+                      >
+                        {categoryMeta?.label ?? study.category}
+                      </span>
+                    </td>
+                    <td className={styles.dateCell}>
+                      {study.currentMemberCount}/{study.capacity}명
+                    </td>
+                    <td className={styles.dateCell}>
+                      {study.recruitStart} ~ {study.recruitEnd ?? '상시'}
+                    </td>
+                    <td className={styles.dateCell}>{formatDate(study.createdAt)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className={styles.suspendButton}
+                        disabled={deletingId === study.id}
+                        onClick={() => handleDelete(study)}
+                      >
+                        <Trash2 size={13} />
+                        삭제
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+    </>
+  )
+}
+
+// ---------------- 게시글 관리 ----------------
+
+const POST_CATEGORY_FILTERS = ['ALL', ...POST_CATEGORIES.map((c) => c.value)]
+
+function PostsTab() {
+  const [posts, setPosts] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('ALL')
+  const [deletingId, setDeletingId] = useState(null)
+  const [page, setPage] = useState(0)
+
+  const load = useCallback(() => {
+    return adminApi.getPosts({ page: 0, size: 500 }).then(({ data }) => {
+      setPosts(data.data)
+    })
+  }, [])
+
+  useEffect(() => {
+    let ignore = false
+    load()
+      .catch(() => {
+        if (!ignore) setError('게시글 목록을 불러오지 못했습니다.')
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [load])
+
+  async function handleDelete(post) {
+    if (!window.confirm(`"${post.title}" 게시글을 강제 삭제할까요? 연관된 댓글도 함께 숨김처리됩니다.`)) return
+
+    setDeletingId(post.id)
+    try {
+      await adminApi.deletePost(post.id)
+      setPosts((prev) => prev.filter((p) => p.id !== post.id))
+    } catch (err) {
+      window.alert(err.response?.data?.message ?? '게시글 삭제에 실패했습니다.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const filtered = posts.filter((p) => {
+    if (categoryFilter !== 'ALL' && p.category !== categoryFilter) return false
+    if (!keyword.trim()) return true
+    return p.title.toLowerCase().includes(keyword.trim().toLowerCase())
+  })
+
+  // 검색어/필터가 바뀌면 항상 1페이지부터 다시 보여준다.
+  useEffect(() => {
+    setPage(0)
+  }, [keyword, categoryFilter])
+
+  const totalPages = Math.ceil(filtered.length / ADMIN_PAGE_SIZE)
+  const paged = filtered.slice(page * ADMIN_PAGE_SIZE, page * ADMIN_PAGE_SIZE + ADMIN_PAGE_SIZE)
+
+  if (isLoading) return <p className={styles.state}>불러오는 중...</p>
+  if (error) return <p className={styles.state}>{error}</p>
+
+  return (
+    <>
+      <div className={styles.filterRow}>
+        <input
+          className={styles.searchInput}
+          placeholder="제목으로 검색"
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+        />
+        <div className={styles.roleTabs}>
+          {POST_CATEGORY_FILTERS.map((category) => (
+            <button
+              key={category}
+              type="button"
+              className={`${styles.roleTab} ${categoryFilter === category ? styles.roleTabActive : ''}`}
+              onClick={() => setCategoryFilter(category)}
+            >
+              {category === 'ALL' ? '전체' : getPostCategoryMeta(category)?.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className={styles.countLabel}>{filtered.length}개</p>
+
+      {filtered.length === 0 ? (
+        <p className={styles.emptyState}>조건에 맞는 게시글이 없어요.</p>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>게시글</th>
+                <th>카테고리</th>
+                <th>조회수</th>
+                <th>작성일</th>
+                <th>관리</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paged.map((post) => {
+                const categoryMeta = getPostCategoryMeta(post.category)
+                return (
+                  <tr key={post.id}>
+                    <td>
+                      <div className={styles.memberCell}>
+                        <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(post.title) }}>
+                          {post.title?.[0]}
+                        </span>
+                        <div>
+                          <p className={styles.memberName}>{post.title}</p>
+                          <p className={styles.memberUsername}>{post.authorNickname}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span
+                        className={styles.roleBadge}
+                        style={{ color: categoryMeta?.color, borderColor: categoryMeta?.color }}
+                      >
+                        {categoryMeta?.label ?? post.category}
+                      </span>
+                    </td>
+                    <td className={styles.dateCell}>
+                      <Eye size={13} style={{ verticalAlign: 'text-bottom', marginRight: 4 }} />
+                      {post.viewCount}
+                    </td>
+                    <td className={styles.dateCell}>{formatDate(post.createdAt)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className={styles.suspendButton}
+                        disabled={deletingId === post.id}
+                        onClick={() => handleDelete(post)}
+                      >
+                        <Trash2 size={13} />
+                        삭제
+                      </button>
                     </td>
                   </tr>
                 )

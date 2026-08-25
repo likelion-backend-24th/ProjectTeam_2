@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.backend.admin.dto.AdminPostResponse;
+import org.example.backend.admin.dto.AdminStudyResponse;
 import org.example.backend.admin.dto.AdminUserResponse;
 import org.example.backend.admin.dto.UserStatusUpdateRequest;
 import org.example.backend.admin.service.AdminService;
@@ -14,8 +16,10 @@ import org.example.backend.common.dto.PageMeta;
 import org.example.backend.expert.dto.request.ExpertRejectRequest;
 import org.example.backend.expert.dto.response.ExpertProfileResponse;
 import org.example.backend.expert.entity.ExpertStatus;
+import org.example.backend.post.entity.PostCategory;
 import org.example.backend.report.dto.ReportResponse;
 import org.example.backend.report.entity.ReportStatus;
+import org.example.backend.study.entity.StudyCategory;
 import org.example.backend.user.entity.Role;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -56,6 +60,30 @@ public class AdminController {
             @Valid @RequestBody UserStatusUpdateRequest request){
         adminService.changeUserStatus(id, request.getStatus());
         return ResponseEntity.ok(ApiResponse.success("유저 상태가 변경되었습니다.", null));
+    }
+
+    //스터디 목록 조회
+    @Operation(summary = "스터디 목록 조회", description = "제목 검색과 카테고리 필터를 적용해 전체 스터디 목록을 페이징하여 조회합니다.")
+    @GetMapping("/studies")
+    public ResponseEntity<ApiResponse<List<AdminStudyResponse>>> getStudies(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) StudyCategory category,
+            @PageableDefault(size = 10) Pageable pageable){
+        Page<AdminStudyResponse> page = adminService.getStudies(keyword, category, pageable);
+        Meta meta = Meta.builder().pagination(PageMeta.from(page)).build();
+        return ResponseEntity.ok(ApiResponse.success("스터디 목록 조회 성공", page.getContent(), meta));
+    }
+
+    //게시글 목록 조회
+    @Operation(summary = "게시글 목록 조회", description = "제목/내용 검색과 카테고리 필터를 적용해 전체 게시글 목록을 페이징하여 조회합니다.")
+    @GetMapping("/posts")
+    public ResponseEntity<ApiResponse<List<AdminPostResponse>>> getPosts(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) PostCategory category,
+            @PageableDefault(size = 10) Pageable pageable){
+        Page<AdminPostResponse> page = adminService.getPosts(keyword, category, pageable);
+        Meta meta = Meta.builder().pagination(PageMeta.from(page)).build();
+        return ResponseEntity.ok(ApiResponse.success("게시글 목록 조회 성공", page.getContent(), meta));
     }
 
     //게시글 소프트 딜리트 삭제

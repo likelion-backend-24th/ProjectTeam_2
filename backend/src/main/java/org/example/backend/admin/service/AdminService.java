@@ -1,6 +1,8 @@
 package org.example.backend.admin.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.backend.admin.dto.AdminPostResponse;
+import org.example.backend.admin.dto.AdminStudyResponse;
 import org.example.backend.admin.dto.AdminUserResponse;
 import org.example.backend.admin.exception.AdminErrorCode;
 import org.example.backend.auth.repository.RefreshTokenRepository;
@@ -9,10 +11,17 @@ import org.example.backend.common.exception.BusinessException;
 import org.example.backend.expert.dto.response.ExpertProfileResponse;
 import org.example.backend.expert.entity.ExpertStatus;
 import org.example.backend.expert.service.ExpertProfileService;
+import org.example.backend.post.entity.Post;
+import org.example.backend.post.entity.PostCategory;
+import org.example.backend.post.repository.PostRepository;
 import org.example.backend.post.service.PostService;
 import org.example.backend.report.dto.ReportResponse;
 import org.example.backend.report.entity.ReportStatus;
 import org.example.backend.report.service.ReportService;
+import org.example.backend.study.entity.Study;
+import org.example.backend.study.entity.StudyCategory;
+import org.example.backend.study.repository.StudyMemberRepository;
+import org.example.backend.study.repository.StudyRepository;
 import org.example.backend.study.service.StudyPostCommentService;
 import org.example.backend.study.service.StudyPostService;
 import org.example.backend.study.service.StudyService;
@@ -35,6 +44,7 @@ public class AdminService {
 
     private final UserRepository userRepository;
     private final PostService postService;
+    private final PostRepository postRepository;
     private final CommentService commentService;
     private final ReportService reportService;
     private final ExpertProfileService expertProfileService;
@@ -42,11 +52,31 @@ public class AdminService {
     private final StudyService studyService;
     private final StudyPostService studyPostService;
     private final StudyPostCommentService studyPostCommentService;
+    private final StudyRepository studyRepository;
+    private final StudyMemberRepository studyMemberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     //유저 목록 조회
     public Page<AdminUserResponse> getUsers(String keyword, Role role, Pageable pageable){
         return userRepository.searchUsers(keyword, role, pageable)
                 .map(user -> AdminUserResponse.from(user));
+    }
+
+    //게시글 목록 조회 (제목/내용 검색 + 카테고리 필터)
+    public Page<AdminPostResponse> getPosts(String keyword, PostCategory category, Pageable pageable){
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword;
+        Page<Post> page = postRepository.searchPosts(category, normalizedKeyword, pageable);
+        return page.map(AdminPostResponse::from);
+    }
+
+    //스터디 목록 조회 (제목 검색 + 카테고리 필터)
+    public Page<AdminStudyResponse> getStudies(String keyword, StudyCategory category, Pageable pageable){
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword;
+        Page<Study> page = studyRepository.searchStudiesForAdmin(normalizedKeyword, category, pageable);
+
+        return page.map(study -> {
+            int memberCount = studyMemberRepository.countByStudyId(study.getId());
+            return AdminStudyResponse.from(study, memberCount);
+        });
     }
 
     //유저 상태 변경
