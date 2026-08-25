@@ -29,8 +29,8 @@ function getMessages(id) {
 }
 
 // GET /api/feedbacks/me (구독자용 내 문의 목록)
-function getMyFeedbacks() {
-  return apiClient.get('/api/feedbacks/me')
+function getMyFeedbacks(params) {
+  return apiClient.get('/api/feedbacks/me', { params })
 }
 
 // GET /api/feedbacks/expert (전문가용 받은 문의 목록)
