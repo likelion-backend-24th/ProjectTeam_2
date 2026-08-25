@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Award,
   Ban,
+  BookOpen,
   Briefcase,
   Check,
   CheckCircle2,
@@ -27,7 +28,9 @@ import { adminApi, expertApi, postApi, studyApi } from '../../api'
 import Pagination from '../../components/common/Pagination'
 import SiteHeader from '../../components/common/SiteHeader'
 import { getJobFieldLabel } from '../../constants/jobField'
+import { POST_CATEGORIES, getPostCategoryMeta } from '../../constants/postCategory'
 import { REPORT_REASONS } from '../../constants/reportReason'
+import { STUDY_CATEGORIES, getStudyCategoryMeta } from '../../constants/studyCategory'
 import { getAvatarColor } from '../../utils/avatarColor'
 import { formatDate } from '../../utils/formatDate'
 import styles from './AdminPanelPage.module.css'
@@ -39,6 +42,9 @@ const ADMIN_PAGE_SIZE = 10
 const TABS = [
   { key: 'dashboard', label: '대시보드', icon: LayoutGrid },
   { key: 'members', label: '회원 관리', icon: Users },
+  { key: 'studies', label: '스터디 관리', icon: BookOpen },
+  { key: 'posts', label: '게시글 관리', icon: FileText },
+  { key: 'subscribers', label: '구독자 관리', icon: Crown },
   { key: 'experts', label: '전문가 심사', icon: Shield },
   { key: 'reports', label: '신고 관리', icon: AlertTriangle },
 ]
@@ -142,10 +148,11 @@ export default function AdminPanelPage() {
           ))}
         </nav>
 
-        {activeTab === 'dashboard' && (
-          <DashboardTab onGoToExperts={() => setActiveTab('experts')} onGoToReports={() => setActiveTab('reports')} />
-        )}
+        {activeTab === 'dashboard' && <DashboardTab onNavigate={setActiveTab} />}
         {activeTab === 'members' && <MembersTab />}
+        {activeTab === 'studies' && <StudiesTab />}
+        {activeTab === 'posts' && <PostsTab />}
+        {activeTab === 'subscribers' && <SubscribersTab />}
         {activeTab === 'experts' && <ExpertReviewTab onPendingCountChange={setPendingCount} />}
         {activeTab === 'reports' && <ReportsTab onPendingCountChange={setReportPendingCount} />}
       </main>
@@ -155,7 +162,7 @@ export default function AdminPanelPage() {
 
 // ---------------- 대시보드 ----------------
 
-function DashboardTab({ onGoToExperts, onGoToReports }) {
+function DashboardTab({ onNavigate }) {
   const [stats, setStats] = useState(null)
   const [recentPosts, setRecentPosts] = useState([])
   const [expertPreview, setExpertPreview] = useState([])
@@ -228,17 +235,47 @@ function DashboardTab({ onGoToExperts, onGoToReports }) {
   return (
     <>
       <div className={styles.statsGrid}>
-        <StatCard icon={<Users size={18} />} color="#60a5fa" value={stats.totalUsers} label="총 회원" />
-        <StatCard icon={<Award size={18} />} color="#8b5cf6" value={stats.totalStudies} label="전체 스터디" />
-        <StatCard icon={<FileText size={18} />} color="#34d399" value={stats.totalPosts} label="전체 게시글" />
-        <StatCard icon={<Crown size={18} />} color="#c6ff3d" value={stats.subscriberCount} label="구독자" />
-        <StatCard icon={<ShieldAlert size={18} />} color="#fb923c" value={stats.pendingExperts} label="전문가 신청" />
+        <StatCard
+          icon={<Users size={18} />}
+          color="#60a5fa"
+          value={stats.totalUsers}
+          label="총 회원"
+          onClick={() => onNavigate('members')}
+        />
+        <StatCard
+          icon={<Award size={18} />}
+          color="#8b5cf6"
+          value={stats.totalStudies}
+          label="전체 스터디"
+          onClick={() => onNavigate('studies')}
+        />
+        <StatCard
+          icon={<FileText size={18} />}
+          color="#34d399"
+          value={stats.totalPosts}
+          label="전체 게시글"
+          onClick={() => onNavigate('posts')}
+        />
+        <StatCard
+          icon={<Crown size={18} />}
+          color="#c6ff3d"
+          value={stats.subscriberCount}
+          label="구독자"
+          onClick={() => onNavigate('subscribers')}
+        />
+        <StatCard
+          icon={<ShieldAlert size={18} />}
+          color="#fb923c"
+          value={stats.pendingExperts}
+          label="전문가 신청"
+          onClick={() => onNavigate('experts')}
+        />
         <StatCard
           icon={<AlertTriangle size={18} />}
           color="#f87171"
           value={stats.pendingReports}
           label="신고 접수"
-          onClick={onGoToReports}
+          onClick={() => onNavigate('reports')}
         />
       </div>
 
@@ -246,6 +283,9 @@ function DashboardTab({ onGoToExperts, onGoToReports }) {
         <section>
           <div className={styles.sectionHeader}>
             <p className={styles.sectionTitle}>최근 게시글</p>
+            <button type="button" className={styles.sectionLink} onClick={() => onNavigate('posts')}>
+              전체보기 →
+            </button>
           </div>
           {recentPosts.length === 0 ? (
             <p className={styles.emptyState}>게시글이 없어요.</p>
@@ -280,7 +320,7 @@ function DashboardTab({ onGoToExperts, onGoToReports }) {
         <section>
           <div className={styles.sectionHeader}>
             <p className={styles.sectionTitle}>전문가 신청 현황</p>
-            <button type="button" className={styles.sectionLink} onClick={onGoToExperts}>
+            <button type="button" className={styles.sectionLink} onClick={() => onNavigate('experts')}>
               심사하기 →
             </button>
           </div>
@@ -311,6 +351,9 @@ function DashboardTab({ onGoToExperts, onGoToReports }) {
 
       <div className={styles.sectionHeader}>
         <p className={styles.sectionTitle}>스터디 현황</p>
+        <button type="button" className={styles.sectionLink} onClick={() => onNavigate('studies')}>
+          전체보기 →
+        </button>
       </div>
       {studies.length === 0 ? (
         <p className={styles.emptyState}>스터디가 없어요.</p>
@@ -542,6 +585,609 @@ function MembersTab() {
                         </button>
                       )}
                     </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+    </>
+  )
+}
+
+// ---------------- 스터디 관리 ----------------
+
+const CATEGORY_FILTERS = ['ALL', ...STUDY_CATEGORIES.map((c) => c.value)]
+
+function StudiesTab() {
+  const [studies, setStudies] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('ALL')
+  const [deletingId, setDeletingId] = useState(null)
+  const [page, setPage] = useState(0)
+
+  const load = useCallback(() => {
+    return adminApi.getStudies({ page: 0, size: 500 }).then(({ data }) => {
+      setStudies(data.data)
+    })
+  }, [])
+
+  useEffect(() => {
+    let ignore = false
+    load()
+      .catch(() => {
+        if (!ignore) setError('스터디 목록을 불러오지 못했습니다.')
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [load])
+
+  async function handleDelete(study) {
+    if (!window.confirm(`"${study.title}" 스터디를 강제 삭제할까요? 연관된 게시글/댓글/멤버도 함께 숨김처리됩니다.`)) return
+
+    setDeletingId(study.id)
+    try {
+      await adminApi.deleteStudy(study.id)
+      setStudies((prev) => prev.filter((s) => s.id !== study.id))
+    } catch (err) {
+      window.alert(err.response?.data?.message ?? '스터디 삭제에 실패했습니다.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const filtered = studies.filter((s) => {
+    if (categoryFilter !== 'ALL' && s.category !== categoryFilter) return false
+    if (!keyword.trim()) return true
+    return s.title.toLowerCase().includes(keyword.trim().toLowerCase())
+  })
+
+  // 검색어/필터가 바뀌면 항상 1페이지부터 다시 보여준다.
+  useEffect(() => {
+    setPage(0)
+  }, [keyword, categoryFilter])
+
+  const totalPages = Math.ceil(filtered.length / ADMIN_PAGE_SIZE)
+  const paged = filtered.slice(page * ADMIN_PAGE_SIZE, page * ADMIN_PAGE_SIZE + ADMIN_PAGE_SIZE)
+
+  if (isLoading) return <p className={styles.state}>불러오는 중...</p>
+  if (error) return <p className={styles.state}>{error}</p>
+
+  return (
+    <>
+      <div className={styles.filterRow}>
+        <input
+          className={styles.searchInput}
+          placeholder="제목으로 검색"
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+        />
+        <div className={styles.roleTabs}>
+          {CATEGORY_FILTERS.map((category) => (
+            <button
+              key={category}
+              type="button"
+              className={`${styles.roleTab} ${categoryFilter === category ? styles.roleTabActive : ''}`}
+              onClick={() => setCategoryFilter(category)}
+            >
+              {category === 'ALL' ? '전체' : getStudyCategoryMeta(category)?.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className={styles.countLabel}>{filtered.length}개</p>
+
+      {filtered.length === 0 ? (
+        <p className={styles.emptyState}>조건에 맞는 스터디가 없어요.</p>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>스터디</th>
+                <th>카테고리</th>
+                <th>인원</th>
+                <th>모집기간</th>
+                <th>개설일</th>
+                <th>관리</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paged.map((study) => {
+                const categoryMeta = getStudyCategoryMeta(study.category)
+                return (
+                  <tr key={study.id}>
+                    <td>
+                      <div className={styles.memberCell}>
+                        <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(study.title) }}>
+                          {study.title?.[0]}
+                        </span>
+                        <div>
+                          <p className={styles.memberName}>{study.title}</p>
+                          <p className={styles.memberUsername}>{study.leaderNickname}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span
+                        className={styles.roleBadge}
+                        style={{ color: categoryMeta?.color, borderColor: categoryMeta?.color }}
+                      >
+                        {categoryMeta?.label ?? study.category}
+                      </span>
+                    </td>
+                    <td className={styles.dateCell}>
+                      {study.currentMemberCount}/{study.capacity}명
+                    </td>
+                    <td className={styles.dateCell}>
+                      {study.recruitStart} ~ {study.recruitEnd ?? '상시'}
+                    </td>
+                    <td className={styles.dateCell}>{formatDate(study.createdAt)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className={styles.suspendButton}
+                        disabled={deletingId === study.id}
+                        onClick={() => handleDelete(study)}
+                      >
+                        <Trash2 size={13} />
+                        삭제
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+    </>
+  )
+}
+
+// ---------------- 게시글 관리 ----------------
+
+const POST_CATEGORY_FILTERS = ['ALL', ...POST_CATEGORIES.map((c) => c.value)]
+
+function PostsTab() {
+  const [posts, setPosts] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('ALL')
+  const [deletingId, setDeletingId] = useState(null)
+  const [page, setPage] = useState(0)
+
+  const load = useCallback(() => {
+    return adminApi.getPosts({ page: 0, size: 500 }).then(({ data }) => {
+      setPosts(data.data)
+    })
+  }, [])
+
+  useEffect(() => {
+    let ignore = false
+    load()
+      .catch(() => {
+        if (!ignore) setError('게시글 목록을 불러오지 못했습니다.')
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [load])
+
+  async function handleDelete(post) {
+    if (!window.confirm(`"${post.title}" 게시글을 강제 삭제할까요? 연관된 댓글도 함께 숨김처리됩니다.`)) return
+
+    setDeletingId(post.id)
+    try {
+      await adminApi.deletePost(post.id)
+      setPosts((prev) => prev.filter((p) => p.id !== post.id))
+    } catch (err) {
+      window.alert(err.response?.data?.message ?? '게시글 삭제에 실패했습니다.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const filtered = posts.filter((p) => {
+    if (categoryFilter !== 'ALL' && p.category !== categoryFilter) return false
+    if (!keyword.trim()) return true
+    return p.title.toLowerCase().includes(keyword.trim().toLowerCase())
+  })
+
+  // 검색어/필터가 바뀌면 항상 1페이지부터 다시 보여준다.
+  useEffect(() => {
+    setPage(0)
+  }, [keyword, categoryFilter])
+
+  const totalPages = Math.ceil(filtered.length / ADMIN_PAGE_SIZE)
+  const paged = filtered.slice(page * ADMIN_PAGE_SIZE, page * ADMIN_PAGE_SIZE + ADMIN_PAGE_SIZE)
+
+  if (isLoading) return <p className={styles.state}>불러오는 중...</p>
+  if (error) return <p className={styles.state}>{error}</p>
+
+  return (
+    <>
+      <div className={styles.filterRow}>
+        <input
+          className={styles.searchInput}
+          placeholder="제목으로 검색"
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+        />
+        <div className={styles.roleTabs}>
+          {POST_CATEGORY_FILTERS.map((category) => (
+            <button
+              key={category}
+              type="button"
+              className={`${styles.roleTab} ${categoryFilter === category ? styles.roleTabActive : ''}`}
+              onClick={() => setCategoryFilter(category)}
+            >
+              {category === 'ALL' ? '전체' : getPostCategoryMeta(category)?.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className={styles.countLabel}>{filtered.length}개</p>
+
+      {filtered.length === 0 ? (
+        <p className={styles.emptyState}>조건에 맞는 게시글이 없어요.</p>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>게시글</th>
+                <th>카테고리</th>
+                <th>조회수</th>
+                <th>작성일</th>
+                <th>관리</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paged.map((post) => {
+                const categoryMeta = getPostCategoryMeta(post.category)
+                return (
+                  <tr key={post.id}>
+                    <td>
+                      <div className={styles.memberCell}>
+                        <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(post.title) }}>
+                          {post.title?.[0]}
+                        </span>
+                        <div>
+                          <p className={styles.memberName}>{post.title}</p>
+                          <p className={styles.memberUsername}>{post.authorNickname}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span
+                        className={styles.roleBadge}
+                        style={{ color: categoryMeta?.color, borderColor: categoryMeta?.color }}
+                      >
+                        {categoryMeta?.label ?? post.category}
+                      </span>
+                    </td>
+                    <td className={styles.dateCell}>
+                      <Eye size={13} style={{ verticalAlign: 'text-bottom', marginRight: 4 }} />
+                      {post.viewCount}
+                    </td>
+                    <td className={styles.dateCell}>{formatDate(post.createdAt)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className={styles.suspendButton}
+                        disabled={deletingId === post.id}
+                        onClick={() => handleDelete(post)}
+                      >
+                        <Trash2 size={13} />
+                        삭제
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+    </>
+  )
+}
+
+// ---------------- 구독자 관리 ----------------
+
+const SUBSCRIBER_SUB_TABS = [
+  { key: 'subscriptions', label: '구독 현황' },
+  { key: 'payments', label: '결제 이력' },
+]
+
+const SUBSCRIPTION_STATUS_META = {
+  ACTIVE: { label: '활성', color: '#34d399' },
+  PAST_DUE: { label: '결제실패', color: '#f87171' },
+  EXPIRED: { label: '만료', color: '#94a3b8' },
+}
+
+const PAYMENT_STATUS_META = {
+  READY: { label: '준비', color: '#fbbf24' },
+  PAID: { label: '완료', color: '#34d399' },
+  FAILED: { label: '실패', color: '#f87171' },
+}
+
+function SubscribersTab() {
+  const [subTab, setSubTab] = useState('subscriptions')
+
+  return (
+    <>
+      <div className={styles.roleTabs} style={{ marginBottom: 16 }}>
+        {SUBSCRIBER_SUB_TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            className={`${styles.roleTab} ${subTab === tab.key ? styles.roleTabActive : ''}`}
+            onClick={() => setSubTab(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {subTab === 'subscriptions' ? <SubscriptionsSubTab /> : <PaymentsSubTab />}
+    </>
+  )
+}
+
+const SUBSCRIPTION_STATUS_FILTERS = ['ALL', 'ACTIVE', 'PAST_DUE', 'EXPIRED']
+
+function SubscriptionsSubTab() {
+  const [subscriptions, setSubscriptions] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [page, setPage] = useState(0)
+
+  useEffect(() => {
+    let ignore = false
+    adminApi
+      .getSubscriptions({ page: 0, size: 500 })
+      .then(({ data }) => {
+        if (!ignore) setSubscriptions(data.data)
+      })
+      .catch(() => {
+        if (!ignore) setError('구독 목록을 불러오지 못했습니다.')
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  const filtered = subscriptions.filter((s) => {
+    if (statusFilter !== 'ALL' && s.status !== statusFilter) return false
+    if (!keyword.trim()) return true
+    const k = keyword.trim().toLowerCase()
+    return s.userNickname.toLowerCase().includes(k) || s.userUsername.toLowerCase().includes(k)
+  })
+
+  useEffect(() => {
+    setPage(0)
+  }, [keyword, statusFilter])
+
+  const totalPages = Math.ceil(filtered.length / ADMIN_PAGE_SIZE)
+  const paged = filtered.slice(page * ADMIN_PAGE_SIZE, page * ADMIN_PAGE_SIZE + ADMIN_PAGE_SIZE)
+
+  if (isLoading) return <p className={styles.state}>불러오는 중...</p>
+  if (error) return <p className={styles.state}>{error}</p>
+
+  return (
+    <>
+      <div className={styles.filterRow}>
+        <input
+          className={styles.searchInput}
+          placeholder="닉네임, 아이디로 검색"
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+        />
+        <div className={styles.roleTabs}>
+          {SUBSCRIPTION_STATUS_FILTERS.map((status) => (
+            <button
+              key={status}
+              type="button"
+              className={`${styles.roleTab} ${statusFilter === status ? styles.roleTabActive : ''}`}
+              onClick={() => setStatusFilter(status)}
+            >
+              {status === 'ALL' ? '전체' : SUBSCRIPTION_STATUS_META[status]?.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className={styles.countLabel}>{filtered.length}건</p>
+
+      {filtered.length === 0 ? (
+        <p className={styles.emptyState}>조건에 맞는 구독이 없어요.</p>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>회원</th>
+                <th>상태</th>
+                <th>시작일</th>
+                <th>만료일</th>
+                <th>자동갱신</th>
+                <th>결제 재시도</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paged.map((s) => {
+                const statusMeta = SUBSCRIPTION_STATUS_META[s.status]
+                return (
+                  <tr key={s.id}>
+                    <td>
+                      <div className={styles.memberCell}>
+                        <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(s.userNickname) }}>
+                          {s.userNickname?.[0]}
+                        </span>
+                        <div>
+                          <p className={styles.memberName}>{s.userNickname}</p>
+                          <p className={styles.memberUsername}>@{s.userUsername}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={styles.roleBadge} style={{ color: statusMeta?.color, borderColor: statusMeta?.color }}>
+                        {statusMeta?.label ?? s.status}
+                      </span>
+                    </td>
+                    <td className={styles.dateCell}>{formatDate(s.startedAt)}</td>
+                    <td className={styles.dateCell}>{s.expiredAt ? formatDate(s.expiredAt) : '—'}</td>
+                    <td>{s.autoRenew ? <Check size={15} /> : <span className={styles.dash}>—</span>}</td>
+                    <td className={styles.dateCell}>{s.retryCount}/3</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+    </>
+  )
+}
+
+const PAYMENT_STATUS_FILTERS = ['ALL', 'READY', 'PAID', 'FAILED']
+
+function PaymentsSubTab() {
+  const [payments, setPayments] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [page, setPage] = useState(0)
+
+  useEffect(() => {
+    let ignore = false
+    adminApi
+      .getPayments({ page: 0, size: 500 })
+      .then(({ data }) => {
+        if (!ignore) setPayments(data.data)
+      })
+      .catch(() => {
+        if (!ignore) setError('결제 이력을 불러오지 못했습니다.')
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  const filtered = payments.filter((p) => {
+    if (statusFilter !== 'ALL' && p.status !== statusFilter) return false
+    if (!keyword.trim()) return true
+    const k = keyword.trim().toLowerCase()
+    return p.userNickname.toLowerCase().includes(k) || p.userUsername.toLowerCase().includes(k)
+  })
+
+  useEffect(() => {
+    setPage(0)
+  }, [keyword, statusFilter])
+
+  const totalPages = Math.ceil(filtered.length / ADMIN_PAGE_SIZE)
+  const paged = filtered.slice(page * ADMIN_PAGE_SIZE, page * ADMIN_PAGE_SIZE + ADMIN_PAGE_SIZE)
+
+  if (isLoading) return <p className={styles.state}>불러오는 중...</p>
+  if (error) return <p className={styles.state}>{error}</p>
+
+  return (
+    <>
+      <div className={styles.filterRow}>
+        <input
+          className={styles.searchInput}
+          placeholder="닉네임, 아이디로 검색"
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+        />
+        <div className={styles.roleTabs}>
+          {PAYMENT_STATUS_FILTERS.map((status) => (
+            <button
+              key={status}
+              type="button"
+              className={`${styles.roleTab} ${statusFilter === status ? styles.roleTabActive : ''}`}
+              onClick={() => setStatusFilter(status)}
+            >
+              {status === 'ALL' ? '전체' : PAYMENT_STATUS_META[status]?.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className={styles.countLabel}>{filtered.length}건</p>
+
+      {filtered.length === 0 ? (
+        <p className={styles.emptyState}>조건에 맞는 결제 내역이 없어요.</p>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>회원</th>
+                <th>주문명</th>
+                <th>금액</th>
+                <th>상태</th>
+                <th>실패 사유</th>
+                <th>결제일</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paged.map((p) => {
+                const statusMeta = PAYMENT_STATUS_META[p.status]
+                return (
+                  <tr key={p.id}>
+                    <td>
+                      <div className={styles.memberCell}>
+                        <span className={styles.avatar} style={{ backgroundColor: getAvatarColor(p.userNickname) }}>
+                          {p.userNickname?.[0]}
+                        </span>
+                        <div>
+                          <p className={styles.memberName}>{p.userNickname}</p>
+                          <p className={styles.memberUsername}>@{p.userUsername}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{p.orderName}</td>
+                    <td className={styles.dateCell}>{p.amount.toLocaleString()}{p.currency === 'KRW' ? '원' : ` ${p.currency}`}</td>
+                    <td>
+                      <span className={styles.roleBadge} style={{ color: statusMeta?.color, borderColor: statusMeta?.color }}>
+                        {statusMeta?.label ?? p.status}
+                      </span>
+                    </td>
+                    <td className={styles.dateCell}>{p.failReason ?? <span className={styles.dash}>—</span>}</td>
+                    <td className={styles.dateCell}>{p.paidAt ? formatDate(p.paidAt) : formatDate(p.createdAt)}</td>
                   </tr>
                 )
               })}

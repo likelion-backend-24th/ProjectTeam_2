@@ -5,6 +5,26 @@ function getUsers(params) {
   return apiClient.get('/api/admin/users', { params })
 }
 
+// GET /api/admin/studies?keyword=&category= (ADMIN 전용)
+function getStudies(params) {
+  return apiClient.get('/api/admin/studies', { params })
+}
+
+// GET /api/admin/posts?keyword=&category= (ADMIN 전용)
+function getPosts(params) {
+  return apiClient.get('/api/admin/posts', { params })
+}
+
+// GET /api/admin/subscriptions?keyword=&status= (ADMIN 전용)
+function getSubscriptions(params) {
+  return apiClient.get('/api/admin/subscriptions', { params })
+}
+
+// GET /api/admin/payments?keyword=&status= (ADMIN 전용)
+function getPayments(params) {
+  return apiClient.get('/api/admin/payments', { params })
+}
+
 // PATCH /api/admin/users/:id/status  { status: 'ACTIVE' | 'SUSPENDED' }
 function updateUserStatus(id, status) {
   return apiClient.patch(`/api/admin/users/${id}/status`, { status })
@@ -57,6 +77,10 @@ function rejectReport(id) {
 
 export const adminApi = {
   getUsers,
+  getStudies,
+  getPosts,
+  getSubscriptions,
+  getPayments,
   updateUserStatus,
   deletePost,
   deleteStudy,

@@ -25,6 +25,8 @@ import org.example.backend.subscription.service.SubscriptionService;
 import org.example.backend.user.entity.AccountStatus;
 import org.example.backend.user.entity.User;
 import org.example.backend.user.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -192,6 +194,12 @@ public class PaymentService {
         return billingKeyRepository.findByUserIdAndDeletedAtIsNull(userId)
                 .map(BillingKeyResponse::of)
                 .orElseGet(BillingKeyResponse::empty);
+    }
+
+    // 관리자 결제 이력 조회 (상태 필터 + 유저 닉네임/이메일 검색). AdminService에서 사용
+    public Page<Payment> searchPaymentsForAdmin(String keyword, PaymentStatus status, Pageable pageable) {
+        String normalizedKeyword = (keyword == null || keyword.isBlank()) ? null : keyword;
+        return paymentRepository.searchPaymentsForAdmin(status, normalizedKeyword, pageable);
     }
 
     /**

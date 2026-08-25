@@ -2,6 +2,9 @@ package org.example.backend.payment.repository;
 
 import jakarta.persistence.LockModeType;
 import org.example.backend.payment.entity.Payment;
+import org.example.backend.payment.entity.PaymentStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +16,27 @@ import java.util.Optional;
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     Optional<Payment> findByPaymentId(String paymentId);
+
+    // 관리자 결제 이력 조회 - 상태 필터 + 유저 닉네임/이메일 검색
+    @Query(value = """
+            SELECT p FROM Payment p
+            JOIN FETCH p.user u
+            WHERE (:status IS NULL OR p.status = :status)
+              AND (:keyword IS NULL OR :keyword = ''
+                   OR u.nickname LIKE CONCAT('%', :keyword, '%')
+                   OR u.username LIKE CONCAT('%', :keyword, '%'))
+            ORDER BY p.createdAt DESC
+    """, countQuery = """
+            SELECT COUNT(p) FROM Payment p
+            JOIN p.user u
+            WHERE (:status IS NULL OR p.status = :status)
+              AND (:keyword IS NULL OR :keyword = ''
+                   OR u.nickname LIKE CONCAT('%', :keyword, '%')
+                   OR u.username LIKE CONCAT('%', :keyword, '%'))
+    """)
+    Page<Payment> searchPaymentsForAdmin(@Param("status") PaymentStatus status,
+                                          @Param("keyword") String keyword,
+                                          Pageable pageable);
 
     /** 최근에 빌링키 청구가 있었는지. 수동 재시도 연타로 PG를 반복 호출하는 것을 막는 데 쓴다. */
     boolean existsByUserIdAndBillingKeyIsNotNullAndCreatedAtAfter(Long userId, LocalDateTime after);
