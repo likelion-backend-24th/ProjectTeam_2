@@ -1,0 +1,235 @@
+# Prep2gether
+
+> 취준생이 취업 정보를 나누고, 스터디를 모집·운영하며, 전문가에게 유료로 1:1 상담을 받는 커뮤니티 플랫폼입니다.
+
+| 구분 | 링크 |
+| --- | --- |
+| 서비스 | http://prep2gether.duckdns.org |
+| API 문서 | 로컬 실행 후 Swagger UI `http://localhost:8080/swagger-ui/index.html` |
+| 데이터 모델 | [docs/ERD.png](./docs/ERD.png) · [docs/ddl.sql](./docs/ddl.sql) |
+| 요구사항 정의 | [docs/requirement.md](./docs/requirement.md) |
+
+> GitHub 저장소는 팀 내부 private으로 운영합니다. 회의록·설계 문서는 팀 노션(접근 제한)에서 관리합니다.
+
+## 프로젝트 개요
+
+| 항목 | 내용 |
+| --- | --- |
+| 개발 기간 | 2026.07.29 ~ 2026.08.26 |
+| 팀 구성 | Backend 4명 (프론트엔드 공통 작업 병행) |
+| 주요 사용자 | 취업을 준비하는 학생·주니어 |
+| 해결하려는 문제 | 취업 정보·스터디 모집·전문가 상담이 여러 채널에 흩어져 있어 한곳에서 이어지지 않습니다. |
+| 핵심 가치 | 정보 공유 → 스터디 → 전문가 상담까지 하나의 흐름으로 연결하고, 전문가 상담은 구독 결제로 지속 가능하게 만듭니다. |
+
+### 핵심 사용자 흐름
+
+```text
+회원가입(이메일 인증) → 로그인 → 게시판·스터디 활동
+                                   └→ 구독 결제(PortOne) → 전문가 1:1 상담
+```
+
+## 핵심 기능
+
+### 회원 인증 · 계정
+
+- 이메일 인증 후 가입하고, 일반/카카오·구글·네이버 소셜 로그인으로 접속합니다. 동일 이메일이면 소셜·일반 계정이 자동 통합됩니다.
+- JWT(Access) + Refresh Token(HttpOnly 쿠키)을 발급하고, 로그인 5회 실패 시 계정을 잠급니다. 비밀번호는 BCrypt로 해싱합니다.
+- 만료·불일치 인증코드, 잠금 임계값, 계정 통합 경로를 서비스 계층 테스트로 검증했습니다.
+
+### 게시판
+
+- 카테고리별로 글을 쓰고, 검색·페이징으로 조회하며, 댓글을 남깁니다.
+- 삭제는 `@SoftDelete`로 처리하고 연관 이미지·댓글을 함께 정리합니다.
+- 작성자 외 수정/삭제 거부, 존재하지 않는 게시글을 테스트했습니다.
+
+### 스터디
+
+- 스터디를 개설·검색하고 신청하며, 가입 멤버만 스터디 전용 게시판을 이용합니다.
+- 미구독자는 개설+참여 합산 2개(`FREE_TIER_STUDY_LIMIT`)로 제한하고 구독자는 무제한이며, 방장 위임·정원·중복 가입을 서비스 계층에서 검증합니다.
+- 가입 한도 초과, 방장 위임 없이 탈퇴, 정원 초과 시나리오를 테스트했습니다.
+
+### 전문가 상담
+
+- 구독자는 승인된 전문가에게 1:1 상담 스레드를 열고 대화합니다.
+- 스레드 개설 시 요청자 행에 **비관적 락**(`PESSIMISTIC_WRITE`)을 걸어 동일 전문가 중복·개수(`MAX_OPEN_THREADS = 5`) 제한을 직렬화하고, 전문가 첫 답변에서 상태를 `PENDING → ANSWERED`로 전이하며 메일로 알립니다.
+- 비구독자 차단, 중복 스레드, 개수 초과, 종료된 스레드 작성 차단을 테스트했습니다.
+
+### 이미지 첨부 (공통)
+
+- 게시글, 스터디, 스터디 게시판, 전문가 상담 메시지에 이미지를 첨부할 수 있습니다.
+- 공통 `FileStorageService`(S3FileStorageService)로 `multipart` 요청을 받아 **AWS S3**에 업로드하고, 각 도메인은 `PostImage`/`StudyImage`/`StudyPostImage`/`FeedbackMessageImage`로 원본 엔티티와 연결합니다.
+- 원본(게시글 등)이 소프트 삭제되면 연관 이미지도 함께 정리합니다.
+
+### 신고 (공통)
+
+- 게시글·댓글·스터디 게시글·스터디 게시글 댓글·전문가 상담(`ReportTargetType`: POST/COMMENT/STUDY_POST/STUDY_POST_COMMENT/FEEDBACK)에 공통으로 신고를 남길 수 있습니다.
+- 본인 대상·중복 신고를 서비스 계층에서 막고, 관리자는 신고 목록을 상태별로 조회해 승인/반려 처리합니다.
+- 본인·중복 신고 방지, 존재하지 않는 대상 신고를 테스트했습니다.
+
+### 유료구독 결제 (PortOne V2, 팀 공통)
+
+- 카드를 등록하고 정기결제로 구독하면 전문가 상담이 열리며, 매달 자동 갱신되고 실패 시 재시도할 수 있습니다.
+- PortOne 빌링키를 **AES/GCM으로 암호화**해 저장하고, 결제는 PG 응답이 아니라 **결제 단건 재조회 6단계 검증**(상태·상점·채널·환경·금액·통화)으로 확정합니다. 매일 새벽 4시 스케줄러가 만료 임박·연체 구독을 청구하고, 웹훅은 `WebhookEvent` 기록으로 멱등 처리합니다.
+- 검증 실패 시 `FAILED` 기록·구독 미반영, 중복 구독 방지, 연체(PAST_DUE) 재시도·쿨다운, 자동 갱신/만료 정리를 단위 테스트로 확인했습니다.
+
+### 관리자
+
+- 게시글·댓글·스터디·상담을 소프트 삭제로 관리하고, 신고 목록을 상태별로 조회해 승인/반려하며, 계정 상태(ACTIVE ↔ SUSPENDED)를 변경합니다.
+
+## 기술 스택
+
+| 영역 | 기술 | 선택 이유 |
+| --- | --- | --- |
+| Backend | Java 21, Spring Boot 3.5 | 도메인 중심 계층 분리와 REST API 구현 |
+| 인증 | Spring Security, JWT(jjwt), OAuth2 | Stateless 인증과 소셜 로그인 통합 |
+| 데이터 | Spring Data JPA, MySQL 8.0 | 관계형 도메인 모델과 트랜잭션 처리 |
+| 결제 | PortOne V2 Server SDK | 빌링키 기반 정기결제와 웹훅 연동 |
+| 저장소 | AWS S3 | 게시글·상담 이미지 저장 |
+| 메일 | Spring Mail (Gmail SMTP) | 회원가입 이메일 인증 |
+| 문서 | springdoc-openapi (Swagger) | API 계약 확인·테스트 |
+| Frontend | React 19, Vite, Axios, oxlint | 컴포넌트 기반 UI와 API 연동 |
+| Infra/CI·CD | Docker Compose, GitHub Actions, GHCR, Nginx, AWS EC2 | 이미지 빌드·배포 자동화 |
+| Test | JUnit5, H2 | 서비스 계층 단위 테스트 |
+
+## 아키텍처
+
+```text
+Browser ──HTTP──▶ Nginx (EC2)
+                     ├──▶ React (정적 파일)
+                     └──▶ Spring Boot API ──▶ MySQL      (영속 데이터)
+                                            ├──▶ AWS S3   (이미지)
+                                            ├──▶ PortOne  (결제/빌링키/웹훅)
+                                            └──▶ Gmail SMTP (이메일 인증)
+```
+
+Backend는 `controller → service → repository`로 계층을 나누고, 요청·응답에는 Entity 대신 DTO를 사용하며, 공통 응답은 `ApiResponse` 포맷으로 통일합니다.
+
+## 프로젝트 구조
+
+```text
+prep2gether/
+├── backend/            # Spring Boot 애플리케이션
+│   └── src/main/java/org/example/backend/
+│       ├── auth/           # 인증/인가 (JWT, OAuth2, 이메일 인증)
+│       ├── user/           # 회원
+│       ├── post/ comment/  # 게시판 · 댓글
+│       ├── report/         # 신고
+│       ├── study/          # 스터디 (모집/멤버/게시판/댓글)
+│       ├── expert/         # 전문가 프로필 · 1:1 상담(feedback)
+│       ├── subscription/   # 구독
+│       ├── payment/        # 결제 · 빌링키 · 웹훅 (PortOne)
+│       ├── notification/   # 알림
+│       ├── admin/          # 관리자
+│       └── common/         # 공통 응답/예외/파일 등
+├── frontend/           # React (Vite)
+├── docs/               # ERD, 요구사항 정의서, DDL, 시드 데이터
+└── docker-compose.yml  # MySQL + Backend + Frontend
+```
+
+## 실행 방법
+
+### 요구 사항
+
+- JDK 21, Node.js 20+, Docker Desktop
+
+### 환경 변수
+
+`backend/.env`에는 DB·JWT·AWS S3·Mail·PortOne 관련 값을, `frontend/.env`에는 API 주소와 소셜 로그인 키를 넣습니다(`frontend/.env.example` 참고). 실제 Secret 값은 각자 발급받아 채우고 커밋하지 않습니다.
+
+### Docker로 실행
+
+```bash
+docker compose up --build
+```
+
+- Frontend: `http://localhost` (Nginx, 80 포트)
+- Backend: `http://localhost:8080`
+- Swagger: `http://localhost:8080/swagger-ui/index.html`
+
+### 로컬 개발 실행 (선택)
+
+```bash
+# 백엔드
+cd backend && ./gradlew bootRun
+# 프론트엔드 (별도 터미널)
+cd frontend && npm install && npm run dev
+```
+
+- Frontend(dev): `http://localhost:3000` (Vite, 백엔드 CORS 허용 origin과 일치)
+- Backend: `http://localhost:8080` (`application.yaml` 기본 포트, Docker 배포 시에는 8080)
+
+## 테스트
+
+```bash
+cd backend
+./gradlew test
+```
+
+| 검증 영역 | 대표 시나리오 |
+| --- | --- |
+| 인증·인가 | 로그인 실패 잠금, 만료·불일치 인증코드, 권한 없는 요청 |
+| 게시판 | 작성자 외 수정/삭제, 없는 게시글 |
+| 스터디 | 가입 한도 초과, 정원 초과, 미위임 방장 탈퇴 |
+| 전문가 상담 | 비구독자 차단, 중복 스레드, 개수 초과(5개), 종료된 스레드 차단 |
+| 신고 | 본인·중복 신고 방지, 존재하지 않는 대상 신고 |
+| 결제·구독 | 결제 검증 실패, 중복 구독, PAST_DUE 재시도·쿨다운, 자동 갱신/만료 |
+
+`PaymentServiceTest`, `SubscriptionServiceTest`, `FeedbackServiceTest`, `ReportServiceTest` 등 서비스 계층 단위 테스트를 H2 환경에서 수행합니다.
+
+Frontend 자동화 테스트 미구축.
+
+## 주요 기술 의사결정
+
+### 결제 성공을 PG 응답이 아닌 "단건 재조회"로 판정
+
+- 상황: PortOne 결제창/빌링키 청구의 즉시 응답은 위·변조 가능성이 있어 그대로 신뢰하기 어렵습니다.
+- 결정: 응답과 별개로 결제를 재조회해 상태·상점·채널·환경(TEST/LIVE)·금액·통화 6가지를 대조하고, 하나라도 어긋나면 `FAILED`로 기록한 뒤 구독 반영을 거부합니다.
+- 결과·한계: 환경 오반영·금액 변조를 차단했습니다. 완료 처리는 멱등하게 설계해 재호출에도 안전하며, 환불은 API 대신 해지(다음 회차 중단)로 처리합니다.
+
+### 결제 실패를 예외가 아닌 boolean으로 처리
+
+- 상황: 카드사 거절처럼 "정상적으로 실패"할 수 있는 경우 예외를 던지면 트랜잭션이 롤백되어 방금 증가시킨 실패 횟수(`retry_count`)까지 사라집니다.
+- 결정: 청구 결과를 boolean으로 반환하고, 실패 시 `PAST_DUE`·재시도 횟수 증가를 같은 트랜잭션에서 남깁니다. 자동 갱신 스케줄러는 건별로 트랜잭션을 열어 한 사용자의 실패가 다른 사용자 처리를 되돌리지 않게 했습니다.
+- 결과·한계: 실패 이력과 유예 상태가 정확히 남습니다. 사용자 수동 재시도는 자동 재시도 횟수를 소진하지 않도록 모드를 분리했습니다.
+
+## Troubleshooting
+
+### 소프트삭제 도입 후 LAZY 연관 로딩 실패
+
+- 문제: `Post`에 `@SoftDelete`를 적용하자, 이를 `@ManyToOne(LAZY)`로 참조하던 `Comment`·`PostImage`에서 연관 로딩 오류가 발생했습니다.
+- 조사: Hibernate 6.4+에서는 `@SoftDelete`가 걸린 엔티티를 지연(LAZY) 프록시로 참조할 수 없다는 제약을 확인했습니다.
+- 해결·검증: `Comment`·`PostImage`의 `Post` 참조를 `EAGER`로 변경해 조회를 정상화하고, 소프트삭제된 게시글·댓글이 목록 조회에서 자동 제외되는지 테스트로 확인했습니다.
+
+## 팀과 기여
+
+| 이름 | 담당 도메인 |
+| --- | --- |
+| 지선 | 스터디 · 이미지(S3) |
+| 승환 | 회원 / 어드민 |
+| 태영 | 게시판 · 신고 |
+| 선우 | 전문가 상담 |
+
+- **유료구독 결제(PortOne)**는 팀 4인이 각자 구현한 뒤 최종안을 하나 선택하고, 서로의 구현 중 필요한 부분(웹훅 등)을 병합해 완성했습니다.
+- **이미지 첨부 공통 모듈**(`FileStorageService`, S3 업로드)은 지선님이 구현해 게시판·스터디·스터디 게시판·전문가 상담이 함께 사용합니다.
+- **신고 공통 모듈**은 태영님이 구현해 게시판·스터디 게시판·전문가 상담이 함께 사용합니다.
+- 프론트엔드는 지선님이 공통 플랫폼을 맡고, 각 도메인 화면·수정은 담당자가 함께 작업했습니다.
+- 지선님이 빌더 패턴 사용 여부 등 팀 코드 컨벤션을 맞추고, 다른 도메인 리포지토리를 직접 참조하던 구조를 서비스 계층 경유로 리팩토링하는 등 코드 정리를 주도했습니다.
+
+## Documentation
+
+| 문서 | 위치 | 용도 |
+| --- | --- | --- |
+| ERD | [docs/ERD.png](./docs/ERD.png) | 데이터 모델 |
+| DDL | [docs/ddl.sql](./docs/ddl.sql) | 스키마 정의 |
+| 요구사항 | [docs/requirement.md](./docs/requirement.md) | 기능 범위 |
+| 시드 데이터 | [docs/sql](./docs/sql) | 초기 데이터 스크립트 |
+| API 문서 | Swagger UI (`/swagger-ui/index.html`) | 전체 API 명세 (로컬/서버 실행 시 확인) |
+| 회의록·설계 | 팀 노션 (접근 제한) | 결정 이력 |
+
+## 개선 계획
+
+- 게시글/스터디 게시글 **수정 시 이미지 교체** 지원 (현재 등록 시에만 첨부)
+- 관리자 유저 목록에 **검색·역할 필터** 추가
+- 결제 웹훅 **서명 검증 강화**와 결제 실패 알림
+- 배포 도메인 **HTTPS(TLS) 적용**
+- 테스트 커버리지 측정과 CI 품질 게이트 추가
