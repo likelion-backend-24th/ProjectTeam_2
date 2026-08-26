@@ -136,6 +136,7 @@ export default function StudyDetailPage() {
     setActionError('')
 
     if (await isOverFreeStudyLimit(user)) {
+      window.alert('비구독자는 스터디를 최대 2개까지만 개설·참여할 수 있어요. 구독 플랜 페이지로 이동할게요.')
       navigate('/subscription')
       return
     }
