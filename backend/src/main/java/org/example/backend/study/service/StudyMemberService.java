@@ -25,7 +25,9 @@ public class StudyMemberService {
     @Transactional
     public StudyMemberResponse joinStudy(Long userId, Long id) {
         User user = studyAccessValidator.getUserOrThrow(userId);
-        Study study = studyAccessValidator.getStudyOrThrow(id);
+        // 정원 체크 후 저장까지 이어지므로, 동시 가입 요청이 같은 인원 수를 읽고 정원을 초과해
+        // 저장하지 못하도록 스터디 행에 락을 걸고 조회한다.
+        Study study = studyAccessValidator.getStudyForUpdateOrThrow(id);
 
         if (study.getLeader().getId().equals(userId)) {
             throw new BusinessException(StudyErrorCode.STUDY_LEADER_CANNOT_JOIN);

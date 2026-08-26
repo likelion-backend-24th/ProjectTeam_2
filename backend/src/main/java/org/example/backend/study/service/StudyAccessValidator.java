@@ -34,6 +34,12 @@ public class StudyAccessValidator {
                 .orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
     }
 
+    // 가입 처리처럼 정원 체크 후 저장까지 이어지는 흐름에서 동시 요청을 직렬화할 때 사용
+    public Study getStudyForUpdateOrThrow(Long studyId) {
+        return studyRepository.findByIdForUpdate(studyId)
+                .orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_NOT_FOUND));
+    }
+
     public StudyPost getStudyPostOrThrow(Long studyId, Long postId) {
         StudyPost post = studyPostRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException(StudyErrorCode.STUDY_POST_NOT_FOUND));
