@@ -25,6 +25,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -53,7 +55,8 @@ public class PostService {
 
     public Page<PostResponse> getPosts(PostCategory category, String keyword, Pageable pageable) {
         Page<Post> posts = postRepository.searchPosts(category, keyword, pageable);
-        return posts.map(post -> PostResponse.from(post, getImageUrls(post.getId())));
+        Map<Long, List<String>> imageUrlsByPostId = getImageUrlsByPostId(posts.getContent());
+        return posts.map(post -> PostResponse.from(post, imageUrlsByPostId.getOrDefault(post.getId(), List.of())));
     }
 
     // 관리자 게시글 목록 조회 (제목/내용 검색 + 카테고리 필터). AdminService에서 사용
@@ -64,7 +67,8 @@ public class PostService {
 
     public Page<PostResponse> getMyPosts(Long userId, Pageable pageable) {
         Page<Post> posts = postRepository.findByUserId(userId, pageable);
-        return posts.map(post -> PostResponse.from(post, getImageUrls(post.getId())));
+        Map<Long, List<String>> imageUrlsByPostId = getImageUrlsByPostId(posts.getContent());
+        return posts.map(post -> PostResponse.from(post, imageUrlsByPostId.getOrDefault(post.getId(), List.of())));
     }
 
     @Transactional
@@ -152,5 +156,17 @@ public class PostService {
         return postImageRepository.findAllByPostIdOrderByImageOrder(postId).stream()
                 .map(PostImage::getImageUrl)
                 .toList();
+    }
+
+    // 목록 조회용: 여러 게시글의 이미지를 IN 절로 한 번에 조회한 뒤 게시글 ID로 그룹핑 (게시글마다 이미지를 재조회하던 N+1 방지)
+    private Map<Long, List<String>> getImageUrlsByPostId(List<Post> posts) {
+        List<Long> postIds = posts.stream().map(Post::getId).toList();
+        if (postIds.isEmpty()) {
+            return Map.of();
+        }
+        return postImageRepository.findAllByPostIdInOrderByPostIdAscImageOrderAsc(postIds).stream()
+                .collect(Collectors.groupingBy(
+                        image -> image.getPost().getId(),
+                        Collectors.mapping(PostImage::getImageUrl, Collectors.toList())));
     }
 }
