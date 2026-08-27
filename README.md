@@ -6,10 +6,10 @@
 | --- | --- |
 | 서비스 | http://prep2gether.duckdns.org |
 | API 문서 | 로컬 실행 후 Swagger UI `http://localhost:8080/swagger-ui/index.html` |
-| 데이터 모델 | [docs/ERD.png](./docs/ERD.png) · [docs/sql/00_ddl.sql](./docs/sql/00_ddl.sql) |
+| 데이터 모델 | [docs/design/erd.md](./docs/design/erd.md) · [docs/sql/00_ddl.sql](./docs/sql/00_ddl.sql) |
 | 요구사항 정의 | [docs/requirement.md](./docs/requirement.md) |
 
-> GitHub 저장소는 팀 내부 private으로 운영합니다. 회의록·설계 문서는 팀 노션(접근 제한)에서 관리합니다.
+> GitHub 저장소는 팀 내부 private으로 운영합니다. 설계 문서는 [docs/design](./docs/design)에서, 회의록은 팀 노션(접근 제한)에서 관리합니다.
 
 ## 프로젝트 개요
 
@@ -122,7 +122,7 @@ prep2gether/
 │       ├── admin/          # 관리자
 │       └── common/         # 공통 응답/예외/파일 등
 ├── frontend/           # React (Vite)
-├── docs/               # ERD, 요구사항 정의서, DDL, 시드 데이터
+├── docs/               # 요구사항·DDL·시드 + 설계문서(design/: ERD·API·화면설계 등)
 └── docker-compose.yml  # MySQL + Backend + Frontend
 ```
 
@@ -275,12 +275,13 @@ Frontend 자동화 테스트 미구축.
 
 | 문서 | 위치 | 용도 |
 | --- | --- | --- |
-| ERD | [docs/ERD.png](./docs/ERD.png) | 데이터 모델 |
+| ERD | [docs/design/erd.md](./docs/design/erd.md) | 데이터 모델 |
 | DDL | [docs/sql/00_ddl.sql](./docs/sql/00_ddl.sql) | 스키마 정의 |
 | 요구사항 | [docs/requirement.md](./docs/requirement.md) | 기능 범위 |
 | 시드 데이터 | [docs/sql](./docs/sql) | 초기 데이터 스크립트 |
+| 설계 문서 | [docs/design](./docs/design) | 요구사항·기능명세·API·ERD·권한·사용자흐름·시퀀스·화면설계·컨벤션 |
 | API 문서 | Swagger UI (`/swagger-ui/index.html`) | 전체 API 명세 (로컬/서버 실행 시 확인) |
-| 회의록·설계 | 팀 노션 (접근 제한) | 결정 이력 |
+| 회의록 | 팀 노션 (접근 제한) | 결정 이력 |
 
 ## 개선 계획
 
