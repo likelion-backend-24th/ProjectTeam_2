@@ -6,7 +6,7 @@
 | --- | --- |
 | 서비스 | http://prep2gether.duckdns.org |
 | API 문서 | 로컬 실행 후 Swagger UI `http://localhost:8080/swagger-ui/index.html` |
-| 데이터 모델 | [docs/ERD.png](./docs/ERD.png) · [docs/ddl.sql](./docs/ddl.sql) |
+| 데이터 모델 | [docs/ERD.png](./docs/ERD.png) · [docs/sql/00_ddl.sql](./docs/sql/00_ddl.sql) |
 | 요구사항 정의 | [docs/requirement.md](./docs/requirement.md) |
 
 > GitHub 저장소는 팀 내부 private으로 운영합니다. 회의록·설계 문서는 팀 노션(접근 제한)에서 관리합니다.
@@ -276,7 +276,7 @@ Frontend 자동화 테스트 미구축.
 | 문서 | 위치 | 용도 |
 | --- | --- | --- |
 | ERD | [docs/ERD.png](./docs/ERD.png) | 데이터 모델 |
-| DDL | [docs/ddl.sql](./docs/ddl.sql) | 스키마 정의 |
+| DDL | [docs/sql/00_ddl.sql](./docs/sql/00_ddl.sql) | 스키마 정의 |
 | 요구사항 | [docs/requirement.md](./docs/requirement.md) | 기능 범위 |
 | 시드 데이터 | [docs/sql](./docs/sql) | 초기 데이터 스크립트 |
 | API 문서 | Swagger UI (`/swagger-ui/index.html`) | 전체 API 명세 (로컬/서버 실행 시 확인) |
