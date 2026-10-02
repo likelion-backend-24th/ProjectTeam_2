@@ -84,6 +84,7 @@ public class AuthService {
     //로그인
     @Transactional
     public TokenResponse login(LoginRequest loginRequest) {
+        //회원가입 되어있는지 조회
         User user = userRepository.findByUsername(loginRequest.getUsername())
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
         // 잠금 상태 확인
