@@ -1,0 +1,11 @@
+# 통합 테스트용 프로필 - 기본 application.yaml 위에 덮어써서 DB만 메모리 H2로 교체한다.
+# (로컬 application.yaml은 개발용 MySQL을 바라보므로, 테스트 데이터가 개발 DB에 쌓이지 않게 분리)
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
